@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nectar — Chord Identify</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #07080d;
+      --surface: #0f1117;
+      --surface-2: #161820;
+      --border: rgba(255,160,60,0.15);
+      --root-color: #ff9d3d;
+      --scale-color: #e8e8e8;
+      --active-color: #ffcf6b;
+      --text: #d8d4c8;
+      --text-muted: #7a7060;
+      --font: 'Inter', system-ui, sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      overflow: hidden;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    #top-bar {
+      height: 56px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 20px;
+      flex-shrink: 0;
+    }
+
+    .nav-link {
+      color: var(--root-color);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .nav-link:hover {
+      opacity: 0.8;
+    }
+
+    .wordmark {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--text);
+      text-transform: uppercase;
+      flex: 1;
+      text-align: center;
+    }
+
+    #clear-btn {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 6px 16px;
+      font-family: var(--font);
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      letter-spacing: 0.03em;
+      flex-shrink: 0;
+    }
+
+    #clear-btn:hover {
+      border-color: var(--root-color);
+      color: var(--root-color);
+    }
+
+    #fretboard-container {
+      height: clamp(180px, 28vh, 260px);
+      position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    #fretboard {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #bottom-card {
+      flex: 1;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    .pitch-chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; min-height: 24px; }
+
+    .pitch-chip {
+      background: var(--root-color);
+      color: #07080d;
+      border-radius: 12px;
+      padding: 2px 10px;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .empty-hint { color: var(--text-muted); font-size: 0.85rem; font-style: italic; }
+
+    .match-primary { display: flex; flex-direction: column; gap: 1px; }
+    .match-symbol  { font-size: 1.5rem; font-weight: 800; color: var(--root-color); line-height: 1.1; }
+    .match-name    { font-size: 0.8rem; color: var(--text-muted); }
+
+    .match-alts { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .alt-chip {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 0.82rem;
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .alt-chip:hover, .alt-chip.selected {
+      border-color: var(--root-color);
+      color: var(--root-color);
+    }
+
+    .prog-divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+    .prog-section { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    .prog-label { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+
+    .prog-chips { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+
+    .prog-chip {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .prog-chip:hover { border-color: rgba(255,100,100,0.5); color: #ff6b6b; }
+
+    .prog-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+    .prog-action-btn {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-family: var(--font);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.15s, color 0.15s;
+      letter-spacing: 0.03em;
+    }
+
+    .prog-action-btn:hover {
+      border-color: var(--root-color);
+      color: var(--root-color);
+    }
+
+    /* Select option styling */
+    option {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header id="top-bar">
+      <a href="index.html" class="nav-link">&#8592; Scales</a>
+      <a href="chords.html" class="nav-link">&#8592; Chords</a>
+      <span class="wordmark">Identify</span>
+      <button id="clear-btn">Clear</button>
+    </header>
+    <div id="fretboard-container">
+      <canvas id="fretboard"></canvas>
+    </div>
+    <div id="bottom-card">
+      <div class="pitch-chips" id="pitch-chips">
+        <span class="empty-hint">Select notes to identify a chord</span>
+      </div>
+      <div class="match-primary" id="match-primary" style="display:none">
+        <div class="match-symbol" id="match-symbol"></div>
+        <div class="match-name" id="match-name"></div>
+      </div>
+      <div class="match-alts" id="match-alts"></div>
+      <hr class="prog-divider">
+      <div class="prog-section">
+        <span class="prog-label">Progression:</span>
+        <div class="prog-chips" id="prog-chips"></div>
+        <div class="prog-actions">
+          <button class="prog-action-btn" id="add-btn">+ Add</button>
+          <button class="prog-action-btn" id="copy-btn">&#8664; Copy</button>
+          <button class="prog-action-btn" id="prog-clear-btn">&#10005; Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ─── Note & String Constants ──────────────────────────────────────────────
+
+    const ROOT_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+    const ROOT_MIDI  = [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71];
+
+    // Standard EADGBE — MIDI note numbers for open strings
+    // index 0 = low E, index 5 = high e
+    const STRING_MIDI    = [40, 45, 50, 55, 59, 64];
+    const STRING_NAMES   = ['E','A','D','G','B','e'];
+    // Lower damping = slower decay = more sustain
+    const STRING_DAMPING = [0.498, 0.497, 0.496, 0.495, 0.494, 0.493];
+
+    const FRET_COUNT = 21;
+
+    // ─── Fret Math Helpers ────────────────────────────────────────────────────
+
+    function midiAtFret(stringIdx, fret) {
+      return STRING_MIDI[stringIdx] + fret;
+    }
+
+    function freqFromMidi(midi) {
+      return 440 * Math.pow(2, (midi - 69) / 12);
+    }
+
+    // ─── Interval Colors ─────────────────────────────────────────────────────
+
+    const INTERVAL_COLORS = {
+      0:  '#ff9d3d',  // Root — amber
+      2:  '#e8c96b',  // Maj 2nd / 9th — gold
+      3:  '#6ba3ff',  // Min 3rd — blue
+      4:  '#4fc3f7',  // Maj 3rd — cyan
+      5:  '#81c784',  // Perf 4th — green
+      6:  '#ff7043',  // Dim 5th / tritone — orange-red
+      7:  '#4db6ac',  // Perf 5th — teal
+      8:  '#ff8a65',  // Aug 5th — light orange
+      9:  '#ce93d8',  // Dim 7th — lavender
+      10: '#ba68c8',  // Min 7th — purple
+      11: '#a5d6a7',  // Maj 7th — light green
+      14: '#e8c96b',  // Maj 9th (same as 2) — gold
+    };
+
+    // ─── Karplus-Strong AudioWorklet ──────────────────────────────────────────
+
+    const KS_CODE = `
+class KSProcessor extends AudioWorkletProcessor {
+  constructor(opts) {
+    super();
+    const { frequency, damping, pluckWidth = 0.5 } = opts.processorOptions;
+    const len = Math.max(2, Math.round(sampleRate / frequency));
+    this.buf = new Float32Array(len);
+    const end = Math.floor(pluckWidth * len);
+    for (let i = 0; i < end; i++) this.buf[i] = Math.random() * 2 - 1;
+    this.idx = 0;
+    this.d = damping;
+  }
+  process(inputs, outputs) {
+    const out = outputs[0][0];
+    for (let i = 0; i < out.length; i++) {
+      const curr = this.buf[this.idx];
+      const nxt = (this.idx + 1) % this.buf.length;
+      this.buf[this.idx] = this.d * (curr + this.buf[nxt]);
+      out[i] = curr;
+      this.idx = nxt;
+    }
+    let e = 0;
+    for (let i = 0; i < this.buf.length; i++) e += this.buf[i] * this.buf[i];
+    return e / this.buf.length > 1e-9;
+  }
+}
+registerProcessor('ks', KSProcessor);
+`;
+
+    let audioCtx    = null;
+    let masterGain  = null;
+    let workletReady = false;
+
+    async function initAudio() {
+      if (audioCtx) return;
+      audioCtx = new AudioContext();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.8;
+      masterGain.connect(audioCtx.destination);
+      const blob = new Blob([KS_CODE], { type: 'application/javascript' });
+      const url = URL.createObjectURL(blob);
+      await audioCtx.audioWorklet.addModule(url);
+      URL.revokeObjectURL(url);
+      workletReady = true;
+    }
+
+    function pluck(midi, stringIdx) {
+      if (!workletReady || !audioCtx) return;
+      const freq = freqFromMidi(midi);
+      const damping = STRING_DAMPING[stringIdx];
+      const node = new AudioWorkletNode(audioCtx, 'ks', {
+        processorOptions: { frequency: freq, damping }
+      });
+      node.connect(masterGain);
+    }
+
+    // ─── FretboardRenderer ────────────────────────────────────────────────────
+
+    class FretboardRenderer {
+      constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.activeRings = [];
+        this.lastIdentifyParams = null;
+        this.resize();
+      }
+
+      resize() {
+        const container = this.canvas.parentElement;
+        this.canvas.width  = container.clientWidth;
+        this.canvas.height = container.clientHeight;
+        this._calcLayout();
+        if (this.lastIdentifyParams) {
+          const { selectedKeys, matches } = this.lastIdentifyParams;
+          this.renderIdentify(selectedKeys, matches);
+        }
+      }
+
+      _calcLayout() {
+        this.leftPad   = 64;
+        this.rightPad  = 16;
+        this.topPad    = 20;
+        this.bottomPad = 24;
+        this.nutWidth  = 6;
+
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+
+        this.fretWidth     = (w - this.leftPad - this.rightPad - this.nutWidth) / FRET_COUNT;
+        this.stringSpacing = (h - this.topPad - this.bottomPad) / 5;
+      }
+
+      // Display order: string 5 (high e) at top, string 0 (low E) at bottom
+      stringY(stringIdx) {
+        const displayIdx = 5 - stringIdx;
+        return this.topPad + displayIdx * this.stringSpacing;
+      }
+
+      // X centre of a fret cell. Fret 0 = open string (before nut).
+      fretX(fret) {
+        if (fret === 0) {
+          return this.leftPad - this.nutWidth / 2 - 4;
+        }
+        return this.leftPad + this.nutWidth + (fret - 1) * this.fretWidth + this.fretWidth / 2;
+      }
+
+      drawNeck() {
+        const ctx = this.ctx;
+        ctx.fillStyle = '#1a1208';
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      }
+
+      drawFrets() {
+        const ctx = this.ctx;
+        const { leftPad, nutWidth, topPad, bottomPad, fretWidth } = this;
+        const h = this.canvas.height;
+        const drawTop    = topPad;
+        const drawBottom = h - bottomPad;
+
+        // Nut
+        ctx.beginPath();
+        ctx.strokeStyle = '#c8a84b';
+        ctx.lineWidth = 4;
+        ctx.moveTo(leftPad + nutWidth / 2, drawTop);
+        ctx.lineTo(leftPad + nutWidth / 2, drawBottom);
+        ctx.stroke();
+
+        // Fret lines
+        ctx.strokeStyle = '#3a3020';
+        ctx.lineWidth = 1;
+        for (let i = 1; i <= FRET_COUNT; i++) {
+          const x = leftPad + nutWidth + i * fretWidth;
+          ctx.beginPath();
+          ctx.moveTo(x, drawTop);
+          ctx.lineTo(x, drawBottom);
+          ctx.stroke();
+        }
+      }
+
+      drawStrings() {
+        const ctx = this.ctx;
+        const w = this.canvas.width;
+        const thicknesses = [2.5, 2.0, 1.6, 1.3, 1.0, 0.8];
+
+        for (let s = 0; s < 6; s++) {
+          const y = this.stringY(s);
+          ctx.beginPath();
+          ctx.strokeStyle = '#7a6040';
+          ctx.lineWidth = thicknesses[s];
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+        }
+      }
+
+      drawPositionDots() {
+        const ctx = this.ctx;
+        const singleFrets = [3, 5, 7, 9, 15, 17, 19, 21];
+        const doubleFret  = 12;
+
+        const baseY = this.stringY(0) + 14;
+
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+
+        for (const fret of singleFrets) {
+          const x = this.fretX(fret);
+          ctx.beginPath();
+          ctx.arc(x, baseY, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        const x12 = this.fretX(doubleFret);
+        const offset = this.stringSpacing * 0.4;
+        ctx.beginPath();
+        ctx.arc(x12 - offset, baseY, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x12 + offset, baseY, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      drawStringLabels() {
+        const ctx = this.ctx;
+        const displayNames = ['e','B','G','D','A','E'];
+        ctx.font = 'bold 14px Inter, system-ui, sans-serif';
+        ctx.fillStyle = '#d8d4c8';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (let s = 0; s < 6; s++) {
+          const y = this.stringY(s);
+          ctx.fillText(displayNames[5 - s], this.leftPad / 2, y);
+        }
+      }
+
+      drawFretNumbers() {
+        const ctx = this.ctx;
+        const showFrets = [0, 3, 5, 7, 9, 12, 15, 17, 19, 21];
+        const baseY = this.stringY(0) + this.bottomPad - 6;
+
+        ctx.font = '10px Inter, system-ui, sans-serif';
+        ctx.fillStyle = '#7a7060';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        for (const fret of showFrets) {
+          const x = this.fretX(fret);
+          const label = fret === 0 ? 'O' : String(fret);
+          ctx.fillText(label, x, baseY);
+        }
+      }
+
+      fretAtX(x) {
+        if (x < this.leftPad + this.nutWidth) return 0;
+        const f = Math.floor((x - this.leftPad - this.nutWidth) / this.fretWidth) + 1;
+        return Math.min(Math.max(f, 1), FRET_COUNT);
+      }
+
+      stringAtY(y) {
+        let best = null, bestDist = this.stringSpacing * 0.75;
+        for (let s = 0; s < 6; s++) {
+          const dist = Math.abs(y - this.stringY(s));
+          if (dist < bestDist) { bestDist = dist; best = s; }
+        }
+        return best;
+      }
+
+      hitTest(x, y) {
+        let best = null;
+        let bestDist = 14;
+        for (let s = 0; s < 6; s++) {
+          for (let f = 0; f <= FRET_COUNT; f++) {
+            const cx = this.fretX(f);
+            const cy = this.stringY(s);
+            const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+            if (dist < bestDist) {
+              bestDist = dist;
+              best = { stringIdx: s, fret: f, midi: midiAtFret(s, f) };
+            }
+          }
+        }
+        return best;
+      }
+
+      drawActiveRings() {
+        const ctx = this.ctx;
+        this.activeRings = this.activeRings.filter(ring => ring.alpha > 0.01);
+        for (const ring of this.activeRings) {
+          ctx.beginPath();
+          ctx.strokeStyle = `rgba(255, 207, 107, ${ring.alpha})`;
+          ctx.lineWidth = 1.5;
+          ctx.arc(ring.cx, ring.cy, ring.r, 0, Math.PI * 2);
+          ctx.stroke();
+          ring.r += 1.2;
+          ring.alpha *= 0.88;
+        }
+      }
+
+      renderIdentify(selectedKeys, matches) {
+        this.lastIdentifyParams = { selectedKeys, matches };
+        const ctx = this.ctx;
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.drawNeck();
+        this.drawFrets();
+        this.drawStrings();
+        this.drawPositionDots();
+        this.drawStringLabels();
+        this.drawFretNumbers();
+
+        const bestMatch = matches[0] || null;
+
+        for (let s = 0; s < 6; s++) {
+          for (let f = 0; f <= FRET_COUNT; f++) {
+            const key = `${s}:${f}`;
+            const cx = this.fretX(f);
+            const cy = this.stringY(s);
+
+            if (selectedKeys.has(key)) {
+              const midi = midiAtFret(s, f);
+              const pc = midi % 12;
+              let color = '#e8e8e8';
+              if (bestMatch) {
+                const interval = ((pc - bestMatch.root) + 12) % 12;
+                color = INTERVAL_COLORS[interval] || '#e8e8e8';
+              }
+              ctx.globalAlpha = 1;
+              ctx.shadowBlur = 14; ctx.shadowColor = color;
+              ctx.beginPath(); ctx.fillStyle = color;
+              ctx.arc(cx, cy, 12, 0, Math.PI * 2); ctx.fill();
+              ctx.shadowBlur = 0;
+              ctx.fillStyle = '#07080d';
+              ctx.font = 'bold 8px Inter, sans-serif';
+              ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+              ctx.fillText(ROOT_NAMES[pc], cx, cy);
+            } else {
+              ctx.globalAlpha = 0.1;
+              ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+              ctx.lineWidth = 1;
+              ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.stroke();
+              ctx.globalAlpha = 1;
+            }
+          }
+        }
+
+        this.drawActiveRings();
+      }
+    }
+
+    // ─── Chord Templates ──────────────────────────────────────────────────────
+
+    const CHORD_TEMPLATES = [
+      { key: 'power',   name: 'Power',            symbol: '5',      intervals: [0,7],           priority: 4 },
+      { key: 'major',   name: 'Major',            symbol: '',       intervals: [0,4,7],         priority: 10 },
+      { key: 'minor',   name: 'Minor',            symbol: 'm',      intervals: [0,3,7],         priority: 10 },
+      { key: 'dim',     name: 'Diminished',       symbol: '°',      intervals: [0,3,6],         priority: 8 },
+      { key: 'aug',     name: 'Augmented',        symbol: '+',      intervals: [0,4,8],         priority: 8 },
+      { key: 'sus2',    name: 'Sus 2',            symbol: 'sus2',   intervals: [0,2,7],         priority: 7 },
+      { key: 'sus4',    name: 'Sus 4',            symbol: 'sus4',   intervals: [0,5,7],         priority: 7 },
+      { key: 'dom7',    name: 'Dominant 7th',     symbol: '7',      intervals: [0,4,7,10],      priority: 9 },
+      { key: 'maj7',    name: 'Major 7th',        symbol: 'maj7',   intervals: [0,4,7,11],      priority: 9 },
+      { key: 'min7',    name: 'Minor 7th',        symbol: 'm7',     intervals: [0,3,7,10],      priority: 9 },
+      { key: 'dim7',    name: 'Diminished 7th',   symbol: '°7',     intervals: [0,3,6,9],       priority: 8 },
+      { key: 'hdim7',   name: 'Half-Dim 7th',     symbol: 'm7♭5',   intervals: [0,3,6,10],      priority: 8 },
+      { key: 'minmaj7', name: 'Minor-Major 7th',  symbol: 'mM7',    intervals: [0,3,7,11],      priority: 7 },
+      { key: 'aug7',    name: 'Augmented 7th',    symbol: '7+',     intervals: [0,4,8,10],      priority: 7 },
+      { key: 'augmaj7', name: 'Aug Major 7th',    symbol: 'maj7+',  intervals: [0,4,8,11],      priority: 6 },
+      { key: 'maj6',    name: 'Major 6th',        symbol: '6',      intervals: [0,4,7,9],       priority: 7 },
+      { key: 'min6',    name: 'Minor 6th',        symbol: 'm6',     intervals: [0,3,7,9],       priority: 7 },
+      { key: '6_9',     name: '6/9',              symbol: '6/9',    intervals: [0,2,4,7,9],     priority: 6 },
+      { key: 'dom9',    name: 'Dominant 9th',     symbol: '9',      intervals: [0,2,4,7,10],    priority: 8 },
+      { key: 'maj9',    name: 'Major 9th',        symbol: 'maj9',   intervals: [0,2,4,7,11],    priority: 8 },
+      { key: 'min9',    name: 'Minor 9th',        symbol: 'm9',     intervals: [0,2,3,7,10],    priority: 8 },
+      { key: 'add9',    name: 'Add 9',            symbol: 'add9',   intervals: [0,2,4,7],       priority: 7 },
+      { key: 'minadd9', name: 'Minor Add 9',      symbol: 'madd9',  intervals: [0,2,3,7],       priority: 7 },
+      { key: '7sus2',   name: '7sus2',            symbol: '7sus2',  intervals: [0,2,7,10],      priority: 6 },
+      { key: '7sus4',   name: '7sus4',            symbol: '7sus4',  intervals: [0,5,7,10],      priority: 6 },
+      { key: 'dom11',   name: 'Dominant 11th',    symbol: '11',     intervals: [0,2,4,5,7,10],  priority: 7 },
+      { key: 'min11',   name: 'Minor 11th',       symbol: 'm11',    intervals: [0,2,3,5,7,10],  priority: 7 },
+      { key: 'dom7s9',  name: '7♯9 (Hendrix)',    symbol: '7♯9',    intervals: [0,3,4,7,10],    priority: 7 },
+      { key: 'dom7b9',  name: '7♭9',              symbol: '7♭9',    intervals: [0,1,4,7,10],    priority: 7 },
+      { key: 'dom7b5',  name: '7♭5',              symbol: '7♭5',    intervals: [0,4,6,10],      priority: 6 },
+      { key: 'dom7s11', name: '7♯11',             symbol: '7♯11',   intervals: [0,4,6,7,10],    priority: 6 },
+      { key: 'dom13',   name: 'Dominant 13th',    symbol: '13',     intervals: [0,2,4,7,9,10],  priority: 6 },
+      { key: 'quartal', name: 'Quartal',          symbol: '(qrt)',  intervals: [0,5,10],        priority: 4 },
+    ];
+
+    // ─── Chord Identification ─────────────────────────────────────────────────
+
+    // selectedKeys: Set<"stringIdx:fret">
+    // Returns array of match objects sorted by score descending, max 5
+    function identifyChord(selectedKeys) {
+      if (selectedKeys.size === 0) return [];
+
+      const pitchClasses = [...new Set(
+        [...selectedKeys].map(k => {
+          const [s, f] = k.split(':').map(Number);
+          return midiAtFret(s, f) % 12;
+        })
+      )];
+
+      if (pitchClasses.length < 2) return [];
+
+      const results = [];
+      for (const root of pitchClasses) {
+        const relIntervals = pitchClasses.map(pc => ((pc - root) + 12) % 12);
+        for (const tmpl of CHORD_TEMPLATES) {
+          const score = scoreChordMatch(relIntervals, tmpl);
+          if (score > 0) {
+            results.push({
+              root,
+              rootName: ROOT_NAMES[root],
+              key: tmpl.key,
+              name: tmpl.name,
+              symbol: tmpl.symbol,
+              fullName: ROOT_NAMES[root] + tmpl.symbol,
+              score,
+              templateIntervals: tmpl.intervals,
+            });
+          }
+        }
+      }
+
+      results.sort((a, b) => b.score - a.score);
+      const seen = new Set();
+      return results.filter(r => {
+        if (seen.has(r.fullName)) return false;
+        seen.add(r.fullName);
+        return true;
+      }).slice(0, 5);
+    }
+
+    function scoreChordMatch(selectedIntervals, tmpl) {
+      const sel = new Set(selectedIntervals);
+      const tmplSet = new Set(tmpl.intervals);
+
+      if (!sel.has(0)) return 0;
+
+      // Higher weight for defining intervals
+      const W = i => ({ 0:3, 3:2.5, 4:2.5, 11:2, 10:2, 6:2, 8:2 }[i] ?? 1.5);
+
+      let score = 0;
+      let matchCount = 0;
+
+      for (const i of tmpl.intervals) {
+        if (sel.has(i)) { score += W(i); matchCount++; }
+        else            { score -= W(i) * 0.5; }
+      }
+
+      // Penalty for extra notes not in template
+      for (const i of selectedIntervals) {
+        if (!tmplSet.has(i)) score -= 0.3;
+      }
+
+      // Require at least 60% of template matched
+      if (matchCount / tmpl.intervals.length < 0.6) return 0;
+
+      return score * (tmpl.priority / 10);
+    }
+
+    // ─── State ────────────────────────────────────────────────────────────────
+
+    const selectedKeys = new Set(); // "stringIdx:fret"
+    let matches = [];
+    let selectedAltIdx = 0; // which match is "chosen" for Add to progression
+    let progression = []; // array of chord fullName strings e.g. ["Am", "F", "C"]
+
+    // ─── DOM Rendering ────────────────────────────────────────────────────────
+
+    function renderBottom() {
+      // Pitch chips
+      const pitchContainer = document.getElementById('pitch-chips');
+      pitchContainer.innerHTML = '';
+      if (selectedKeys.size === 0) {
+        const hint = document.createElement('span');
+        hint.className = 'empty-hint';
+        hint.textContent = 'Select notes to identify a chord';
+        pitchContainer.appendChild(hint);
+      } else {
+        const pcs = [...new Set(
+          [...selectedKeys].map(k => {
+            const [s, f] = k.split(':').map(Number);
+            return midiAtFret(s, f) % 12;
+          })
+        )];
+        // Sort by pitch class
+        pcs.sort((a, b) => a - b);
+        for (const pc of pcs) {
+          const chip = document.createElement('span');
+          chip.className = 'pitch-chip';
+          chip.textContent = ROOT_NAMES[pc];
+          pitchContainer.appendChild(chip);
+        }
+      }
+
+      // Best match
+      const matchPrimary = document.getElementById('match-primary');
+      const matchSymbol  = document.getElementById('match-symbol');
+      const matchName    = document.getElementById('match-name');
+      if (matches.length > 0) {
+        matchPrimary.style.display = 'flex';
+        matchSymbol.textContent = matches[selectedAltIdx] ? matches[selectedAltIdx].fullName : matches[0].fullName;
+        matchName.textContent   = matches[selectedAltIdx] ? matches[selectedAltIdx].name : matches[0].name;
+      } else {
+        matchPrimary.style.display = 'none';
+        matchSymbol.textContent = '';
+        matchName.textContent   = '';
+      }
+
+      // Alt chips (matches[1..4])
+      const altsContainer = document.getElementById('match-alts');
+      altsContainer.innerHTML = '';
+      for (let i = 1; i < matches.length; i++) {
+        const chip = document.createElement('button');
+        chip.className = 'alt-chip' + (selectedAltIdx === i ? ' selected' : '');
+        chip.textContent = matches[i].fullName;
+        chip.dataset.idx = i;
+        chip.addEventListener('click', () => {
+          selectedAltIdx = parseInt(chip.dataset.idx);
+          renderBottom();
+        });
+        altsContainer.appendChild(chip);
+      }
+
+      // Progression chips
+      const progChips = document.getElementById('prog-chips');
+      progChips.innerHTML = '';
+      for (let i = 0; i < progression.length; i++) {
+        const chip = document.createElement('span');
+        chip.className = 'prog-chip';
+        chip.textContent = progression[i];
+        chip.title = 'Click to remove';
+        chip.addEventListener('click', () => {
+          progression.splice(i, 1);
+          renderBottom();
+        });
+        progChips.appendChild(chip);
+      }
+    }
+
+    function updateAll() {
+      matches = identifyChord(selectedKeys);
+      selectedAltIdx = 0;
+      renderBottom();
+      // fretboard redraws via animLoop
+    }
+
+    // ─── Progression Actions ──────────────────────────────────────────────────
+
+    function addToProgression() {
+      const match = matches[selectedAltIdx] || matches[0];
+      if (!match) return;
+      progression.push(match.fullName);
+      renderBottom();
+    }
+
+    function copyProgression() {
+      const text = progression.join(' | ');
+      navigator.clipboard.writeText(text).catch(() => {});
+      // Brief visual feedback: Copy button text changes to "Copied!" for 1s
+      const btn = document.getElementById('copy-btn');
+      const prev = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = prev; }, 1000);
+    }
+
+    function clearProgression() {
+      progression = [];
+      renderBottom();
+    }
+
+    // ─── Init ─────────────────────────────────────────────────────────────────
+
+    (function init() {
+      const canvas   = document.getElementById('fretboard');
+      const renderer = new FretboardRenderer(canvas);
+
+      // Initial bottom card render
+      renderBottom();
+
+      // Animation loop — always uses current selectedKeys and matches
+      function animLoop() {
+        renderer.renderIdentify(selectedKeys, matches);
+        requestAnimationFrame(animLoop);
+      }
+      requestAnimationFrame(animLoop);
+
+      // Click interaction
+      canvas.addEventListener('click', async e => {
+        await initAudio();
+        if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
+        const rect = canvas.getBoundingClientRect();
+        const hit = renderer.hitTest(e.clientX - rect.left, e.clientY - rect.top);
+        if (!hit) return;
+        const key = `${hit.stringIdx}:${hit.fret}`;
+        if (selectedKeys.has(key)) {
+          selectedKeys.delete(key);
+        } else {
+          // Clear any existing selection on this string first
+          for (const k of selectedKeys) {
+            if (k.startsWith(`${hit.stringIdx}:`)) selectedKeys.delete(k);
+          }
+          selectedKeys.add(key);
+          pluck(hit.midi, hit.stringIdx);
+          const cx = renderer.fretX(hit.fret);
+          const cy = renderer.stringY(hit.stringIdx);
+          renderer.activeRings.push({ s: hit.stringIdx, f: hit.fret, cx, cy, r: 12, alpha: 0.8 });
+        }
+        updateAll();
+      });
+
+      // Touch interaction
+      canvas.addEventListener('touchstart', e => {
+        e.preventDefault();
+      }, { passive: false });
+
+      canvas.addEventListener('touchend', async e => {
+        e.preventDefault();
+        await initAudio();
+        if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
+        const rect = canvas.getBoundingClientRect();
+        const t = e.changedTouches[0];
+        const hit = renderer.hitTest(t.clientX - rect.left, t.clientY - rect.top);
+        if (!hit) return;
+        const key = `${hit.stringIdx}:${hit.fret}`;
+        if (selectedKeys.has(key)) {
+          selectedKeys.delete(key);
+        } else {
+          for (const k of selectedKeys) {
+            if (k.startsWith(`${hit.stringIdx}:`)) selectedKeys.delete(k);
+          }
+          selectedKeys.add(key);
+          pluck(hit.midi, hit.stringIdx);
+          const cx = renderer.fretX(hit.fret);
+          const cy = renderer.stringY(hit.stringIdx);
+          renderer.activeRings.push({ s: hit.stringIdx, f: hit.fret, cx, cy, r: 12, alpha: 0.8 });
+        }
+        updateAll();
+      }, { passive: false });
+
+      // Keyboard shortcuts
+      window.addEventListener('keydown', e => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+        if (e.code === 'Enter' || e.key === 'a' || e.key === 'A') addToProgression();
+        if (e.code === 'Escape') { selectedKeys.clear(); updateAll(); }
+        if (e.code === 'Backspace') { progression.pop(); renderBottom(); e.preventDefault(); }
+      });
+
+      // Clear button (clears selection only)
+      document.getElementById('clear-btn').addEventListener('click', () => {
+        selectedKeys.clear();
+        updateAll();
+      });
+
+      // Progression buttons
+      document.getElementById('add-btn').addEventListener('click', addToProgression);
+      document.getElementById('copy-btn').addEventListener('click', copyProgression);
+      document.getElementById('prog-clear-btn').addEventListener('click', clearProgression);
+
+      // Resize handler
+      window.addEventListener('resize', () => {
+        renderer.resize();
+      });
+    })();
+  </script>
+</body>
+</html>

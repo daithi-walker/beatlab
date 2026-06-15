@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tab Viewer — Nectar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #07080d;
+      --surface: #0f1117;
+      --surface-2: #161820;
+      --border: rgba(255, 160, 60, 0.15);
+      --root-color: #ff9d3d;
+      --text: #d8d4c8;
+      --text-muted: #7a7060;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ── */
+    .top-bar {
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .top-bar__back {
+      color: var(--root-color);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      transition: opacity 0.15s;
+    }
+
+    .top-bar__back:hover {
+      opacity: 0.8;
+    }
+
+    .top-bar__wordmark {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    /* ── Controls bar ── */
+    .controls-bar {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 20px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .ctrl-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+    }
+
+    .ctrl-btn:hover:not(:disabled) {
+      background: var(--surface-2);
+      border-color: rgba(255, 160, 60, 0.35);
+    }
+
+    .ctrl-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .ctrl-btn--primary {
+      border-color: rgba(255, 157, 61, 0.5);
+      color: var(--root-color);
+    }
+
+    .ctrl-btn--primary:hover:not(:disabled) {
+      background: rgba(255, 157, 61, 0.08);
+      border-color: rgba(255, 157, 61, 0.7);
+    }
+
+    .status-label {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* ── AlphaTab container ── */
+    .at-wrap {
+      height: calc(100vh - 56px - 48px);
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    /* Override AlphaTab's default white background */
+    .at-wrap .alphaTabSurface,
+    .at-wrap canvas {
+      background: var(--bg) !important;
+    }
+
+    /* ── Error state ── */
+    .error-box {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 12px;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .error-box.visible {
+      display: flex;
+    }
+
+    .error-box__title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #e06c75;
+    }
+
+    .error-box__body {
+      font-size: 14px;
+      color: var(--text-muted);
+      max-width: 480px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top bar -->
+  <header class="top-bar">
+    <a class="top-bar__back" href="index.html">← Nectar</a>
+    <span class="top-bar__wordmark">Tab Viewer</span>
+  </header>
+
+  <!-- Playback controls -->
+  <div class="controls-bar">
+    <button class="ctrl-btn ctrl-btn--primary" id="btn-play" disabled>
+      ▶ Play
+    </button>
+    <button class="ctrl-btn" id="btn-stop" disabled>
+      ■ Stop
+    </button>
+    <span class="status-label" id="status-label">Loading soundfont…</span>
+  </div>
+
+  <!-- Score area -->
+  <div class="at-wrap" id="at-container">
+    <div class="error-box" id="error-box">
+      <div class="error-box__title">Failed to load tab viewer</div>
+      <div class="error-box__body" id="error-body">
+        AlphaTab could not be initialised. Check your network connection and try reloading.
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/alphaTab.js"
+          onerror="showError('AlphaTab failed to load from CDN. Check your network connection.')">
+  </script>
+
+  <script>
+    /* ── Helpers ── */
+    function showError(msg) {
+      document.getElementById('error-body').textContent = msg;
+      document.getElementById('error-box').classList.add('visible');
+      document.getElementById('status-label').textContent = 'Error';
+    }
+
+    /* ── AlphaTab setup ── */
+    (function () {
+      if (typeof alphaTab === 'undefined') {
+        // onerror on the script tag handles this, but guard here too
+        showError('AlphaTab library is not available. Check your network connection.');
+        return;
+      }
+
+      const container = document.getElementById('at-container');
+      const btnPlay   = document.getElementById('btn-play');
+      const btnStop   = document.getElementById('btn-stop');
+      const statusLbl = document.getElementById('status-label');
+
+      /* AlphaTab settings */
+      const settings = new alphaTab.Settings();
+      settings.core.useWorkers    = false;
+      settings.core.logLevel      = alphaTab.LogLevel.Warning;
+      settings.display.layoutMode = alphaTab.LayoutMode.Page;
+
+      settings.player.enablePlayer  = true;
+      settings.player.soundFont     = 'https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/soundfont/sonivox.sf2';
+      settings.player.scrollMode    = alphaTab.ScrollMode.Continuous;
+
+      /* Dark-theme score colours */
+      settings.display.resources.staffLineColor    = new alphaTab.model.Color(80, 75, 65, 255);
+      settings.display.resources.barSeparatorColor = new alphaTab.model.Color(80, 75, 65, 255);
+      settings.display.resources.mainGlyphColor    = new alphaTab.model.Color(216, 212, 200, 255);
+      settings.display.resources.scoreInfoColor    = new alphaTab.model.Color(216, 212, 200, 255);
+
+      let api;
+      try {
+        api = new alphaTab.AlphaTabApi(container, settings);
+      } catch (e) {
+        showError('AlphaTab failed to initialise: ' + e.message);
+        return;
+      }
+
+      /* ── alphaTex content ── */
+      // Smoke on the Water intro — dead-note syntax removed for compatibility
+      const alphatexString = [
+        '\\title "Smoke on the Water"',
+        '\\artist "Deep Purple"',
+        '\\tempo 116',
+        '\\instrument 27',
+        '.',
+        ':4 5.4 8.4 10.4 r | 5.4 8.4 11.4 10.4 r r | 5.4 8.4 10.4 8.4 r r r r |',
+        ':4 5.4 8.4 10.4 r | 5.4 8.4 11.4 10.4 r r | 5.4 8.4 10.4 8.4 5.4 r r r |'
+      ].join('\n');
+
+      /* Load the score once the API is ready */
+      api.scoreLoaded.on(function () {
+        statusLbl.textContent = 'Score loaded — soundfont loading…';
+      });
+
+      api.renderFinished.on(function () {
+        // Rendering complete — nothing extra needed
+      });
+
+      /* Enable controls once the soundfont is ready */
+      api.playerReady.on(function () {
+        btnPlay.disabled  = false;
+        btnStop.disabled  = false;
+        statusLbl.textContent = 'Ready';
+      });
+
+      /* Reflect playing/paused/stopped state on the button label */
+      api.playerStateChanged.on(function (args) {
+        if (args.state === alphaTab.synth.PlayerState.Playing) {
+          btnPlay.textContent = '⏸ Pause';
+        } else {
+          btnPlay.textContent = '▶ Play';
+        }
+      });
+
+      /* Handle soundfont load failure gracefully */
+      api.error.on(function (err) {
+        console.error('AlphaTab error:', err);
+        if (err && err.type === 'soundFont') {
+          statusLbl.textContent = 'Soundfont unavailable — display only';
+          btnPlay.disabled = true;
+          btnStop.disabled = true;
+        }
+      });
+
+      /* Load the tex content */
+      try {
+        api.tex(alphatexString);
+      } catch (e) {
+        showError('Failed to parse alphaTex content: ' + e.message);
+        return;
+      }
+
+      /* ── Control wiring ── */
+      btnPlay.addEventListener('click', function () {
+        api.playPause();
+      });
+
+      btnStop.addEventListener('click', function () {
+        api.stop();
+      });
+
+    })();
+  </script>
+
+</body>
+</html>

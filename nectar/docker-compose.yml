@@ -1,0 +1,7 @@
+services:
+  nectar:
+    image: nginx:alpine
+    ports:
+      - "8767:80"
+    volumes:
+      - ./:/usr/share/nginx/html:ro

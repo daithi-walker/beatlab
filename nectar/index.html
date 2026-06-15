@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nectar — Guitar Scale Explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #07080d;
+      --surface: #0f1117;
+      --surface-2: #161820;
+      --border: rgba(255,160,60,0.15);
+      --root-color: #ff9d3d;
+      --scale-color: #e8e8e8;
+      --active-color: #ffcf6b;
+      --text: #d8d4c8;
+      --text-muted: #7a7060;
+      --font: 'Inter', system-ui, sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      overflow: hidden;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    #top-bar {
+      height: 56px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 20px;
+      flex-shrink: 0;
+    }
+
+    .wordmark {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--root-color);
+      text-transform: uppercase;
+      margin-right: 8px;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .controls select,
+    .controls input[type="number"],
+    .controls button {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-family: var(--font);
+      font-size: 0.875rem;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .controls select:hover,
+    .controls input[type="number"]:hover,
+    .controls button:hover {
+      border-color: var(--root-color);
+    }
+
+    .controls select:focus,
+    .controls input[type="number"]:focus {
+      border-color: var(--root-color);
+    }
+
+    .controls input[type="number"] {
+      width: 64px;
+      text-align: center;
+    }
+
+    /* Remove spinner arrows from number input */
+    .controls input[type="number"]::-webkit-inner-spin-button,
+    .controls input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+    }
+
+    #play-btn {
+      min-width: 84px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+
+    #play-btn.playing {
+      background: var(--root-color);
+      color: #07080d;
+      border-color: var(--root-color);
+    }
+
+    .bpm-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      cursor: default;
+    }
+
+    .bpm-label input {
+      cursor: text;
+    }
+
+    .box-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .box-label input[type="checkbox"] {
+      accent-color: var(--root-color);
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+    }
+
+    #fretboard-container {
+      height: clamp(180px, 28vh, 260px);
+      position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    #fretboard {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #mood-card {
+      flex: 1;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 16px 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    #mood-card .legend {
+      display: flex;
+      gap: 16px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    #mood-card .legend span { display: flex; align-items: center; gap: 5px; }
+    #mood-card .legend .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    #mood-card .legend .dot-root  { background: var(--root-color); box-shadow: 0 0 6px var(--root-color); }
+    #mood-card .legend .dot-scale { background: var(--scale-color); box-shadow: 0 0 4px rgba(255,255,255,0.3); }
+
+    .mood-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .mood-feel {
+      font-size: 0.85rem;
+      color: var(--root-color);
+    }
+
+    .mood-genre {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .mood-examples {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .mood-tip {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      border-left: 2px solid var(--border);
+      padding-left: 10px;
+      margin-top: 2px;
+    }
+
+    #identify-link {
+      margin-left: auto;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+      transition: color 0.15s;
+    }
+
+    #identify-link:hover { color: var(--root-color); }
+
+    #chords-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+      transition: color 0.15s;
+    }
+
+    #chords-link:hover {
+      color: var(--root-color);
+    }
+
+    /* Select option styling */
+    option {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header id="top-bar">
+      <span class="wordmark">Nectar</span>
+      <div class="controls">
+        <select id="scale-select"></select>
+        <select id="root-select"></select>
+        <button id="play-btn">&#9654; Play</button>
+        <label class="bpm-label">
+          <span>BPM</span>
+          <input id="bpm-input" type="number" min="40" max="200" value="80">
+        </label>
+        <label class="box-label">
+          <input id="box-check" type="checkbox">
+          <span>Box</span>
+        </label>
+        <a href="identify.html" id="identify-link">Identify &#8594;</a>
+        <a href="chords.html" id="chords-link">Chords &#8594;</a>
+      </div>
+    </header>
+    <div id="fretboard-container">
+      <canvas id="fretboard"></canvas>
+    </div>
+    <div id="mood-card">
+      <div class="legend">
+        <span><span class="dot dot-root"></span>Root note</span>
+        <span><span class="dot dot-scale"></span>Scale note</span>
+      </div>
+      <div class="mood-name" id="mood-name"></div>
+      <div class="mood-feel" id="mood-feel"></div>
+      <div class="mood-genre" id="mood-genre"></div>
+      <div class="mood-examples" id="mood-examples"></div>
+      <div class="mood-tip" id="mood-tip"></div>
+    </div>
+  </div>
+
+  <script>
+    // ─── Scale & Note Data ────────────────────────────────────────────────────
+
+    const ROOT_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+    const ROOT_MIDI  = [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71];
+
+    // Standard EADGBE — MIDI note numbers for open strings
+    // index 0 = low E, index 5 = high e
+    const STRING_MIDI  = [40, 45, 50, 55, 59, 64];
+    const STRING_NAMES = ['E','A','D','G','B','e'];
+    // Lower damping = slower decay = more sustain
+    const STRING_DAMPING = [0.498, 0.497, 0.496, 0.495, 0.494, 0.493];
+
+    const SCALES = {
+      'minor-pentatonic': {
+        name: 'Minor Pentatonic', intervals: [0,3,5,7,10],
+        feel: 'Raw · Emotive · Immediate', genre: 'Blues, Rock, Funk',
+        examples: 'Smoke on the Water · Black Magic Woman · Pride and Joy',
+        tip: 'Start on an orange root note and you can\'t go wrong — every note in this scale works over a minor chord.',
+        boxOffset: 0,
+      },
+      'major-pentatonic': {
+        name: 'Major Pentatonic', intervals: [0,2,4,7,9],
+        feel: 'Open · Optimistic · Singable', genre: 'Country, Folk, Pop',
+        examples: 'My Girl · Stand By Me · Sweet Home Alabama',
+        tip: 'Safe and singable — no half-steps means nothing clashes. Land on the root (orange) to resolve.',
+        boxOffset: -1,
+      },
+      'major': {
+        name: 'Major (Ionian)', intervals: [0,2,4,5,7,9,11],
+        feel: 'Bright · Resolved · Happy', genre: 'Pop, Classical, Country',
+        examples: "Don't Stop Me Now · Let It Be · Happy Birthday",
+        tip: 'The 7th degree (one fret below the root) creates strong pull back home — use it to build tension before resolving.',
+        boxOffset: -1,
+      },
+      'natural-minor': {
+        name: 'Natural Minor (Aeolian)', intervals: [0,2,3,5,7,8,10],
+        feel: 'Melancholic · Serious · Powerful', genre: 'Rock, Classical, Metal',
+        examples: 'Nothing Else Matters · Stairway to Heaven · Summertime Sadness',
+        tip: 'The ♭3 and ♭7 are the dark notes — lean on them for emotional weight. Resolve to the root (orange) for finality.',
+        boxOffset: 0,
+      },
+      'blues': {
+        name: 'Blues Scale', intervals: [0,3,5,6,7,10],
+        feel: 'Gritty · Bent · Expressive', genre: 'Blues, Soul, Jazz',
+        examples: 'The Thrill Is Gone · Crossroads · Red House',
+        tip: 'The ♭5 "blue note" (between the 4th and 5th) is the tension note — bend it up toward the 5th, or slide through it quickly. Don\'t land on it; use it as a passing tone.',
+        boxOffset: 0,
+      },
+      'dorian': {
+        name: 'Dorian', intervals: [0,2,3,5,7,9,10],
+        feel: 'Cool · Sophisticated · Groovy', genre: 'Jazz, Funk, Modal Rock',
+        examples: 'So What · Oye Como Va · Smooth',
+        tip: 'Like natural minor but the 6th is raised — that one note lifts the mood. Compare it to natural minor to hear the difference.',
+        boxOffset: 0,
+      },
+      'phrygian': {
+        name: 'Phrygian', intervals: [0,1,3,5,7,8,10],
+        feel: 'Tense · Exotic · Dangerous', genre: 'Flamenco, Metal, Spanish',
+        examples: "White Zombie · flamenco guitar · Wherever I May Roam",
+        tip: 'The ♭2 — just one half-step above the root — is the defining sound. That tight interval gives it a Spanish or metal urgency.',
+        boxOffset: 0,
+      },
+      'mixolydian': {
+        name: 'Mixolydian', intervals: [0,2,4,5,7,9,10],
+        feel: 'Driving · Anthemic · Unresolved', genre: 'Classic Rock, Folk, Blues',
+        examples: 'Sweet Home Alabama · Sympathy for the Devil · Norwegian Wood',
+        tip: 'Major scale with a flat 7th — keeps the brightness but the lowered 7th stops it fully resolving, giving that driving, open-road feel.',
+        boxOffset: 0,
+      },
+      'harmonic-minor': {
+        name: 'Harmonic Minor', intervals: [0,2,3,5,7,8,11],
+        feel: 'Dramatic · Ornate · Classical', genre: 'Metal, Flamenco, Classical',
+        examples: "Eruption · Spanish guitar · Bach's minor compositions",
+        tip: 'The raised 7th creates a wide gap (augmented 2nd) between the ♭6 and 7 — that leap is the exotic, cinematic sound you hear in flamenco and metal.',
+        boxOffset: 0,
+      },
+      'whole-tone': {
+        name: 'Whole Tone', intervals: [0,2,4,6,8,10],
+        feel: 'Floating · Ambiguous · Dreamlike', genre: 'Impressionist, Jazz, Film Score',
+        examples: "Debussy's La Mer · jazz improvisation · film tension cues",
+        tip: 'No half-steps anywhere, and no perfect 5th — the scale has no real home note, which is why it sounds unmoored. Every note is equal.',
+        boxOffset: 0,
+      },
+    };
+
+    // ─── Fret Math Helpers ────────────────────────────────────────────────────
+
+    const FRET_COUNT = 21;
+
+    function midiAtFret(stringIdx, fret) {
+      return STRING_MIDI[stringIdx] + fret;
+    }
+
+    function freqFromMidi(midi) {
+      return 440 * Math.pow(2, (midi - 69) / 12);
+    }
+
+    function scaleDegree(midi, rootMidi) {
+      return ((midi - rootMidi) % 12 + 12) % 12;
+    }
+
+    function isInScale(midi, rootMidi, intervals) {
+      return intervals.includes(scaleDegree(midi, rootMidi));
+    }
+
+    function isRoot(midi, rootMidi) {
+      return scaleDegree(midi, rootMidi) === 0;
+    }
+
+    // ─── Karplus-Strong AudioWorklet ──────────────────────────────────────────
+
+    const KS_CODE = `
+class KSProcessor extends AudioWorkletProcessor {
+  constructor(opts) {
+    super();
+    const { frequency, damping, pluckWidth = 0.5 } = opts.processorOptions;
+    const len = Math.max(2, Math.round(sampleRate / frequency));
+    this.buf = new Float32Array(len);
+    const end = Math.floor(pluckWidth * len);
+    for (let i = 0; i < end; i++) this.buf[i] = Math.random() * 2 - 1;
+    this.idx = 0;
+    this.d = damping;
+  }
+  process(inputs, outputs) {
+    const out = outputs[0][0];
+    for (let i = 0; i < out.length; i++) {
+      const curr = this.buf[this.idx];
+      const nxt = (this.idx + 1) % this.buf.length;
+      this.buf[this.idx] = this.d * (curr + this.buf[nxt]);
+      out[i] = curr;
+      this.idx = nxt;
+    }
+    let e = 0;
+    for (let i = 0; i < this.buf.length; i++) e += this.buf[i] * this.buf[i];
+    return e / this.buf.length > 1e-9;
+  }
+}
+registerProcessor('ks', KSProcessor);
+`;
+
+    let audioCtx = null;
+    let masterGain = null;
+    let workletReady = false;
+
+    async function initAudio() {
+      if (audioCtx) return;
+      audioCtx = new AudioContext();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.8;
+      masterGain.connect(audioCtx.destination);
+      const blob = new Blob([KS_CODE], { type: 'application/javascript' });
+      const url = URL.createObjectURL(blob);
+      await audioCtx.audioWorklet.addModule(url);
+      URL.revokeObjectURL(url);
+      workletReady = true;
+    }
+
+    function pluck(midi, stringIdx) {
+      if (!workletReady || !audioCtx) return;
+      const freq = freqFromMidi(midi);
+      const damping = STRING_DAMPING[stringIdx];
+      const node = new AudioWorkletNode(audioCtx, 'ks', {
+        processorOptions: { frequency: freq, damping }
+      });
+      node.connect(masterGain);
+    }
+
+    // ─── FretboardRenderer ────────────────────────────────────────────────────
+
+    class FretboardRenderer {
+      constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.activeRings = []; // {x, y, r, alpha}
+        this.lastParams = null;
+        this.resize();
+      }
+
+      resize() {
+        const container = this.canvas.parentElement;
+        this.canvas.width = container.clientWidth;
+        this.canvas.height = container.clientHeight;
+        this._calcLayout();
+        if (this.lastParams) {
+          const { scaleKey, rootMidi, activeKey, boxMode } = this.lastParams;
+          this.render(scaleKey, rootMidi, activeKey, boxMode);
+        }
+      }
+
+      _calcLayout() {
+        this.leftPad   = 64;
+        this.rightPad  = 16;
+        this.topPad    = 20;
+        this.bottomPad = 24;
+        this.nutWidth  = 6;
+
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+
+        this.fretWidth     = (w - this.leftPad - this.rightPad - this.nutWidth) / FRET_COUNT;
+        this.stringSpacing = (h - this.topPad - this.bottomPad) / 5;
+      }
+
+      // Display order: string 5 (high e) at top, string 0 (low E) at bottom
+      // displayIdx 0 = high e (stringIdx 5), displayIdx 5 = low E (stringIdx 0)
+      stringY(stringIdx) {
+        const displayIdx = 5 - stringIdx;
+        return this.topPad + displayIdx * this.stringSpacing;
+      }
+
+      // X centre of a fret cell. Fret 0 = open string (before nut).
+      fretX(fret) {
+        if (fret === 0) {
+          return this.leftPad - this.nutWidth / 2 - 4;
+        }
+        return this.leftPad + this.nutWidth + (fret - 1) * this.fretWidth + this.fretWidth / 2;
+      }
+
+      drawNeck() {
+        const ctx = this.ctx;
+        ctx.fillStyle = '#1a1208';
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      }
+
+      drawFrets() {
+        const ctx = this.ctx;
+        const { leftPad, nutWidth, topPad, bottomPad, fretWidth } = this;
+        const h = this.canvas.height;
+        const drawTop = topPad;
+        const drawBottom = h - bottomPad;
+
+        // Nut
+        ctx.beginPath();
+        ctx.strokeStyle = '#c8a84b';
+        ctx.lineWidth = 4;
+        ctx.moveTo(leftPad + nutWidth / 2, drawTop);
+        ctx.lineTo(leftPad + nutWidth / 2, drawBottom);
+        ctx.stroke();
+
+        // Fret lines (frets 1..12)
+        ctx.strokeStyle = '#3a3020';
+        ctx.lineWidth = 1;
+        for (let i = 1; i <= FRET_COUNT; i++) {
+          const x = leftPad + nutWidth + i * fretWidth;
+          ctx.beginPath();
+          ctx.moveTo(x, drawTop);
+          ctx.lineTo(x, drawBottom);
+          ctx.stroke();
+        }
+      }
+
+      drawStrings() {
+        const ctx = this.ctx;
+        const w = this.canvas.width;
+        const thicknesses = [2.5, 2.0, 1.6, 1.3, 1.0, 0.8];
+
+        for (let s = 0; s < 6; s++) {
+          const y = this.stringY(s);
+          ctx.beginPath();
+          ctx.strokeStyle = '#7a6040';
+          ctx.lineWidth = thicknesses[s];
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+        }
+      }
+
+      drawPositionDots() {
+        const ctx = this.ctx;
+        const singleFrets = [3, 5, 7, 9, 15, 17, 19, 21];
+        const doubleFret  = 12;
+
+        // Y position: below the lowest string (string 0 = low E, at bottom)
+        const baseY = this.stringY(0) + 14;
+
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+
+        for (const fret of singleFrets) {
+          const x = this.fretX(fret);
+          ctx.beginPath();
+          ctx.arc(x, baseY, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Double dot at fret 12
+        const x12 = this.fretX(doubleFret);
+        const offset = this.stringSpacing * 0.4;
+        ctx.beginPath();
+        ctx.arc(x12 - offset, baseY, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x12 + offset, baseY, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      drawStringLabels() {
+        const ctx = this.ctx;
+        const displayNames = ['e','B','G','D','A','E'];
+        ctx.font = 'bold 14px Inter, system-ui, sans-serif';
+        ctx.fillStyle = '#d8d4c8';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (let s = 0; s < 6; s++) {
+          const y = this.stringY(s);
+          ctx.fillText(displayNames[5 - s], this.leftPad / 2, y);
+        }
+      }
+
+      drawFretNumbers() {
+        const ctx = this.ctx;
+        const showFrets = [0, 3, 5, 7, 9, 12, 15, 17, 19, 21];
+        const baseY = this.stringY(0) + this.bottomPad - 6;
+
+        ctx.font = '10px Inter, system-ui, sans-serif';
+        ctx.fillStyle = '#7a7060';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        for (const fret of showFrets) {
+          const x = this.fretX(fret);
+          const label = fret === 0 ? 'O' : String(fret);
+          ctx.fillText(label, x, baseY);
+        }
+      }
+
+      getBoxRange(scaleKey, rootMidi) {
+        const scale = SCALES[scaleKey];
+        const rootFret = ((rootMidi - STRING_MIDI[0]) % 12 + 12) % 12;
+        const anchor = rootFret + (scale.boxOffset || 0);
+        const boxMin = Math.max(anchor, 0);
+        const boxMax = Math.min(boxMin + 3, FRET_COUNT);
+        return [boxMin, boxMax];
+      }
+
+      getScaleNotes(scaleKey, rootMidi) {
+        const intervals = SCALES[scaleKey].intervals;
+        const [boxMin, boxMax] = this.getBoxRange(scaleKey, rootMidi);
+        const notes = [];
+        for (let s = 0; s < 6; s++) {
+          for (let f = boxMin; f <= boxMax; f++) {
+            const midi = midiAtFret(s, f);
+            if (isInScale(midi, rootMidi, intervals)) {
+              notes.push({ stringIdx: s, fret: f, midi });
+            }
+          }
+        }
+        notes.sort((a, b) => a.midi - b.midi);
+        return notes;
+      }
+
+      getAllScaleNotes(scaleKey, rootMidi) {
+        // One occurrence per unique pitch — lowest string within frets 0–12
+        const intervals = SCALES[scaleKey].intervals;
+        const seen = new Set();
+        const notes = [];
+        for (let s = 0; s < 6; s++) {
+          for (let f = 0; f <= 12; f++) {
+            const midi = midiAtFret(s, f);
+            if (isInScale(midi, rootMidi, intervals) && !seen.has(midi)) {
+              seen.add(midi);
+              notes.push({ stringIdx: s, fret: f, midi });
+            }
+          }
+        }
+        notes.sort((a, b) => a.midi - b.midi);
+        return notes;
+      }
+
+      fretAtX(x) {
+        if (x < this.leftPad + this.nutWidth) return 0;
+        const f = Math.floor((x - this.leftPad - this.nutWidth) / this.fretWidth) + 1;
+        return Math.min(Math.max(f, 1), FRET_COUNT);
+      }
+
+      stringAtY(y) {
+        let best = null, bestDist = this.stringSpacing * 0.75;
+        for (let s = 0; s < 6; s++) {
+          const dist = Math.abs(y - this.stringY(s));
+          if (dist < bestDist) { bestDist = dist; best = s; }
+        }
+        return best;
+      }
+
+      hitTest(x, y) {
+        let best = null;
+        let bestDist = 14;
+        for (let s = 0; s < 6; s++) {
+          for (let f = 0; f <= FRET_COUNT; f++) {
+            const cx = this.fretX(f);
+            const cy = this.stringY(s);
+            const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+            if (dist < bestDist) {
+              bestDist = dist;
+              best = { stringIdx: s, fret: f, midi: midiAtFret(s, f) };
+            }
+          }
+        }
+        return best;
+      }
+
+      drawNoteCircles(scaleKey, rootMidi, activeKey, boxMode) {
+        const ctx = this.ctx;
+        const intervals = SCALES[scaleKey].intervals;
+        const [boxMin, boxMax] = this.getBoxRange(scaleKey, rootMidi);
+
+        for (let s = 0; s < 6; s++) {
+          for (let f = 0; f <= FRET_COUNT; f++) {
+            const midi = midiAtFret(s, f);
+            const inScale = isInScale(midi, rootMidi, intervals);
+            const root = isRoot(midi, rootMidi);
+            const isActive = activeKey && activeKey.stringIdx === s && activeKey.fret === f;
+            const inBox = (f >= boxMin && f <= boxMax);
+
+            const cx = this.fretX(f);
+            const cy = this.stringY(s);
+
+            if (!inScale) {
+              // Non-scale note: subtle hollow dot so the neck feels interactive everywhere
+              if (isActive) {
+                // Still show active highlight even for non-scale notes
+                ctx.globalAlpha = 1;
+                ctx.beginPath();
+                ctx.fillStyle = '#ffcf6b';
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#ffcf6b';
+                ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                const existing = this.activeRings.find(r => r.s === s && r.f === f);
+                if (!existing) this.activeRings.push({ s, f, cx, cy, r: 12, alpha: 0.8 });
+              } else {
+                ctx.globalAlpha = 0.18;
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+                ctx.lineWidth = 1;
+                ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+              }
+              continue;
+            }
+
+            // Scale note
+            if (boxMode && !inBox) {
+              ctx.globalAlpha = 0.12;
+            } else {
+              ctx.globalAlpha = 1;
+            }
+
+            ctx.beginPath();
+            if (isActive) {
+              ctx.fillStyle = '#ffcf6b';
+              ctx.shadowBlur = 20;
+              ctx.shadowColor = '#ffcf6b';
+              ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+            } else if (root) {
+              ctx.fillStyle = '#ff9d3d';
+              ctx.shadowBlur = 12;
+              ctx.shadowColor = '#ff9d3d';
+              ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+            } else {
+              ctx.fillStyle = '#e8e8e8';
+              ctx.shadowBlur = 6;
+              ctx.shadowColor = 'rgba(255,255,255,0.4)';
+              ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+            }
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+            ctx.globalAlpha = 1;
+
+            if (isActive) {
+              const existing = this.activeRings.find(r => r.s === s && r.f === f);
+              if (!existing) this.activeRings.push({ s, f, cx, cy, r: 12, alpha: 0.8 });
+            }
+          }
+        }
+      }
+
+      drawActiveRings() {
+        const ctx = this.ctx;
+        this.activeRings = this.activeRings.filter(ring => ring.alpha > 0.01);
+        for (const ring of this.activeRings) {
+          ctx.beginPath();
+          ctx.strokeStyle = `rgba(255, 207, 107, ${ring.alpha})`;
+          ctx.lineWidth = 1.5;
+          ctx.arc(ring.cx, ring.cy, ring.r, 0, Math.PI * 2);
+          ctx.stroke();
+          ring.r += 1.2;
+          ring.alpha *= 0.88;
+        }
+      }
+
+      render(scaleKey, rootMidi, activeKey, boxMode) {
+        this.lastParams = { scaleKey, rootMidi, activeKey, boxMode };
+        const ctx = this.ctx;
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.drawNeck();
+        this.drawFrets();
+        this.drawStrings();
+        this.drawPositionDots();
+        this.drawStringLabels();
+        this.drawFretNumbers();
+        this.drawNoteCircles(scaleKey, rootMidi, activeKey, boxMode);
+        this.drawActiveRings();
+      }
+    }
+
+    // ─── Sequencer ────────────────────────────────────────────────────────────
+
+    class Sequencer {
+      constructor() {
+        this.playing = false;
+        this.timers = [];
+        this.onNote = null;
+        this.onDone = null;
+      }
+
+      play(scaleKey, rootMidi, bpm, renderer, boxMode) {
+        this.stop();
+        this.playing = true;
+        const notes = boxMode
+          ? renderer.getScaleNotes(scaleKey, rootMidi)
+          : renderer.getAllScaleNotes(scaleKey, rootMidi);
+        // Ascending then descending (skip repeated top note)
+        const seq = [...notes, ...notes.slice().reverse().slice(1)];
+        const interval = (60 / bpm) * 1000 * 0.5; // eighth notes
+
+        seq.forEach((n, i) => {
+          const t = setTimeout(() => {
+            if (!this.playing) return;
+            pluck(n.midi, n.stringIdx);
+            if (this.onNote) this.onNote(n.stringIdx, n.fret, n.midi);
+          }, i * interval);
+          this.timers.push(t);
+        });
+
+        // Signal done after last note + small buffer
+        const doneT = setTimeout(() => {
+          if (this.onDone) this.onDone();
+        }, seq.length * interval + 500);
+        this.timers.push(doneT);
+      }
+
+      stop() {
+        this.playing = false;
+        this.timers.forEach(clearTimeout);
+        this.timers = [];
+        if (this.onNote) this.onNote(null, null, null);
+      }
+    }
+
+    // ─── Animation Loop ───────────────────────────────────────────────────────
+
+    function startAnimLoop(renderer) {
+      function frame() {
+        if (renderer.lastParams) {
+          const { scaleKey, rootMidi, activeKey, boxMode } = renderer.lastParams;
+          renderer.render(scaleKey, rootMidi, activeKey, boxMode);
+        }
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    // ─── UI Init ──────────────────────────────────────────────────────────────
+
+    (function init() {
+      // State
+      let currentScale = 'minor-pentatonic';
+      let currentRoot  = 69; // A
+      let boxMode      = false;
+      let activeNote   = null; // {stringIdx, fret} or null
+
+      const canvas    = document.getElementById('fretboard');
+      const renderer  = new FretboardRenderer(canvas);
+      const seq       = new Sequencer();
+
+      seq.onNote = (s, f, midi) => {
+        activeNote = (s !== null) ? { stringIdx: s, fret: f } : null;
+        if (s !== null) {
+          // Clear old rings and add a fresh one for the newly active note
+          renderer.activeRings = [];
+        }
+      };
+
+      seq.onDone = () => {
+        document.getElementById('play-btn').innerHTML = '&#9654; Play';
+        document.getElementById('play-btn').classList.remove('playing');
+        activeNote = null;
+        renderer.activeRings = [];
+      };
+
+      function updateMoodCard() {
+        const s = SCALES[currentScale];
+        document.getElementById('mood-name').textContent     = s.name;
+        document.getElementById('mood-feel').textContent     = s.feel;
+        document.getElementById('mood-genre').textContent    = s.genre;
+        document.getElementById('mood-examples').textContent = s.examples;
+        document.getElementById('mood-tip').textContent      = s.tip || '';
+      }
+
+      function renderAll() {
+        renderer.render(currentScale, currentRoot, activeNote, boxMode);
+        updateMoodCard();
+      }
+
+      // Populate scale select
+      const scaleSelect = document.getElementById('scale-select');
+      Object.entries(SCALES).forEach(([key, s]) => {
+        const opt = new Option(s.name, key);
+        if (key === currentScale) opt.selected = true;
+        scaleSelect.appendChild(opt);
+      });
+
+      // Populate root select
+      const rootSelect = document.getElementById('root-select');
+      ROOT_NAMES.forEach((name, i) => {
+        const opt = new Option(name, i);
+        if (ROOT_MIDI[i] === currentRoot) opt.selected = true;
+        rootSelect.appendChild(opt);
+      });
+
+      // Event listeners
+      scaleSelect.addEventListener('change', e => {
+        seq.stop();
+        currentScale = e.target.value;
+        activeNote = null;
+        renderer.activeRings = [];
+        renderAll();
+        document.getElementById('play-btn').innerHTML = '&#9654; Play';
+        document.getElementById('play-btn').classList.remove('playing');
+      });
+
+      rootSelect.addEventListener('change', e => {
+        seq.stop();
+        currentRoot = ROOT_MIDI[parseInt(e.target.value)];
+        activeNote = null;
+        renderer.activeRings = [];
+        renderAll();
+        document.getElementById('play-btn').innerHTML = '&#9654; Play';
+        document.getElementById('play-btn').classList.remove('playing');
+      });
+
+      document.getElementById('box-check').addEventListener('change', e => {
+        boxMode = e.target.checked;
+        renderAll();
+      });
+
+      document.getElementById('play-btn').addEventListener('click', async () => {
+        await initAudio();
+        if (audioCtx && audioCtx.state === 'suspended') {
+          await audioCtx.resume();
+        }
+        if (seq.playing) {
+          seq.stop();
+          activeNote = null;
+          renderer.activeRings = [];
+          document.getElementById('play-btn').innerHTML = '&#9654; Play';
+          document.getElementById('play-btn').classList.remove('playing');
+        } else {
+          document.getElementById('play-btn').innerHTML = '&#9632; Stop';
+          document.getElementById('play-btn').classList.add('playing');
+          const bpm = parseInt(document.getElementById('bpm-input').value) || 80;
+          seq.play(currentScale, currentRoot, bpm, renderer, boxMode);
+        }
+      });
+
+      // Strum / tap interaction
+      let isStrumming = false;
+      let lastStrumString = null;
+      let lastStrumFret = null;
+      let strumMoved = false;
+
+      async function beginInteraction() {
+        await initAudio();
+        if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
+        isStrumming = true;
+        strumMoved = false;
+        lastStrumString = null;
+        lastStrumFret = null;
+      }
+
+      function handleStrumPoint(x, y) {
+        const s = renderer.stringAtY(y);
+        const f = renderer.fretAtX(x);
+        if (s === null || f === null) return;
+        if (s !== lastStrumString || f !== lastStrumFret) {
+          lastStrumString = s;
+          lastStrumFret = f;
+          strumMoved = true;
+          const midi = midiAtFret(s, f);
+          pluck(midi, s);
+          activeNote = { stringIdx: s, fret: f };
+          renderer.activeRings = [];
+          setTimeout(() => { activeNote = null; }, 800);
+        }
+      }
+
+      function endInteraction(x, y) {
+        // If no string crossing happened, treat as a single tap — snap to nearest note
+        if (!strumMoved && x !== undefined) {
+          const hit = renderer.hitTest(x, y);
+          if (hit) {
+            pluck(hit.midi, hit.stringIdx);
+            activeNote = { stringIdx: hit.stringIdx, fret: hit.fret };
+            renderer.activeRings = [];
+            setTimeout(() => { activeNote = null; }, 800);
+          }
+        }
+        isStrumming = false;
+        lastStrumString = null;
+      }
+
+      canvas.addEventListener('mousedown', async e => {
+        await beginInteraction();
+        const rect = canvas.getBoundingClientRect();
+        handleStrumPoint(e.clientX - rect.left, e.clientY - rect.top);
+      });
+
+      canvas.addEventListener('mousemove', e => {
+        if (!isStrumming) return;
+        const rect = canvas.getBoundingClientRect();
+        handleStrumPoint(e.clientX - rect.left, e.clientY - rect.top);
+      });
+
+      canvas.addEventListener('mouseup', e => {
+        const rect = canvas.getBoundingClientRect();
+        endInteraction(e.clientX - rect.left, e.clientY - rect.top);
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        isStrumming = false;
+        lastStrumString = null;
+        lastStrumFret = null;
+      });
+
+      canvas.addEventListener('touchstart', async e => {
+        e.preventDefault();
+        await beginInteraction();
+        const rect = canvas.getBoundingClientRect();
+        const t = e.touches[0];
+        handleStrumPoint(t.clientX - rect.left, t.clientY - rect.top);
+      }, { passive: false });
+
+      canvas.addEventListener('touchmove', e => {
+        e.preventDefault();
+        if (!isStrumming) return;
+        const rect = canvas.getBoundingClientRect();
+        const t = e.touches[0];
+        handleStrumPoint(t.clientX - rect.left, t.clientY - rect.top);
+      }, { passive: false });
+
+      canvas.addEventListener('touchend', e => {
+        const rect = canvas.getBoundingClientRect();
+        const t = e.changedTouches[0];
+        endInteraction(t.clientX - rect.left, t.clientY - rect.top);
+      });
+
+      // Keyboard shortcuts
+      window.addEventListener('keydown', e => {
+        if (e.target.tagName === 'INPUT') return;
+        if (e.code === 'Space') {
+          e.preventDefault();
+          document.getElementById('play-btn').click();
+        }
+        if (e.code === 'ArrowRight') {
+          const i = (ROOT_MIDI.indexOf(currentRoot) + 1) % 12;
+          rootSelect.value = i;
+          currentRoot = ROOT_MIDI[i];
+          activeNote = null;
+          renderer.activeRings = [];
+          renderAll();
+        }
+        if (e.code === 'ArrowLeft') {
+          const i = (ROOT_MIDI.indexOf(currentRoot) + 11) % 12;
+          rootSelect.value = i;
+          currentRoot = ROOT_MIDI[i];
+          activeNote = null;
+          renderer.activeRings = [];
+          renderAll();
+        }
+      });
+
+      // Resize handler
+      window.addEventListener('resize', () => {
+        renderer.resize();
+        renderAll();
+      });
+
+      // Start animation loop (drives active ring animation)
+      // We pass a getter so the loop always uses latest state
+      function animLoop() {
+        if (renderer.lastParams) {
+          const { scaleKey, rootMidi, boxMode: bm } = renderer.lastParams;
+          renderer.render(scaleKey, rootMidi, activeNote, bm);
+        }
+        requestAnimationFrame(animLoop);
+      }
+      requestAnimationFrame(animLoop);
+
+      // Initial render
+      renderAll();
+    })();
+  </script>
+</body>
+</html>
