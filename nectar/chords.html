@@ -62,13 +62,14 @@
     }
 
     .wordmark {
-      font-size: 1.15rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      color: var(--text);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      color: var(--text-muted);
       text-transform: uppercase;
       flex: 1;
       text-align: center;
+      white-space: nowrap;
     }
 
     .controls {
@@ -184,10 +185,12 @@
 
     #fretboard {
       position: absolute;
-      inset: 0;
-      min-width: 700px;
-      width: 100%;
+      left: 0; top: 0; bottom: 0;
       height: 100%;
+    }
+
+    @media (pointer: coarse) {
+      #fretboard-container { touch-action: pan-x; }
     }
 
     #chord-card {
@@ -500,9 +503,8 @@ registerProcessor('ks', KSProcessor);
       }
 
       resize() {
-        this.canvas.width  = this.canvas.offsetWidth;
         this.canvas.height = this.canvas.offsetHeight;
-        this._calcLayout();
+        this._calcLayout(); // sets canvas.width based on device type
         if (this.lastChordParams) {
           const { chordKey, rootMidi, voicing, allTones } = this.lastChordParams;
           this.renderChord(chordKey, rootMidi, voicing, allTones);
@@ -516,10 +518,23 @@ registerProcessor('ks', KSProcessor);
         this.bottomPad = 24;
         this.nutWidth  = 6;
 
-        const w = this.canvas.width;
+        const isTouch = navigator.maxTouchPoints > 0;
+        const container = this.canvas.parentElement;
+        const containerW = container ? container.clientWidth : window.innerWidth;
         const h = this.canvas.height;
 
-        this.fretWidth     = (w - this.leftPad - this.rightPad - this.nutWidth) / FRET_COUNT;
+        if (isTouch) {
+          const visibleFretW = Math.floor((containerW - this.leftPad - this.rightPad - this.nutWidth) / 7);
+          this.fretWidth = Math.max(visibleFretW, 44);
+          const totalW = this.leftPad + this.nutWidth + FRET_COUNT * this.fretWidth + this.rightPad;
+          this.canvas.style.width  = totalW + 'px';
+          this.canvas.width        = totalW;
+        } else {
+          this.fretWidth = (containerW - this.leftPad - this.rightPad - this.nutWidth) / FRET_COUNT;
+          this.canvas.style.width = '100%';
+          this.canvas.width       = this.canvas.offsetWidth;
+        }
+
         this.stringSpacing = (h - this.topPad - this.bottomPad) / 5;
       }
 

@@ -48,19 +48,22 @@
     }
 
     .wordmark {
-      font-size: 1.15rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
       color: var(--root-color);
       text-transform: uppercase;
-      margin-right: 8px;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .controls {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       flex: 1;
+      overflow-x: auto;
+      min-width: 0;
     }
 
     .controls select,
@@ -152,13 +155,15 @@
     }
 
     #fretboard {
+      /* width set dynamically by JS based on device type */
       position: absolute;
-      inset: 0;
-      /* minimum width ensures frets stay playable on narrow screens;
-         JS reads clientWidth of this element to set canvas resolution */
-      min-width: 700px;
-      width: 100%;
+      left: 0; top: 0; bottom: 0;
       height: 100%;
+    }
+
+    @media (pointer: coarse) {
+      /* On touch: fretboard is wider than screen — shows ~7 frets, rest scroll */
+      #fretboard-container { touch-action: pan-x; }
     }
 
     #mood-card {
@@ -466,9 +471,8 @@ registerProcessor('ks', KSProcessor);
       }
 
       resize() {
-        this.canvas.width = this.canvas.offsetWidth;
         this.canvas.height = this.canvas.offsetHeight;
-        this._calcLayout();
+        this._calcLayout(); // sets canvas.width based on device type
         if (this.lastParams) {
           const { scaleKey, rootMidi, activeKey, boxMode } = this.lastParams;
           this.render(scaleKey, rootMidi, activeKey, boxMode);
@@ -482,10 +486,25 @@ registerProcessor('ks', KSProcessor);
         this.bottomPad = 24;
         this.nutWidth  = 6;
 
-        const w = this.canvas.width;
+        const isTouch = navigator.maxTouchPoints > 0;
+        const container = this.canvas.parentElement;
+        const containerW = container ? container.clientWidth : window.innerWidth;
         const h = this.canvas.height;
 
-        this.fretWidth     = (w - this.leftPad - this.rightPad - this.nutWidth) / FRET_COUNT;
+        if (isTouch) {
+          // Show ~7 frets in the visible area — let remaining frets scroll off right
+          const visibleFretW = Math.floor((containerW - this.leftPad - this.rightPad - this.nutWidth) / 7);
+          this.fretWidth = Math.max(visibleFretW, 44);
+          const totalW = this.leftPad + this.nutWidth + FRET_COUNT * this.fretWidth + this.rightPad;
+          this.canvas.style.width  = totalW + 'px';
+          this.canvas.width        = totalW;
+        } else {
+          const containerCanvas = containerW || this.canvas.offsetWidth;
+          this.fretWidth = (containerCanvas - this.leftPad - this.rightPad - this.nutWidth) / FRET_COUNT;
+          this.canvas.style.width = '100%';
+          this.canvas.width       = this.canvas.offsetWidth;
+        }
+
         this.stringSpacing = (h - this.topPad - this.bottomPad) / 5;
       }
 
