@@ -140,6 +140,7 @@
     /* 4 groups of 4 with a thin gap between groups */
     grid-template-columns: repeat(4,1fr) 6px repeat(4,1fr) 6px repeat(4,1fr) 6px repeat(4,1fr);
     gap: 4px; align-items: center;
+    touch-action: none; /* tell browser not to scroll — we own this touch */
   }
   .step-divider { width: 1px; height: 22px; background: var(--divider); justify-self: center; }
 
@@ -952,10 +953,11 @@ import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNo
 
     grid.addEventListener('pointermove', e => {
       if (dragIntent === null) return;
+      e.preventDefault();
       const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('.step');
       if (!target || target.dataset.instanceId !== String(panel.instanceId)) return;
       applyIntent(panel, target, parseInt(target.dataset.step, 10), dragIntent);
-    });
+    }, { passive: false });
 
     grid.addEventListener('pointerup',     () => { dragIntent = null; });
     grid.addEventListener('pointercancel', () => { dragIntent = null; });
