@@ -1255,7 +1255,21 @@ requestAnimationFrame(()=>scrollToRange(false));
   @media (pointer: coarse) and (orientation: portrait) {
     #rotate-prompt { display: flex; }
   }
+  body.is-touch.is-portrait #rotate-prompt { display: flex; }
 </style>
+<script>
+  (function() {
+    var isTouch = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
+    if (isTouch) {
+      document.body.classList.add('is-touch');
+      function checkOrientation() {
+        document.body.classList.toggle('is-portrait', window.innerHeight > window.innerWidth);
+      }
+      checkOrientation();
+      window.addEventListener('resize', checkOrientation);
+    }
+  })();
+</script>
 <div id="rotate-prompt">
   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
     <rect x="5" y="2" width="14" height="20" rx="2"/>
