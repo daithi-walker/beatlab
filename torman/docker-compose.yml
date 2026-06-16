@@ -1,7 +1,0 @@
-services:
-  torman:
-    image: nginx:alpine
-    ports:
-      - "8766:80"
-    volumes:
-      - ../:/usr/share/nginx/html:ro
