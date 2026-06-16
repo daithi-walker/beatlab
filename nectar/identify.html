@@ -37,14 +37,15 @@
     }
 
     #top-bar {
-      height: 56px;
+      height: 52px;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
-      gap: 16px;
-      padding: 0 20px;
+      gap: 10px;
+      padding: 0 14px;
       flex-shrink: 0;
+      overflow: hidden;
     }
 
     .nav-link {
@@ -72,20 +73,41 @@
       white-space: nowrap;
     }
 
-    #clear-btn {
+    @media (max-width: 480px) {
+      .wordmark { display: none; }
+      .nav-link[href="index.html"] { display: none; } /* hide middle back link, keep BeatLab + Chords */
+    }
+
+    .topbar-action-btn {
       background: var(--surface-2);
       border: 1px solid var(--border);
       color: var(--text);
       border-radius: 6px;
-      padding: 6px 16px;
+      padding: 6px 14px;
       font-family: var(--font);
-      font-size: 0.875rem;
+      font-size: 0.82rem;
       font-weight: 600;
       cursor: pointer;
       outline: none;
       transition: background 0.15s, color 0.15s, border-color 0.15s;
       letter-spacing: 0.03em;
       flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    #play-btn {
+      border-color: rgba(255, 157, 61, 0.4);
+      color: var(--root-color);
+    }
+
+    #play-btn:hover {
+      background: rgba(255, 157, 61, 0.08);
+      border-color: var(--root-color);
+    }
+
+    #play-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
     }
 
     #clear-btn:hover {
@@ -216,7 +238,8 @@
       <a href="index.html" class="nav-link">&#8592; Scales</a>
       <a href="chords.html" class="nav-link">&#8592; Chords</a>
       <span class="wordmark">Identify</span>
-      <button id="clear-btn">Clear</button>
+      <button id="play-btn" class="topbar-action-btn" disabled>&#9654; Play</button>
+      <button id="clear-btn" class="topbar-action-btn">Clear</button>
     </header>
     <div id="fretboard-container">
       <canvas id="fretboard"></canvas>
@@ -801,6 +824,7 @@ registerProcessor('ks', KSProcessor);
       matches = identifyChord(selectedKeys);
       selectedAltIdx = 0;
       renderBottom();
+      document.getElementById('play-btn').disabled = selectedKeys.size === 0;
       // fretboard redraws via animLoop
     }
 
@@ -904,6 +928,22 @@ registerProcessor('ks', KSProcessor);
         if (e.code === 'Escape') { selectedKeys.clear(); updateAll(); }
         if (e.code === 'Backspace') { progression.pop(); renderBottom(); e.preventDefault(); }
       });
+
+      // Play button — arpeggiates all selected notes low→high
+      const playBtn = document.getElementById('play-btn');
+      async function playChord() {
+        await initAudio();
+        if (audioCtx.state === 'suspended') await audioCtx.resume();
+        // Collect selected notes sorted by midi pitch (low→high)
+        const notes = [...selectedKeys].map(k => {
+          const [s, f] = k.split(':').map(Number);
+          return { stringIdx: s, fret: f, midi: midiAtFret(s, f) };
+        }).sort((a, b) => a.midi - b.midi);
+        notes.forEach((note, i) => {
+          setTimeout(() => pluck(note.midi, note.stringIdx), i * 60);
+        });
+      }
+      playBtn.addEventListener('click', playChord);
 
       // Clear button (clears selection only)
       document.getElementById('clear-btn').addEventListener('click', () => {

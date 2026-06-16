@@ -180,6 +180,8 @@ Separate page reachable via "Identify →" from the scale explorer or chord expl
 3. Best match shown large in amber; up to 4 alternatives shown as smaller chips
 4. Selected notes colour-coded by interval relative to the best match root
 
+**Play button** — arpeggios all selected notes low→high at 60ms intervals using the same Karplus-Strong engine. Disabled until at least one note is selected.
+
 **Progression builder:**
 - Click an alternative chip to promote it as the chosen interpretation
 - `Enter` or `A` — add current best match to the progression log
@@ -189,6 +191,13 @@ Separate page reachable via "Identify →" from the scale explorer or chord expl
 - Click any logged chord chip to remove it individually
 
 **Navigation** — "← Scales" and "← Chords" links in the top bar; "Identify →" links in both the scale and chord explorer top bars.
+
+---
+
+## Next Steps
+
+### Chord Identifier
+- **Show voicing variations** — given a matched chord, show alternative fingerings on the neck (similar to Chord Explorer's E-shape / A-shape toggle, but for the identified chord type). Would let you identify a shape and instantly see other ways to play it.
 
 ---
 
