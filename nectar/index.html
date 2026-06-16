@@ -145,13 +145,18 @@
     #fretboard-container {
       height: clamp(180px, 28vh, 260px);
       position: relative;
-      overflow: hidden;
+      overflow-x: auto;
+      overflow-y: hidden;
       flex-shrink: 0;
+      -webkit-overflow-scrolling: touch;
     }
 
     #fretboard {
       position: absolute;
       inset: 0;
+      /* minimum width ensures frets stay playable on narrow screens;
+         JS reads clientWidth of this element to set canvas resolution */
+      min-width: 700px;
       width: 100%;
       height: 100%;
     }
@@ -461,9 +466,8 @@ registerProcessor('ks', KSProcessor);
       }
 
       resize() {
-        const container = this.canvas.parentElement;
-        this.canvas.width = container.clientWidth;
-        this.canvas.height = container.clientHeight;
+        this.canvas.width = this.canvas.offsetWidth;
+        this.canvas.height = this.canvas.offsetHeight;
         this._calcLayout();
         if (this.lastParams) {
           const { scaleKey, rootMidi, activeKey, boxMode } = this.lastParams;
@@ -1088,5 +1092,37 @@ registerProcessor('ks', KSProcessor);
       renderAll();
     })();
   </script>
+
+  <style>
+    #rotate-prompt {
+      display: none;
+      position: fixed; inset: 0; z-index: 9999;
+      background: #07080d;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      color: #6a7a8a;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.9rem;
+      letter-spacing: 0.06em;
+    }
+    #rotate-prompt svg { opacity: 0.5; animation: rotate-hint 2s ease-in-out infinite; }
+    @keyframes rotate-hint {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(90deg); }
+    }
+    @media (pointer: coarse) and (orientation: portrait) {
+      #rotate-prompt { display: flex; }
+    }
+  </style>
+  <div id="rotate-prompt">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="5" y="2" width="14" height="20" rx="2"/>
+      <path d="M12 18h.01"/>
+    </svg>
+    <p>Rotate for best experience</p>
+  </div>
+
 </body>
 </html>

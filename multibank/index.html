@@ -1046,5 +1046,37 @@ import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNo
 
 })();
 </script>
+
+<style>
+  #rotate-prompt {
+    display: none;
+    position: fixed; inset: 0; z-index: 9999;
+    background: #080c10;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    color: #6a8f80;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.06em;
+  }
+  #rotate-prompt svg { opacity: 0.5; animation: rotate-hint 2s ease-in-out infinite; }
+  @keyframes rotate-hint {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(90deg); }
+  }
+  @media (pointer: coarse) and (orientation: portrait) {
+    #rotate-prompt { display: flex; }
+  }
+</style>
+<div id="rotate-prompt">
+  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="5" y="2" width="14" height="20" rx="2"/>
+    <path d="M12 18h.01"/>
+  </svg>
+  <p>Rotate for best experience</p>
+</div>
+
 </body>
 </html>
