@@ -474,10 +474,28 @@ const DEFAULTS={
   lfoRate:3, lfoDepth:0.3, lfoTarget:'filter',
 };
 
-// piano geometry
-const WW=58, WH=240, BW=35, BH=150;
+// piano geometry — responsive on touch devices
+const PIANO_CHROME = 70; // px above keys (piano-top bar + padding)
+function pianoGeom() {
+  const isTouch = navigator.maxTouchPoints > 0;
+  const maxH = isTouch
+    ? Math.floor(window.innerHeight * 0.46) - PIANO_CHROME
+    : 240;
+  const WH = Math.max(100, maxH);
+  const scale = WH / 240;
+  return {
+    WW: Math.round(58 * scale),
+    WH,
+    BW: Math.round(35 * scale),
+    BH: Math.round(150 * scale),
+  };
+}
+let {WW, WH, BW, BH} = pianoGeom();
 const PIANO_ALL=[1,2,3,4,5,6,7];
-const BLACK_OFF={'C#':WW*1-BW/2,'D#':WW*2-BW/2,'F#':WW*4-BW/2,'G#':WW*5-BW/2,'A#':WW*6-BW/2};
+// BLACK_OFF recalculated in buildPiano since WW is mutable
+function makeBlackOff() {
+  return {'C#':WW*1-BW/2,'D#':WW*2-BW/2,'F#':WW*4-BW/2,'G#':WW*5-BW/2,'A#':WW*6-BW/2};
+}
 
 // octave warmth palette (oct 1–7)
 const OCT_RGB=[[255,80,50],[240,140,40],[160,200,60],[0,229,204],[40,150,255],[130,80,255],[200,60,240]];
@@ -733,9 +751,13 @@ function pianoMove(e){
     handleNoteOff(cur.vkey);
     if(el){
       handleNoteOn(cur.vkey,nn,no);
-      pianoPointers.set(e.pointerId,{...cur,name:nn,oct:no});
+      // Keep pointer in map with updated key — needed so pointerup/pointercancel
+      // can release this note even if we moved between keys
+      pianoPointers.set(e.pointerId,{...cur,hasMoved:true,name:nn,oct:no});
     }else{
-      pianoPointers.delete(e.pointerId);
+      // Finger left keyboard entirely — note already off, but keep a sentinel
+      // so pianoUp/pointercancel don't try to double-release
+      pianoPointers.set(e.pointerId,{wasUnlatched:true});
     }
   }
 }
@@ -781,6 +803,11 @@ pianoScroll.addEventListener('pointerdown',  pianoDown);
 pianoScroll.addEventListener('pointermove',  pianoMove);
 pianoScroll.addEventListener('pointerup',    pianoUp);
 pianoScroll.addEventListener('pointercancel',pianoUp);
+// Safety net: if the browser cancels a touch that started on the piano
+// but the cancel event is dispatched on a parent element, catch it here.
+document.addEventListener('pointercancel', e => {
+  if(pianoPointers.has(e.pointerId)) pianoUp(e);
+});
 document.addEventListener('visibilitychange',()=>{ if(document.hidden) pianoFlushAll(); });
 window.addEventListener('blur', pianoFlushAll);
 pianoScroll.addEventListener('contextmenu',e=>{e.preventDefault();setOctave(octave+1);});
@@ -991,7 +1018,9 @@ function drawADSR(){
 // ── piano ──────────────────────────────────────────────
 
 function buildPiano(){
-  document.getElementById('piano-section').style.height=`${WH+70}px`;
+  ({WW, WH, BW, BH} = pianoGeom());
+  const BLACK_OFF = makeBlackOff();
+  document.getElementById('piano-section').style.height=`${WH+PIANO_CHROME}px`;
   const piano=document.getElementById('piano');
   piano.innerHTML='';
   const totalWhite=PIANO_ALL.length*7+1;
@@ -1225,7 +1254,7 @@ document.querySelectorAll('.srow').forEach(row=>{
 
 // ── init ───────────────────────────────────────────────
 
-window.addEventListener('resize',()=>{drawXYGrid();drawADSR();scrollToRange(false);});
+window.addEventListener('resize',()=>{drawXYGrid();drawADSR();buildPiano();scrollToRange(false);});
 
 buildPiano();
 drawADSR();
