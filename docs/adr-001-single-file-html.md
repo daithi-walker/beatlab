@@ -1,6 +1,6 @@
 # ADR-001: Single-file HTML apps, no build step
 
-**Status:** Accepted
+**Status:** Deprecated — superseded by [ADR-007](adr-007-es-modules-and-local-server.md)
 
 ## Context
 
