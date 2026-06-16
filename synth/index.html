@@ -703,7 +703,8 @@ function keyElemFromPoint(x,y){
 function pianoDown(e){
   if(e.pointerType==='mouse'&&e.button!==0)return;
   e.preventDefault(); unlock();
-  document.getElementById('piano-scroll').setPointerCapture(e.pointerId);
+  // Don't capture — capturing blocks horizontal scroll on iOS and can cause
+  // pointercancel to be swallowed, leaving stale notes stuck on.
   const el=keyElemFromPoint(e.clientX,e.clientY);
   if(!el){pianoPointers.set(e.pointerId,{wasUnlatched:true});return;}
   const name=el.dataset.note, oct=parseInt(el.dataset.oct), vkey=`t${e.pointerId}`;
@@ -750,7 +751,7 @@ function pianoUp(e){
   if(!isQuickTap){
     handleNoteOff(cur.vkey);
   }else{
-    // Promote to latched voice
+    // Promote to latched voice — guard against voice already stolen by maxVoices
     const lk=`${cur.name}${cur.oct}`, lv=`latch-${lk}`;
     const v=voices.get(cur.vkey);
     if(v){
@@ -759,8 +760,20 @@ function pianoUp(e){
       latchedVoices.set(lk,lv);
       keyActive(cur.name,cur.oct,false);
       keyLatched(cur.name,cur.oct,true);
+    }else{
+      // Voice was stolen — nothing to latch, ensure note is off
+      handleNoteOff(cur.vkey);
     }
   }
+}
+
+function pianoFlushAll(){
+  // Release every tracked pointer — called when the page loses visibility
+  // or focus, which can swallow pointerup/pointercancel on iOS.
+  pianoPointers.forEach((cur,id)=>{
+    if(!cur.wasUnlatched) handleNoteOff(cur.vkey);
+  });
+  pianoPointers.clear();
 }
 
 const pianoScroll=document.getElementById('piano-scroll');
@@ -768,6 +781,8 @@ pianoScroll.addEventListener('pointerdown',  pianoDown);
 pianoScroll.addEventListener('pointermove',  pianoMove);
 pianoScroll.addEventListener('pointerup',    pianoUp);
 pianoScroll.addEventListener('pointercancel',pianoUp);
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) pianoFlushAll(); });
+window.addEventListener('blur', pianoFlushAll);
 pianoScroll.addEventListener('contextmenu',e=>{e.preventDefault();setOctave(octave+1);});
 
 // ── arpeggiator ────────────────────────────────────────
