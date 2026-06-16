@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Drums — BeatLab</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #080c10;
+    --surface:   #0e1318;
+    --surface-2: #121920;
+    --divider:   #1a2830;
+    --text:      #d4e8e0;
+    --muted:     #6a8f80;
+    --faint:     #2e4a40;
+    --teal:      #00e5cc;
+    --green:     #39ff6a;
+    --amber:     #f5a623;
+    --purple:    #b06fff;
+    --pink:      #ff6b9d;
+    --red:       #ff4560;
+    --topbar-h:  52px;
+    --label-w:   80px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body { background: var(--bg); color: var(--text); font-family: 'Space Grotesk', system-ui, sans-serif; -webkit-font-smoothing: antialiased; height: 100%; overflow: hidden; }
+
+  /* ── TOP BAR ──────────────────────────────────────────────── */
+  #topbar {
+    position: fixed; top: 0; left: 0; right: 0; height: var(--topbar-h);
+    background: rgba(8,12,16,0.92); backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--divider);
+    display: flex; align-items: center; gap: 8px; padding: 0 12px;
+    z-index: 100;
+  }
+  .topbar-btn {
+    font-family: inherit; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--teal); background: rgba(0,229,204,0.08);
+    border: 1px solid rgba(0,229,204,0.2); border-radius: 6px;
+    padding: 6px 12px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    transition: background 120ms, border-color 120ms;
+  }
+  .topbar-btn:hover   { background: rgba(0,229,204,0.16); }
+  .topbar-btn.playing { background: rgba(0,229,204,0.18); border-color: var(--teal); }
+  .logo { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--teal); flex-shrink: 0; }
+  .divider-v { width: 1px; height: 24px; background: var(--divider); flex-shrink: 0; }
+  .bpm-group { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .ctrl-label { font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .ctrl-value { font-size: 0.7rem; color: var(--teal); min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }
+  #bpm-slider { width: 80px; }
+  .bpm-group { margin-left: auto; }
+
+  /* ── PATTERNS POPOVER ────────────────────────────────────── */
+  .patterns-group { position: relative; }
+  #patterns-popover {
+    display: none; position: absolute; top: calc(100% + 6px); left: 0;
+    min-width: 200px; background: var(--surface); border: 1px solid var(--divider);
+    border-radius: 8px; z-index: 300; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+  #patterns-popover.open { display: flex; flex-direction: column; }
+  #patterns-list { max-height: 200px; overflow-y: auto; }
+  .pattern-row { display: flex; align-items: center; gap: 6px; padding: 7px 10px; cursor: pointer; transition: background 100ms; }
+  .pattern-row:hover { background: rgba(0,229,204,0.08); }
+  .pattern-row-name { flex: 1; font-size: 0.72rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pattern-row-del { background: none; border: none; color: var(--faint); cursor: pointer; font-size: 0.72rem; padding: 2px 4px; transition: color 120ms; }
+  .pattern-row-del:hover { color: var(--pink); }
+  #patterns-list-empty { padding: 12px 10px; font-size: 0.68rem; color: var(--muted); }
+  #patterns-save-row { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid var(--divider); }
+  #patterns-name-input {
+    flex: 1; background: var(--surface-2); border: 1px solid var(--divider); border-radius: 4px;
+    color: var(--text); font-size: 0.72rem; padding: 4px 8px; font-family: inherit; outline: none;
+  }
+  #patterns-name-input:focus { border-color: var(--teal); }
+  #patterns-save-btn {
+    background: rgba(0,229,204,0.12); border: 1px solid rgba(0,229,204,0.3);
+    border-radius: 4px; color: var(--teal); cursor: pointer; font-size: 0.68rem;
+    letter-spacing: 0.06em; padding: 4px 10px; font-family: inherit; transition: background 120ms;
+  }
+  #patterns-save-btn:hover { background: rgba(0,229,204,0.22); }
+
+  /* ── MAIN GRID AREA ───────────────────────────────────────── */
+  #main {
+    position: fixed; top: var(--topbar-h); left: 0; right: 0; bottom: 0;
+    overflow-y: auto; padding: 16px 12px 60px;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+
+  /* ── BEAT HEADER ─────────────────────────────────────────── */
+  #beat-header {
+    display: flex; align-items: center; margin-bottom: 4px; padding: 0 2px;
+  }
+  #beat-header .label-spacer { width: var(--label-w); flex-shrink: 0; }
+  .beat-nums {
+    display: grid; flex: 1;
+    /* columns set by JS */
+  }
+  .beat-num {
+    text-align: center; font-size: 0.5rem; letter-spacing: 0.06em;
+    color: var(--faint); font-variant-numeric: tabular-nums;
+  }
+  .beat-num.quarter { color: var(--muted); font-weight: 600; }
+
+  /* ── TRACK ROW ────────────────────────────────────────────── */
+  .track {
+    display: flex; align-items: center; gap: 0;
+  }
+  .track-label {
+    width: var(--label-w); flex-shrink: 0;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .track-name {
+    font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .track-mute {
+    background: none; border: none; cursor: pointer; color: var(--faint);
+    padding: 3px; transition: color 120ms; flex-shrink: 0;
+  }
+  .track-mute:hover { color: var(--teal); }
+  .track-mute.muted { color: var(--pink); opacity: 0.7; }
+
+  .steps-row {
+    display: grid; flex: 1; gap: 2px;
+    /* grid-template-columns set by JS */
+    touch-action: none;
+  }
+
+  /* ── STEP BUTTON ─────────────────────────────────────────── */
+  .step {
+    height: 34px; border-radius: 4px; cursor: pointer;
+    border: 1px solid var(--divider);
+    background: var(--surface-2);
+    transition: background 80ms, border-color 80ms;
+    position: relative; overflow: hidden;
+  }
+  .step:hover { border-color: color-mix(in srgb, var(--accent, var(--teal)) 50%, transparent); }
+  .step.on {
+    background: var(--accent, var(--teal));
+    border-color: var(--accent, var(--teal));
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent, var(--teal)) 50%, transparent);
+  }
+  .step.current { border-color: #fff; }
+  .step.on.current { background: #fff; border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,0.5); }
+  /* Group separators every 4 steps */
+  .step-gap { width: 4px; height: 34px; }
+
+  @media (pointer: coarse) {
+    .step { height: 40px; border-radius: 6px; background: #1a2830; }
+  }
+
+  /* ── SECTION DIVIDER ─────────────────────────────────────── */
+  .section-label {
+    font-size: 0.52rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--faint); padding: 8px 0 2px var(--label-w);
+  }
+
+  /* ── BEAT INDICATOR BAR ───────────────────────────────────── */
+  #beat-row {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 4px; align-items: center; pointer-events: none;
+  }
+  .beat-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--divider); transition: background 60ms; }
+  .beat-dot.quarter { width: 7px; height: 7px; }
+  .beat-dot.active { background: var(--teal); box-shadow: 0 0 6px var(--teal); }
+
+  /* ── AUDIO BANNER ─────────────────────────────────────────── */
+  #audio-banner {
+    position: fixed; top: calc(var(--topbar-h) + 12px); left: 50%; transform: translateX(-50%);
+    font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--teal); background: rgba(14,19,24,0.9);
+    border: 1px solid rgba(0,229,204,0.2); border-radius: 999px;
+    padding: 8px 18px; backdrop-filter: blur(12px); z-index: 20; transition: opacity 300ms;
+  }
+  #audio-banner.hidden { opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+
+<header id="topbar">
+  <a href="../index.html" class="topbar-btn" style="text-decoration:none;font-size:11px;letter-spacing:.08em;">⌂ BeatLab</a>
+  <div class="divider-v"></div>
+  <div class="logo">Drums</div>
+
+  <button class="topbar-btn" id="play-btn">▶ Play</button>
+
+  <div class="divider-v"></div>
+
+  <button class="topbar-btn" id="steps-btn" title="Toggle 16/32 steps">16 steps</button>
+
+  <div class="divider-v"></div>
+
+  <button class="topbar-btn" id="clear-btn">Clear</button>
+
+  <div class="divider-v"></div>
+
+  <div class="patterns-group">
+    <button class="topbar-btn" id="patterns-btn">Patterns ▾</button>
+    <div id="patterns-popover">
+      <div id="patterns-list"></div>
+      <div id="patterns-save-row">
+        <input id="patterns-name-input" type="text" placeholder="pattern name" spellcheck="false">
+        <button id="patterns-save-btn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bpm-group">
+    <span class="ctrl-label">BPM</span>
+    <input type="range" id="bpm-slider" min="60" max="200" value="120">
+    <span class="ctrl-value" id="bpm-value">120</span>
+  </div>
+</header>
+
+<div id="main"></div>
+<div id="beat-row"></div>
+<div id="audio-banner">tap anywhere to enable audio</div>
+
+<script type="module">
+import { makeImpulse, makePinkNoise, makeWhiteNoise } from '../core/audio.js';
+import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/storage.js';
+
+(() => {
+  'use strict';
+
+  const APP_ID   = 'drums';
+  const LOOKAHEAD = 0.1;
+  const TICK_MS   = 25;
+
+  let STEPS = 16;
+  let bpm   = 120;
+  function stepDuration() { return 60 / bpm / 4; }
+
+  /* ── TRACK DEFINITIONS ────────────────────────────────────── */
+  const TRACKS = [
+    // Drums
+    { id:'kick',    name:'Kick',     section:'Drums',   color:'var(--teal)'   },
+    { id:'snare',   name:'Snare',    section:'Drums',   color:'var(--teal)'   },
+    { id:'clap',    name:'Clap',     section:'Drums',   color:'var(--teal)'   },
+    { id:'hihat',   name:'Hi-Hat',   section:'Drums',   color:'var(--green)'  },
+    { id:'openhat', name:'Open Hat', section:'Drums',   color:'var(--green)'  },
+    { id:'crash',   name:'Crash',    section:'Drums',   color:'var(--green)'  },
+    { id:'tomhi',   name:'Tom Hi',   section:'Drums',   color:'var(--amber)'  },
+    { id:'tomlo',   name:'Tom Lo',   section:'Drums',   color:'var(--amber)'  },
+    // Percussion
+    { id:'rim',     name:'Rimshot',  section:'Perc',    color:'var(--purple)' },
+    { id:'shaker',  name:'Shaker',   section:'Perc',    color:'var(--purple)' },
+    { id:'cowbell', name:'Cowbell',  section:'Perc',    color:'var(--purple)' },
+    { id:'clave',   name:'Clave',    section:'Perc',    color:'var(--pink)'   },
+  ];
+
+  // Runtime state per track
+  const state = {};
+  TRACKS.forEach(t => {
+    state[t.id] = {
+      steps: Array(32).fill(false),
+      muted: false,
+      volume: 1.0,
+    };
+  });
+
+  /* ── AUDIO ENGINE ─────────────────────────────────────────── */
+  let ctx, masterGain, compressor, reverbConvolver, reverbReturn;
+  let pinkBuf, whiteBuf;
+
+  function initAudio() {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    masterGain = ctx.createGain();
+    masterGain.gain.value = 0.85;
+
+    compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.value = -18;
+    compressor.ratio.value = 4;
+
+    masterGain.connect(compressor);
+    compressor.connect(ctx.destination);
+
+    reverbConvolver = ctx.createConvolver();
+    reverbConvolver.buffer = makeImpulse(ctx, 2.2, 2.5);
+    reverbReturn = ctx.createGain();
+    reverbReturn.gain.value = 0.75;
+    reverbConvolver.connect(reverbReturn);
+    reverbReturn.connect(masterGain);
+
+    pinkBuf  = makePinkNoise(ctx, 2);
+    whiteBuf = makeWhiteNoise(ctx, 2);
+  }
+
+  function reverbSend(g) {
+    const s = ctx.createGain();
+    s.gain.value = 0.15;
+    g.connect(s);
+    s.connect(reverbConvolver);
+  }
+
+  /* ── VOICES ───────────────────────────────────────────────── */
+  function voice(id, time) {
+    switch (id) {
+      case 'kick': {
+        const osc = ctx.createOscillator(), g = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(150, time);
+        osc.frequency.exponentialRampToValueAtTime(40, time + 0.08);
+        g.gain.setValueAtTime(1.8, time);
+        g.gain.exponentialRampToValueAtTime(0.001, time + 0.45);
+        osc.connect(g); g.connect(masterGain);
+        osc.start(time); osc.stop(time + 0.5);
+        break;
+      }
+      case 'snare': {
+        const body = ctx.createOscillator(), bg = ctx.createGain();
+        body.type = 'triangle';
+        body.frequency.setValueAtTime(220, time);
+        body.frequency.exponentialRampToValueAtTime(100, time + 0.06);
+        bg.gain.setValueAtTime(1.0, time);
+        bg.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
+        body.connect(bg); bg.connect(masterGain);
+        body.start(time); body.stop(time + 0.15);
+        const ns = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), ng = ctx.createGain();
+        ns.buffer = pinkBuf; hp.type = 'highpass'; hp.frequency.value = 2000;
+        ng.gain.setValueAtTime(1.2, time); ng.gain.exponentialRampToValueAtTime(0.001, time + 0.18);
+        ns.connect(hp); hp.connect(ng); ng.connect(masterGain); reverbSend(ng);
+        ns.start(time); ns.stop(time + 0.2);
+        break;
+      }
+      case 'clap': {
+        [0, 0.008, 0.018].forEach(offset => {
+          const ns = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
+          ns.buffer = pinkBuf; hp.type = 'highpass'; hp.frequency.value = 1600;
+          g.gain.setValueAtTime(0.9, time + offset); g.gain.exponentialRampToValueAtTime(0.001, time + offset + 0.07);
+          ns.connect(hp); hp.connect(g); g.connect(masterGain); reverbSend(g);
+          ns.start(time + offset); ns.stop(time + offset + 0.09);
+        });
+        break;
+      }
+      case 'hihat': {
+        const ns = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
+        ns.buffer = whiteBuf; hp.type = 'highpass'; hp.frequency.value = 7000;
+        g.gain.setValueAtTime(1.4, time); g.gain.exponentialRampToValueAtTime(0.001, time + 0.06);
+        ns.connect(hp); hp.connect(g); g.connect(masterGain);
+        ns.start(time); ns.stop(time + 0.08);
+        break;
+      }
+      case 'openhat': {
+        const ns = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
+        ns.buffer = whiteBuf; hp.type = 'highpass'; hp.frequency.value = 7000;
+        g.gain.setValueAtTime(1.2, time); g.gain.exponentialRampToValueAtTime(0.001, time + 0.35);
+        ns.connect(hp); hp.connect(g); g.connect(masterGain); reverbSend(g);
+        ns.start(time); ns.stop(time + 0.38);
+        break;
+      }
+      case 'crash': {
+        const ns = ctx.createBufferSource();
+        ns.buffer = whiteBuf;
+        const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3000;
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 8000; bp.Q.value = 0.5;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(1.0, time); g.gain.exponentialRampToValueAtTime(0.001, time + 1.4);
+        ns.connect(hp); hp.connect(bp); bp.connect(g); g.connect(masterGain); reverbSend(g);
+        ns.start(time); ns.stop(time + 1.5);
+        break;
+      }
+      case 'tomhi': {
+        const osc = ctx.createOscillator(), g = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(200, time); osc.frequency.exponentialRampToValueAtTime(80, time + 0.15);
+        g.gain.setValueAtTime(1.3, time); g.gain.exponentialRampToValueAtTime(0.001, time + 0.3);
+        osc.connect(g); g.connect(masterGain);
+        osc.start(time); osc.stop(time + 0.35);
+        break;
+      }
+      case 'tomlo': {
+        const osc = ctx.createOscillator(), g = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(100, time); osc.frequency.exponentialRampToValueAtTime(45, time + 0.2);
+        g.gain.setValueAtTime(1.5, time); g.gain.exponentialRampToValueAtTime(0.001, time + 0.45);
+        osc.connect(g); g.connect(masterGain);
+        osc.start(time); osc.stop(time + 0.5);
+        break;
+      }
+      case 'rim': {
+        const osc = ctx.createOscillator(), g = ctx.createGain();
+        osc.type = 'square'; osc.frequency.value = 400;
+        g.gain.setValueAtTime(0.6, time); g.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+        osc.connect(g); g.connect(masterGain);
+        osc.start(time); osc.stop(time + 0.06);
+        break;
+      }
+      case 'shaker': {
+        const ns = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
+        ns.buffer = whiteBuf; hp.type = 'highpass'; hp.frequency.value = 8000;
+        g.gain.setValueAtTime(0.6, time); g.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+        ns.connect(hp); hp.connect(g); g.connect(masterGain);
+        ns.start(time); ns.stop(time + 0.07);
+        break;
+      }
+      case 'cowbell': {
+        const osc1 = ctx.createOscillator(), osc2 = ctx.createOscillator(), g = ctx.createGain();
+        osc1.type = 'square'; osc1.frequency.value = 540;
+        osc2.type = 'square'; osc2.frequency.value = 840;
+        g.gain.setValueAtTime(0.8, time); g.gain.exponentialRampToValueAtTime(0.001, time + 0.4);
+        osc1.connect(g); osc2.connect(g); g.connect(masterGain); reverbSend(g);
+        osc1.start(time); osc1.stop(time + 0.45);
+        osc2.start(time); osc2.stop(time + 0.45);
+        break;
+      }
+      case 'clave': {
+        const osc = ctx.createOscillator(), g = ctx.createGain();
+        osc.type = 'sine'; osc.frequency.value = 2400;
+        g.gain.setValueAtTime(1.0, time); g.gain.exponentialRampToValueAtTime(0.001, time + 0.025);
+        osc.connect(g); g.connect(masterGain);
+        osc.start(time); osc.stop(time + 0.04);
+        break;
+      }
+    }
+  }
+
+  /* ── SCHEDULER ────────────────────────────────────────────── */
+  let playing = false, currentStep = 0, nextBeatTime = 0, tickTimer = null;
+
+  function scheduleStep(step, time) {
+    TRACKS.forEach(t => {
+      const ts = state[t.id];
+      if (!ts.steps[step] || ts.muted) return;
+      voice(t.id, time);
+    });
+    const msUntil = Math.max(0, (time - ctx.currentTime) * 1000);
+    setTimeout(() => updatePlayhead(step), msUntil);
+  }
+
+  function tick() {
+    while (nextBeatTime < ctx.currentTime + LOOKAHEAD) {
+      scheduleStep(currentStep, nextBeatTime);
+      nextBeatTime += stepDuration();
+      currentStep = (currentStep + 1) % STEPS;
+    }
+  }
+
+  function startTransport() {
+    if (!ctx) initAudio();
+    ctx.resume();
+    playing = true; currentStep = 0; nextBeatTime = ctx.currentTime + 0.05;
+    tickTimer = setInterval(tick, TICK_MS);
+    document.getElementById('play-btn').textContent = '◼ Stop';
+    document.getElementById('play-btn').classList.add('playing');
+  }
+
+  function stopTransport() {
+    playing = false; clearInterval(tickTimer); clearPlayhead();
+    document.getElementById('play-btn').textContent = '▶ Play';
+    document.getElementById('play-btn').classList.remove('playing');
+  }
+
+  function toggleTransport() { playing ? stopTransport() : startTransport(); }
+
+  /* ── PLAYHEAD ─────────────────────────────────────────────── */
+  let lastStep = -1;
+
+  function updatePlayhead(step) {
+    if (lastStep >= 0) {
+      document.querySelectorAll(`.step[data-step="${lastStep}"]`).forEach(el => el.classList.remove('current'));
+      const prev = document.querySelectorAll('.beat-dot')[lastStep];
+      if (prev) prev.classList.remove('active');
+    }
+    document.querySelectorAll(`.step[data-step="${step}"]`).forEach(el => el.classList.add('current'));
+    const dot = document.querySelectorAll('.beat-dot')[step];
+    if (dot) dot.classList.add('active');
+    lastStep = step;
+  }
+
+  function clearPlayhead() {
+    document.querySelectorAll('.step.current').forEach(el => el.classList.remove('current'));
+    document.querySelectorAll('.beat-dot.active').forEach(el => el.classList.remove('active'));
+    lastStep = -1;
+  }
+
+  /* ── GRID RENDERING ───────────────────────────────────────── */
+  const gridColsStyle = () => `repeat(${STEPS + Math.floor(STEPS / 4) - 1}, 1fr)`;
+
+  function buildGrid() {
+    const main = document.getElementById('main');
+    main.innerHTML = '';
+
+    // Beat number header
+    const header = document.createElement('div');
+    header.id = 'beat-header';
+    const spacer = document.createElement('div');
+    spacer.className = 'label-spacer';
+    header.appendChild(spacer);
+    const nums = document.createElement('div');
+    nums.className = 'beat-nums';
+    nums.style.display = 'grid';
+    nums.style.gridTemplateColumns = gridColsStyle();
+    nums.style.gap = '2px';
+    nums.style.flex = '1';
+    for (let i = 0; i < STEPS; i++) {
+      if (i > 0 && i % 4 === 0) {
+        const gap = document.createElement('div');
+        gap.className = 'beat-num'; gap.style.width = '4px'; gap.textContent = '';
+        nums.appendChild(gap);
+      }
+      const n = document.createElement('div');
+      n.className = 'beat-num' + (i % 4 === 0 ? ' quarter' : '');
+      n.textContent = i % 4 === 0 ? String(Math.floor(i / 4) + 1) : '·';
+      nums.appendChild(n);
+    }
+    header.appendChild(nums);
+    main.appendChild(header);
+
+    // Section + track rows
+    let lastSection = null;
+    TRACKS.forEach(track => {
+      if (track.section !== lastSection) {
+        const lbl = document.createElement('div');
+        lbl.className = 'section-label';
+        lbl.textContent = track.section;
+        main.appendChild(lbl);
+        lastSection = track.section;
+      }
+      main.appendChild(buildTrackRow(track));
+    });
+  }
+
+  function buildTrackRow(track) {
+    const ts = state[track.id];
+    const row = document.createElement('div');
+    row.className = 'track';
+    row.dataset.trackId = track.id;
+
+    // Label
+    const label = document.createElement('div');
+    label.className = 'track-label';
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'track-name';
+    nameEl.textContent = track.name;
+    nameEl.style.color = track.color;
+
+    const muteBtn = document.createElement('button');
+    muteBtn.className = 'track-mute' + (ts.muted ? ' muted' : '');
+    muteBtn.title = 'Mute';
+    muteBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+      <path class="mute-x" d="M23 9 17 15M17 9 23 15" style="${ts.muted ? '' : 'display:none'}"/>
+      <path class="vol-w" d="M15.54 8.46a5 5 0 0 1 0 7.07" style="${ts.muted ? 'display:none' : ''}"/>
+    </svg>`;
+    muteBtn.addEventListener('click', () => {
+      ts.muted = !ts.muted;
+      muteBtn.classList.toggle('muted', ts.muted);
+      muteBtn.querySelector('.mute-x').style.display = ts.muted ? '' : 'none';
+      muteBtn.querySelector('.vol-w').style.display  = ts.muted ? 'none' : '';
+    });
+
+    label.appendChild(nameEl);
+    label.appendChild(muteBtn);
+    row.appendChild(label);
+
+    // Steps
+    const grid = document.createElement('div');
+    grid.className = 'steps-row';
+    grid.style.gridTemplateColumns = gridColsStyle();
+    grid.style.setProperty('--accent', track.color);
+
+    for (let s = 0; s < STEPS; s++) {
+      if (s > 0 && s % 4 === 0) {
+        const gap = document.createElement('div');
+        gap.className = 'step-gap';
+        grid.appendChild(gap);
+      }
+      const btn = document.createElement('div');
+      btn.className = 'step' + (ts.steps[s] ? ' on' : '');
+      btn.dataset.trackId = track.id;
+      btn.dataset.step = s;
+      grid.appendChild(btn);
+    }
+
+    // Paint drag
+    let dragIntent = null;
+    grid.addEventListener('pointerdown', e => {
+      const btn = e.target.closest('.step');
+      if (!btn || btn.dataset.trackId !== track.id) return;
+      e.preventDefault();
+      const s = parseInt(btn.dataset.step, 10);
+      dragIntent = ts.steps[s] ? 'off' : 'on';
+      applyStep(ts, btn, s, dragIntent);
+    });
+    grid.addEventListener('pointermove', e => {
+      if (dragIntent === null) return;
+      e.preventDefault();
+      const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('.step');
+      if (!target || target.dataset.trackId !== track.id) return;
+      applyStep(ts, target, parseInt(target.dataset.step, 10), dragIntent);
+    }, { passive: false });
+    grid.addEventListener('pointerup',     () => { dragIntent = null; });
+    grid.addEventListener('pointercancel', () => { dragIntent = null; });
+
+    row.appendChild(grid);
+    return row;
+  }
+
+  function applyStep(ts, btn, step, intent) {
+    const on = intent === 'on';
+    if (ts.steps[step] === on) return;
+    ts.steps[step] = on;
+    btn.classList.toggle('on', on);
+  }
+
+  /* ── BEAT ROW ─────────────────────────────────────────────── */
+  function rebuildBeatRow() {
+    const beatRow = document.getElementById('beat-row');
+    beatRow.innerHTML = '';
+    for (let i = 0; i < STEPS; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'beat-dot' + (i % 4 === 0 ? ' quarter' : '');
+      beatRow.appendChild(dot);
+    }
+  }
+
+  /* ── STEPS TOGGLE ─────────────────────────────────────────── */
+  document.getElementById('steps-btn').addEventListener('click', () => {
+    const wasPlaying = playing;
+    if (wasPlaying) stopTransport();
+    STEPS = STEPS === 16 ? 32 : 16;
+    document.getElementById('steps-btn').textContent = STEPS + ' steps';
+    currentStep = 0;
+    buildGrid();
+    rebuildBeatRow();
+    if (wasPlaying) startTransport();
+  });
+
+  /* ── CLEAR ────────────────────────────────────────────────── */
+  document.getElementById('clear-btn').addEventListener('click', () => {
+    TRACKS.forEach(t => { state[t.id].steps.fill(false); });
+    document.querySelectorAll('.step.on').forEach(el => el.classList.remove('on'));
+  });
+
+  /* ── PATTERNS ─────────────────────────────────────────────── */
+  function captureState() {
+    const out = { bpm, steps: STEPS, tracks: {} };
+    TRACKS.forEach(t => { out.tracks[t.id] = { steps: [...state[t.id].steps], muted: state[t.id].muted }; });
+    return out;
+  }
+
+  function applyState(saved) {
+    if (playing) stopTransport();
+    if (saved.bpm) {
+      bpm = saved.bpm;
+      document.getElementById('bpm-slider').value = bpm;
+      document.getElementById('bpm-value').textContent = bpm;
+    }
+    if (saved.steps && saved.steps !== STEPS) {
+      STEPS = saved.steps;
+      document.getElementById('steps-btn').textContent = STEPS + ' steps';
+    }
+    TRACKS.forEach(t => {
+      if (saved.tracks?.[t.id]) {
+        const pd = saved.tracks[t.id];
+        state[t.id].steps = pd.steps.slice(0, 32);
+        while (state[t.id].steps.length < 32) state[t.id].steps.push(false);
+        state[t.id].muted = pd.muted || false;
+      }
+    });
+    buildGrid();
+    rebuildBeatRow();
+  }
+
+  function renderPatternList() {
+    const list = document.getElementById('patterns-list');
+    list.innerHTML = '';
+    const names = listPatterns(APP_ID);
+    if (!names.length) {
+      const em = document.createElement('div');
+      em.id = 'patterns-list-empty';
+      em.textContent = 'No saved patterns yet.';
+      list.appendChild(em);
+      return;
+    }
+    names.forEach(name => {
+      const row = document.createElement('div');
+      row.className = 'pattern-row';
+      const nameEl = document.createElement('span');
+      nameEl.className = 'pattern-row-name';
+      nameEl.textContent = name;
+      nameEl.addEventListener('click', () => { applyState(loadPattern(APP_ID, name)); closePatterns(); });
+      const del = document.createElement('button');
+      del.className = 'pattern-row-del';
+      del.textContent = '✕';
+      del.addEventListener('click', e => { e.stopPropagation(); deletePattern(APP_ID, name); renderPatternList(); });
+      row.appendChild(nameEl); row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+
+  function closePatterns() { document.getElementById('patterns-popover').classList.remove('open'); }
+
+  document.getElementById('patterns-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    const pop = document.getElementById('patterns-popover');
+    if (!pop.classList.contains('open')) renderPatternList();
+    pop.classList.toggle('open');
+  });
+
+  document.getElementById('patterns-save-btn').addEventListener('click', () => {
+    const input = document.getElementById('patterns-name-input');
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    savePattern(APP_ID, name, captureState());
+    input.value = '';
+    renderPatternList();
+  });
+
+  document.getElementById('patterns-name-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('patterns-save-btn').click();
+    if (e.key === 'Escape') closePatterns();
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.patterns-group')) closePatterns();
+  });
+
+  /* ── BPM ──────────────────────────────────────────────────── */
+  document.getElementById('bpm-slider').addEventListener('input', e => {
+    bpm = parseInt(e.target.value, 10);
+    document.getElementById('bpm-value').textContent = bpm;
+  });
+
+  /* ── PLAY / KEYBOARD ──────────────────────────────────────── */
+  document.getElementById('play-btn').addEventListener('click', toggleTransport);
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' && e.target.tagName !== 'INPUT') { e.preventDefault(); toggleTransport(); }
+  });
+
+  /* ── AUDIO UNLOCK ─────────────────────────────────────────── */
+  const banner = document.getElementById('audio-banner');
+  ['pointerdown','keydown'].forEach(evt =>
+    document.addEventListener(evt, () => {
+      if (ctx) ctx.resume().then(() => { if (ctx.state === 'running') banner.classList.add('hidden'); });
+      else banner.classList.add('hidden');
+    }, { passive: true })
+  );
+
+  /* ── INIT ─────────────────────────────────────────────────── */
+  buildGrid();
+  rebuildBeatRow();
+
+})();
+</script>
+
+<style>
+  #rotate-prompt {
+    display: none;
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg); flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+    font-size: 0.85rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  body.is-touch.is-portrait #rotate-prompt { display: flex; }
+  #rotate-prompt svg { opacity: 0.4; }
+</style>
+<div id="rotate-prompt">
+  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+    <path d="M3 3v5h5"/>
+  </svg>
+  Rotate to landscape
+</div>
+<script>
+(function() {
+  var isTouch = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
+  if (isTouch) {
+    document.body.classList.add('is-touch');
+    function checkOrientation() {
+      document.body.classList.toggle('is-portrait', window.innerHeight > window.innerWidth);
+    }
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+  }
+})();
+</script>
+</body>
+</html>

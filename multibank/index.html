@@ -245,6 +245,44 @@
   }
   #fx-panel-body input[type="range"] { width: 100%; }
 
+  /* ── PATTERNS POPOVER ────────────────────────────────────── */
+  #patterns-popover {
+    display: none; position: absolute; top: calc(100% + 6px); left: 0;
+    min-width: 200px; background: var(--surface); border: 1px solid var(--divider);
+    border-radius: 8px; z-index: 300; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+  #patterns-popover.open { display: flex; flex-direction: column; }
+  #patterns-list { max-height: 220px; overflow-y: auto; }
+  .pattern-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 10px; cursor: pointer; transition: background 100ms;
+  }
+  .pattern-row:hover { background: rgba(0,229,204,0.08); }
+  .pattern-row-name { flex: 1; font-size: 0.72rem; letter-spacing: 0.04em; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pattern-row-del {
+    background: none; border: none; color: var(--faint); cursor: pointer;
+    font-size: 0.72rem; padding: 2px 4px; transition: color 120ms; flex-shrink: 0;
+  }
+  .pattern-row-del:hover { color: var(--pink); }
+  #patterns-list-empty { padding: 12px 10px; font-size: 0.68rem; color: var(--muted); }
+  #patterns-save-row {
+    display: flex; gap: 6px; padding: 8px 10px;
+    border-top: 1px solid var(--divider);
+  }
+  #patterns-name-input {
+    flex: 1; background: var(--surface-2); border: 1px solid var(--divider);
+    border-radius: 4px; color: var(--text); font-size: 0.72rem; padding: 4px 8px;
+    font-family: inherit; outline: none;
+  }
+  #patterns-name-input:focus { border-color: var(--teal); }
+  #patterns-save-btn {
+    background: rgba(0,229,204,0.12); border: 1px solid rgba(0,229,204,0.3);
+    border-radius: 4px; color: var(--teal); cursor: pointer; font-size: 0.68rem;
+    letter-spacing: 0.06em; padding: 4px 10px; font-family: inherit; transition: background 120ms;
+  }
+  #patterns-save-btn:hover { background: rgba(0,229,204,0.22); }
+
   /* ── FULLSCREEN BTN ──────────────────────────────────────── */
   .topbar-icon-btn {
     background: none; border: none; cursor: pointer;
@@ -285,6 +323,23 @@
 
   <button class="topbar-btn" id="add-bank-btn">＋ Add Bank</button>
 
+  <div class="divider-v"></div>
+
+  <button class="topbar-btn" id="steps-btn" title="Toggle 16/32 steps">16 steps</button>
+
+  <div class="divider-v"></div>
+
+  <div class="patterns-group" style="position:relative;">
+    <button class="topbar-btn" id="patterns-btn">Patterns ▾</button>
+    <div id="patterns-popover">
+      <div id="patterns-list"></div>
+      <div id="patterns-save-row">
+        <input id="patterns-name-input" type="text" placeholder="pattern name" spellcheck="false">
+        <button id="patterns-save-btn">Save</button>
+      </div>
+    </div>
+  </div>
+
   <div class="bpm-group">
     <span class="ctrl-label">BPM</span>
     <input type="range" id="bpm-slider" min="60" max="200" value="120">
@@ -319,6 +374,7 @@
 
 <script type="module">
 import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNoise, distCurve as makeDistortionCurve } from '../core/audio.js';
+import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/storage.js';
 
 (() => {
   'use strict';
@@ -326,7 +382,7 @@ import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNo
   /* ════════════════════════════════════════════════════════════
      CONSTANTS
   ════════════════════════════════════════════════════════════ */
-  const STEPS     = 16;
+  let STEPS       = 16;
   const LOOKAHEAD = 0.1;   // schedule this many seconds ahead
   const TICK_MS   = 25;    // scheduler poll interval
 
@@ -347,12 +403,12 @@ import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNo
     // Drums                                                    dist  delay chorus lfoRate
     kick:    { name:'Kick',     type:'drum',   volume:0.9,  filter:900,   reverb:0.06, distortion:0,    delay:0,    chorus:0,    lfoRate:0   },
     snare:   { name:'Snare',    type:'drum',   volume:0.75, filter:5000,  reverb:0.18, distortion:0,    delay:0,    chorus:0,    lfoRate:0   },
-    hihat:   { name:'Hi-Hat',   type:'drum',   volume:0.45, filter:12000, reverb:0.05, distortion:0,    delay:0,    chorus:0,    lfoRate:0   },
+    hihat:   { name:'Hi-Hat',   type:'drum',   volume:0.75, filter:12000, reverb:0.05, distortion:0,    delay:0,    chorus:0,    lfoRate:0   },
     clap:    { name:'Clap',     type:'drum',   volume:0.7,  filter:5000,  reverb:0.22, distortion:0,    delay:0,    chorus:0,    lfoRate:0   },
     tomhi:   { name:'Tom Hi',   type:'drum',   volume:0.8,  filter:2000,  reverb:0.1,  distortion:0,    delay:0,    chorus:0,    lfoRate:0   },
     tomlo:   { name:'Tom Lo',   type:'drum',   volume:0.85, filter:1000,  reverb:0.08, distortion:0,    delay:0,    chorus:0,    lfoRate:0   },
-    openhat: { name:'Open Hat', type:'drum',   volume:0.4,  filter:12000, reverb:0.12, distortion:0,    delay:0,    chorus:0,    lfoRate:0   },
-    crash:   { name:'Crash',    type:'drum',   volume:0.35, filter:8000,  reverb:0.45, distortion:0,    delay:0,    chorus:0,    lfoRate:0   },
+    openhat: { name:'Open Hat', type:'drum',   volume:0.65, filter:12000, reverb:0.12, distortion:0,    delay:0,    chorus:0,    lfoRate:0   },
+    crash:   { name:'Crash',    type:'drum',   volume:0.60, filter:8000,  reverb:0.45, distortion:0,    delay:0,    chorus:0,    lfoRate:0   },
     // Melodic
     bass:    { name:'Bass',     type:'melody', volume:0.8,  filter:700,   reverb:0.12, distortion:0,    delay:0,    chorus:0,    lfoRate:0,   note:'D2' },
     sub:     { name:'Sub',      type:'melody', volume:0.9,  filter:400,   reverb:0.05, distortion:0,    delay:0,    chorus:0,    lfoRate:0,   note:'D2' },
@@ -383,6 +439,7 @@ import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNo
      AUDIO ENGINE
   ════════════════════════════════════════════════════════════ */
   let ctx, masterGain, compressor, reverbConvolver, reverbReturn;
+  let sharedDelay, sharedDelayFeedback, sharedChorusDelay, sharedChorusLfo, sharedChorusLfoGain;
   let pinkBuf, whiteBuf;
 
   function initAudio() {
@@ -406,6 +463,28 @@ import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNo
     reverbConvolver.connect(reverbReturn);
     reverbReturn.connect(masterGain);
 
+    // Shared delay bus — one feedback loop serves all panels
+    sharedDelay = ctx.createDelay(2.0);
+    sharedDelay.delayTime.value = 60 / bpm / 2;
+    sharedDelayFeedback = ctx.createGain();
+    sharedDelayFeedback.gain.value = 0.4;
+    sharedDelay.connect(sharedDelayFeedback);
+    sharedDelayFeedback.connect(sharedDelay);
+    sharedDelay.connect(masterGain);
+
+    // Shared chorus bus — one LFO modulates all panels
+    sharedChorusDelay = ctx.createDelay(0.05);
+    sharedChorusDelay.delayTime.value = 0.02;
+    sharedChorusLfo = ctx.createOscillator();
+    sharedChorusLfo.type = 'sine';
+    sharedChorusLfo.frequency.value = 1.2;
+    sharedChorusLfoGain = ctx.createGain();
+    sharedChorusLfoGain.gain.value = 0.008;
+    sharedChorusLfo.connect(sharedChorusLfoGain);
+    sharedChorusLfoGain.connect(sharedChorusDelay.delayTime);
+    sharedChorusLfo.start();
+    sharedChorusDelay.connect(masterGain);
+
     // Noise buffers — pre-generated once, shared across all drum hits
     pinkBuf  = makePinkNoise(ctx, 2);
     whiteBuf = makeWhiteNoise(ctx, 2);  // 2s so crash has enough tail
@@ -421,8 +500,8 @@ import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNo
            → gain       (volume)
            → masterGain                           dry path
            → reverbSend → reverbConvolver         reverb send
-           → delaySend  → delayNode ⟲ feedback   delay send
-           → chorusSend → chorusDelay ← chorusLfo chorus send
+           → delaySend  → sharedDelay (shared bus)
+           → chorusSend → sharedChorusDelay (shared bus)
     */
 
     // Entry point: distortion (pass-through when curve=null)
@@ -430,56 +509,43 @@ import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNo
     distortion.curve = makeDistortionCurve(panel.distortion);
     distortion.oversample = '2x';
 
-    // Filter + LFO
+    // Filter
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
     filter.frequency.value = panel.filter;
     filter.Q.value = 1;
 
-    const filterLfo = ctx.createOscillator();
-    filterLfo.type = 'sine';
-    filterLfo.frequency.value = panel.lfoRate;
-    const filterLfoGain = ctx.createGain();
-    filterLfoGain.gain.value = panel.lfoRate > 0 ? panel.filter * 0.5 : 0;
-    filterLfo.connect(filterLfoGain);
-    filterLfoGain.connect(filter.frequency);
-    filterLfo.start();
+    // FilterLFO — only create oscillator when actually used (saves CPU)
+    let filterLfo = null, filterLfoGain = null;
+    if (panel.lfoRate > 0) {
+      filterLfo = ctx.createOscillator();
+      filterLfo.type = 'sine';
+      filterLfo.frequency.value = panel.lfoRate;
+      filterLfoGain = ctx.createGain();
+      filterLfoGain.gain.value = panel.filter * 0.5;
+      filterLfo.connect(filterLfoGain);
+      filterLfoGain.connect(filter.frequency);
+      filterLfo.start();
+    }
 
     // Volume
     const gain = ctx.createGain();
     gain.gain.value = panel.volume;
 
-    // Reverb send
+    // Reverb send → shared convolver
     const reverbSend = ctx.createGain();
     reverbSend.gain.value = panel.reverb;
+    reverbSend.connect(reverbConvolver);
 
-    // Delay: 8th-note time, 40% fixed feedback
+    // Delay send → shared delay bus
     const delaySend = ctx.createGain();
     delaySend.gain.value = panel.delay;
-    const delayNode = ctx.createDelay(2.0);
-    delayNode.delayTime.value = 60 / bpm / 2;
-    const delayFeedback = ctx.createGain();
-    delayFeedback.gain.value = 0.4;
-    delaySend.connect(delayNode);
-    delayNode.connect(delayFeedback);
-    delayFeedback.connect(delayNode);
-    delayNode.connect(masterGain);
+    delaySend.connect(sharedDelay);
 
-    // Chorus: 20ms base delay modulated at 1.2 Hz
+    // Chorus send → shared chorus bus
     const chorusSend = ctx.createGain();
     chorusSend.gain.value = panel.chorus;
-    const chorusDelay = ctx.createDelay(0.05);
-    chorusDelay.delayTime.value = 0.02;
-    const chorusLfo = ctx.createOscillator();
-    chorusLfo.type = 'sine';
-    chorusLfo.frequency.value = 1.2;
-    const chorusLfoGain = ctx.createGain();
-    chorusLfoGain.gain.value = 0.008; // ±8ms modulation depth
-    chorusLfo.connect(chorusLfoGain);
-    chorusLfoGain.connect(chorusDelay.delayTime);
-    chorusLfo.start();
-    chorusSend.connect(chorusDelay);
-    chorusDelay.connect(masterGain);
+    chorusSend.connect(sharedChorusDelay);
 
     // Wire the main chain
     distortion.connect(filter);
@@ -488,25 +554,21 @@ import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNo
     gain.connect(reverbSend);
     gain.connect(delaySend);
     gain.connect(chorusSend);
-    reverbSend.connect(reverbConvolver);
 
     nodes[panel.instanceId] = {
-      entry: distortion,   // voices connect here
+      entry: distortion,
       distortion, filter, filterLfo, filterLfoGain,
-      gain, reverbSend,
-      delaySend, delayNode, delayFeedback,
-      chorusSend, chorusDelay, chorusLfo,
+      gain, reverbSend, delaySend, chorusSend,
     };
   }
 
   function teardownPanelNodes(instanceId) {
     const n = nodes[instanceId];
     if (!n) return;
-    try { n.filterLfo.stop(); n.chorusLfo.stop(); } catch (_) {}
+    try { if (n.filterLfo) n.filterLfo.stop(); } catch (_) {}
     try {
       [n.distortion, n.filter, n.filterLfoGain, n.gain,
-       n.reverbSend, n.delaySend, n.delayNode, n.delayFeedback,
-       n.chorusSend, n.chorusDelay].forEach(node => node.disconnect());
+       n.reverbSend, n.delaySend, n.chorusSend].filter(Boolean).forEach(node => node.disconnect());
     } catch (_) {}
     delete nodes[instanceId];
   }
@@ -552,7 +614,7 @@ import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNo
     const ns = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
     ns.buffer = whiteBuf;
     hp.type = 'highpass'; hp.frequency.value = 7000;
-    g.gain.setValueAtTime(0.7, time);
+    g.gain.setValueAtTime(1.4, time);
     g.gain.exponentialRampToValueAtTime(0.001, time + 0.06);
     ns.connect(hp); hp.connect(g); g.connect(dest);
     ns.start(time); ns.stop(time + 0.08);
@@ -597,7 +659,7 @@ import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNo
     const ns = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
     ns.buffer = whiteBuf;
     hp.type = 'highpass'; hp.frequency.value = 7000;
-    g.gain.setValueAtTime(0.6, time);
+    g.gain.setValueAtTime(1.2, time);
     g.gain.exponentialRampToValueAtTime(0.001, time + 0.35);
     ns.connect(hp); hp.connect(g); g.connect(dest);
     ns.start(time); ns.stop(time + 0.38);
@@ -611,7 +673,7 @@ import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNo
     const bp = ctx.createBiquadFilter();
     bp.type = 'bandpass'; bp.frequency.value = 8000; bp.Q.value = 0.5;
     const g = ctx.createGain();
-    g.gain.setValueAtTime(0.5, time);
+    g.gain.setValueAtTime(1.0, time);
     g.gain.exponentialRampToValueAtTime(0.001, time + 1.4);
     ns.connect(hp); hp.connect(bp); bp.connect(g); g.connect(dest);
     ns.start(time); ns.stop(time + 1.5);
@@ -1015,9 +1077,21 @@ import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNo
       v => v === 0 ? 'off' : v.toFixed(1) + 'Hz',
       v => {
         panel.lfoRate = v;
-        if (nd()) {
-          nd().filterLfo.frequency.setTargetAtTime(v, ctx.currentTime, 0.05);
-          nd().filterLfoGain.gain.setTargetAtTime(v > 0 ? panel.filter * 0.5 : 0, ctx.currentTime, 0.05);
+        const n = nd();
+        if (!n) return;
+        if (v > 0) {
+          if (!n.filterLfo) {
+            n.filterLfo = ctx.createOscillator();
+            n.filterLfo.type = 'sine';
+            n.filterLfoGain = ctx.createGain();
+            n.filterLfo.connect(n.filterLfoGain);
+            n.filterLfoGain.connect(n.filter.frequency);
+            n.filterLfo.start();
+          }
+          n.filterLfo.frequency.setTargetAtTime(v, ctx.currentTime, 0.05);
+          n.filterLfoGain.gain.setTargetAtTime(panel.filter * 0.5, ctx.currentTime, 0.05);
+        } else if (n.filterLfoGain) {
+          n.filterLfoGain.gain.setTargetAtTime(0, ctx.currentTime, 0.05);
         }
       }
     ));
@@ -1100,11 +1174,15 @@ import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNo
 
   // Beat dots
   const beatRow = document.getElementById('beat-row');
-  for (let i = 0; i < STEPS; i++) {
-    const dot = document.createElement('div');
-    dot.className = 'beat-dot' + (i % 4 === 0 ? ' quarter' : '');
-    beatRow.appendChild(dot);
+  function rebuildBeatRow() {
+    beatRow.innerHTML = '';
+    for (let i = 0; i < STEPS; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'beat-dot' + (i % 4 === 0 ? ' quarter' : '');
+      beatRow.appendChild(dot);
+    }
   }
+  rebuildBeatRow();
 
   document.getElementById('play-btn').addEventListener('click', toggleTransport);
 
@@ -1143,6 +1221,187 @@ import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNo
   document.getElementById('bpm-slider').addEventListener('input', e => {
     bpm = parseInt(e.target.value, 10);
     document.getElementById('bpm-value').textContent = bpm;
+    if (sharedDelay) sharedDelay.delayTime.setTargetAtTime(60 / bpm / 2, ctx.currentTime, 0.1);
+  });
+
+  // Steps toggle: 16 ↔ 32
+  const stepsBtn = document.getElementById('steps-btn');
+  stepsBtn.addEventListener('click', () => {
+    const wasPlaying = playing;
+    if (wasPlaying) stopTransport();
+    STEPS = STEPS === 16 ? 32 : 16;
+    stepsBtn.textContent = STEPS + ' steps';
+    currentStep = 0;
+    // Resize each panel's step array and rebuild its grid
+    panels.forEach(panel => {
+      if (STEPS > panel.steps.length) {
+        while (panel.steps.length < STEPS) panel.steps.push(false);
+      } else {
+        panel.steps.length = STEPS;
+      }
+      const row = document.querySelector(`.panel-row[data-instance-id="${panel.instanceId}"]`);
+      if (row) {
+        const oldGrid = row.querySelector('.steps');
+        if (oldGrid) oldGrid.replaceWith(buildStepGrid(panel));
+      }
+    });
+    rebuildBeatRow();
+    if (wasPlaying) startTransport();
+  });
+
+  /* ══════════════════════════════════════════════════════════
+     PATTERNS — save / load / delete
+  ══════════════════════════════════════════════════════════ */
+  const APP_ID = 'multibank';
+
+  function captureState() {
+    return {
+      bpm,
+      steps: STEPS,
+      panels: panels.map(p => ({
+        typeKey:     p.typeKey,
+        steps:       [...p.steps],
+        muted:       p.muted,
+        volume:      p.volume,
+        filter:      p.filter,
+        reverb:      p.reverb,
+        distortion:  p.distortion,
+        delay:       p.delay,
+        chorus:      p.chorus,
+        lfoRate:     p.lfoRate,
+        note:        p.note,
+      })),
+    };
+  }
+
+  function applyState(saved) {
+    if (playing) stopTransport();
+    // Clear all panels
+    [...panels].forEach(p => removePanel(p.instanceId));
+    // Restore step count
+    if (saved.steps && saved.steps !== STEPS) {
+      STEPS = saved.steps;
+      stepsBtn.textContent = STEPS + ' steps';
+      rebuildBeatRow();
+    }
+    // Restore BPM
+    if (saved.bpm) {
+      bpm = saved.bpm;
+      const sl = document.getElementById('bpm-slider');
+      sl.value = bpm;
+      document.getElementById('bpm-value').textContent = bpm;
+    }
+    // Restore panels
+    saved.panels.forEach(pd => {
+      addPanel(pd.typeKey);
+      const panel = panels[panels.length - 1];
+      panel.steps       = pd.steps.slice(0, STEPS);
+      while (panel.steps.length < STEPS) panel.steps.push(false);
+      panel.muted       = pd.muted;
+      panel.volume      = pd.volume;
+      panel.filter      = pd.filter;
+      panel.reverb      = pd.reverb;
+      panel.distortion  = pd.distortion;
+      panel.delay       = pd.delay;
+      panel.chorus      = pd.chorus;
+      panel.lfoRate     = pd.lfoRate;
+      panel.note        = pd.note || panel.note;
+      // Sync audio nodes
+      const n = nodes[panel.instanceId];
+      if (n) {
+        n.gain.gain.value      = panel.volume;
+        n.filter.frequency.value = panel.filter;
+        n.reverbSend.gain.value  = panel.reverb;
+        n.delaySend.gain.value   = panel.delay;
+        n.chorusSend.gain.value  = panel.chorus;
+        if (n.distortion) n.distortion.curve = makeDistortionCurve(panel.distortion);
+      }
+      // Sync step buttons
+      const grid = document.querySelector(`.panel-row[data-instance-id="${panel.instanceId}"] .steps`);
+      if (grid) {
+        grid.querySelectorAll('.step').forEach(btn => {
+          const s = parseInt(btn.dataset.step, 10);
+          btn.classList.toggle('on', !!panel.steps[s]);
+        });
+      }
+      // Sync mute button
+      const muteBtn = document.querySelector(`.panel-row[data-instance-id="${panel.instanceId}"] .mute-btn`);
+      if (muteBtn) {
+        muteBtn.classList.toggle('muted', panel.muted);
+        muteBtn.querySelector('.mute-x').style.display    = panel.muted ? '' : 'none';
+        muteBtn.querySelector('.vol-waves').style.display = panel.muted ? 'none' : '';
+      }
+    });
+  }
+
+  function renderPatternList() {
+    const list = document.getElementById('patterns-list');
+    list.innerHTML = '';
+    const names = listPatterns(APP_ID);
+    if (names.length === 0) {
+      const em = document.createElement('div');
+      em.id = 'patterns-list-empty';
+      em.textContent = 'No saved patterns yet.';
+      list.appendChild(em);
+      return;
+    }
+    names.forEach(name => {
+      const row = document.createElement('div');
+      row.className = 'pattern-row';
+
+      const nameEl = document.createElement('span');
+      nameEl.className = 'pattern-row-name';
+      nameEl.textContent = name;
+      nameEl.addEventListener('click', () => {
+        const data = loadPattern(APP_ID, name);
+        if (data) { applyState(data); closePatterns(); }
+      });
+
+      const del = document.createElement('button');
+      del.className = 'pattern-row-del';
+      del.textContent = '✕';
+      del.title = 'Delete pattern';
+      del.addEventListener('click', e => {
+        e.stopPropagation();
+        deletePattern(APP_ID, name);
+        renderPatternList();
+      });
+
+      row.appendChild(nameEl);
+      row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+
+  function closePatterns() {
+    document.getElementById('patterns-popover').classList.remove('open');
+  }
+
+  document.getElementById('patterns-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    const pop = document.getElementById('patterns-popover');
+    const opening = !pop.classList.contains('open');
+    pop.classList.toggle('open');
+    if (opening) renderPatternList();
+  });
+
+  document.getElementById('patterns-save-btn').addEventListener('click', () => {
+    const input = document.getElementById('patterns-name-input');
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    savePattern(APP_ID, name, captureState());
+    input.value = '';
+    renderPatternList();
+  });
+
+  document.getElementById('patterns-name-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('patterns-save-btn').click();
+    if (e.key === 'Escape') closePatterns();
+  });
+
+  // Close popover on outside click
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.patterns-group')) closePatterns();
   });
 
   document.addEventListener('keydown', e => {
