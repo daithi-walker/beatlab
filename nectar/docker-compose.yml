@@ -4,4 +4,4 @@ services:
     ports:
       - "8767:80"
     volumes:
-      - ./:/usr/share/nginx/html:ro
+      - ../:/usr/share/nginx/html:ro

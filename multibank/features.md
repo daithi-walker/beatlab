@@ -1,5 +1,39 @@
 # Multibank — Features & Next Steps
 
+## Signal Chain
+
+```
+step trigger
+    │
+    ▼
+OscillatorNode / AudioBufferSourceNode (noise)
+    │
+    ▼
+GainNode (ADSR envelope)
+    │
+    ▼
+BiquadFilterNode (per-bank filter)
+    │   ╲
+    │    GainNode ──► LFO (detune filter cutoff)
+    │
+    ▼
+WaveShaperNode (distortion)
+    │
+    ├──► GainNode ──► ConvolverNode (shared reverb) ──┐
+    ├──► GainNode ──► DelayNode + GainNode (feedback) ┤
+    ├──► GainNode ──► delay + BiquadFilter (chorus)   ┤
+    │                                                   │
+    ▼                                                   │
+GainNode (panel vol) ◄──────────────────────────────────┘
+    │
+    ▼
+AudioContext.destination
+```
+
+Each bank has its own independent chain. All banks feed a single shared `ConvolverNode` for reverb (send/return pattern).
+
+---
+
 ## Done
 
 - 16-step sequencer (industry standard — one bar of 4/4 at 16th-note resolution)

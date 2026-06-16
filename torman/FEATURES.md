@@ -1,6 +1,45 @@
-# DubCanvas — Added Features
+# Torman — Local Dev Notes
 
-Changes made on top of the original DubCanvas source (commit `1c1e0b0`).
+Torman is based on [thunder-clapper/torman](https://thunder-clapper.github.io/torman/) — a canvas gesture bass synth by a collaborator. This directory tracks local tweaks on top of that upstream work. It is excluded from the BeatLab GitHub Pages deployment; run it locally via Docker.
+
+## Changes on top of upstream (from commit `1c1e0b0`)
+
+---
+
+## Signal Chain
+
+```
+canvas gesture (X pos → pentatonic pitch, Y pos → register)
+    │
+    ▼
+OscillatorNode (sawtooth, bass frequency)
+    │
+    ├──► OscillatorNode (sub, octave down, sine)
+    │
+    ▼
+BiquadFilterNode (lowpass, resonant — "growl")
+    │
+    ▼
+WaveShaperNode (soft-clip distortion)
+    │
+    ├──► GainNode ──► ConvolverNode (reverb)  ──┐
+    │                                             │
+    ▼                                             │
+GainNode (dry mix) ◄──────────────────────────────┘
+    │
+    ▼
+GainNode (master)
+    │
+    ├──► AnalyserNode (drives visual system — note grid, particles, pulse rings)
+    │
+    ▼
+AudioContext.destination
+
+Ambience (ocean / rain / birds):
+AudioBufferSourceNode → GainNode (individual vol) → GainNode (ambience bus) → master
+```
+
+Audio file visualiser routes through a separate `AnalyserNode` alongside the bass synth chain.
 
 ---
 

@@ -255,7 +255,9 @@
 <div id="beat-row" aria-hidden="true"></div>
 <div id="audio-banner">tap anywhere to enable audio</div>
 
-<script>
+<script type="module">
+import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNoise, distCurve as makeDistortionCurve } from '../core/audio.js';
+
 (() => {
   'use strict';
 
@@ -273,13 +275,6 @@
     'C3','D3','E3','F3','G3','A3','B3',
     'C4','D4','E4','F4','G4','A4','B4',
   ];
-
-  function noteToFreq(note) {
-    const OFF = { C:-9,'C#':-8,D:-7,'D#':-6,E:-5,F:-4,'F#':-3,G:-2,'G#':-1,A:0,'A#':1,B:2 };
-    const m = note.match(/^([A-G]#?)(\d+)$/);
-    if (!m) return 220;
-    return 440 * Math.pow(2, (OFF[m[1]] + (parseInt(m[2]) - 4) * 12) / 12);
-  }
 
   /* ════════════════════════════════════════════════════════════
      BANK TYPE DEFINITIONS
@@ -303,20 +298,6 @@
     pluck:   { name:'Pluck',    type:'melody', volume:0.7,  filter:4000,  reverb:0.15, distortion:0,    delay:0,    chorus:0,    lfoRate:0,   note:'D3' },
     pad:     { name:'Pad',      type:'melody', volume:0.5,  filter:2000,  reverb:0.5,  distortion:0,    delay:0,    chorus:0.4,  lfoRate:0.4, note:'A3' },
   };
-
-  /* Distortion waveshaper curve — soft-clipping sigmoid.
-     drive 0→1 maps to k 0→200. At drive=0 returns null (bypass). */
-  function makeDistortionCurve(drive) {
-    if (drive <= 0) return null;
-    const k = drive * 200;
-    const n = 256;
-    const curve = new Float32Array(n);
-    for (let i = 0; i < n; i++) {
-      const x = (i * 2) / n - 1;
-      curve[i] = ((Math.PI + k) * x) / (Math.PI + k * Math.abs(x));
-    }
-    return curve;
-  }
 
   /* ════════════════════════════════════════════════════════════
      TRANSPORT STATE
@@ -357,15 +338,15 @@
 
     // Shared reverb — all panel reverbSend nodes feed this
     reverbConvolver = ctx.createConvolver();
-    reverbConvolver.buffer = makeImpulse(2.5, 2.8);
+    reverbConvolver.buffer = makeImpulse(ctx, 2.5, 2.8);
     reverbReturn = ctx.createGain();
     reverbReturn.gain.value = 0.9;
     reverbConvolver.connect(reverbReturn);
     reverbReturn.connect(masterGain);
 
     // Noise buffers — pre-generated once, shared across all drum hits
-    pinkBuf  = makePinkNoise(2);
-    whiteBuf = makeWhiteNoise(2);  // 2s so crash has enough tail
+    pinkBuf  = makePinkNoise(ctx, 2);
+    whiteBuf = makeWhiteNoise(ctx, 2);  // 2s so crash has enough tail
   }
 
   function buildPanelNodes(panel) {
@@ -466,43 +447,6 @@
        n.chorusSend, n.chorusDelay].forEach(node => node.disconnect());
     } catch (_) {}
     delete nodes[instanceId];
-  }
-
-  /* ── Noise / IR utilities ─────────────────────────────────── */
-
-  function makeImpulse(seconds, decay) {
-    const len = Math.floor(ctx.sampleRate * seconds);
-    const buf = ctx.createBuffer(2, len, ctx.sampleRate);
-    for (let ch = 0; ch < 2; ch++) {
-      const d = buf.getChannelData(ch);
-      for (let i = 0; i < len; i++)
-        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
-    }
-    return buf;
-  }
-
-  function makePinkNoise(seconds) {
-    const len = Math.floor(ctx.sampleRate * seconds);
-    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
-    for (let i = 0; i < len; i++) {
-      const w = Math.random() * 2 - 1;
-      b0=0.99886*b0+w*0.0555179; b1=0.99332*b1+w*0.0750759;
-      b2=0.96900*b2+w*0.1538520; b3=0.86650*b3+w*0.3104856;
-      b4=0.55000*b4+w*0.5329522; b5=-0.7616*b5-w*0.0168980;
-      d[i] = (b0+b1+b2+b3+b4+b5+b6+w*0.5362) * 0.11;
-      b6 = w * 0.115926;
-    }
-    return buf;
-  }
-
-  function makeWhiteNoise(seconds) {
-    const len = Math.floor(ctx.sampleRate * seconds);
-    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-    return buf;
   }
 
   /* ════════════════════════════════════════════════════════════

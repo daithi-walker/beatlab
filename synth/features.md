@@ -1,5 +1,43 @@
 # Synth — Features & Next Steps
 
+## Signal Chain
+
+```
+keyboard / touch / arp tick
+    │
+    ▼
+OscillatorNode (per voice, per waveform)
+    │
+    ▼
+GainNode (ADSR envelope, per voice)
+    │
+    ▼
+GainNode (voiceBus — all voices sum here)
+    │
+    ▼
+WaveShaperNode (global distortion)
+    │
+    ▼
+BiquadFilterNode (global filter — XY pad)
+    │
+    ├──► GainNode ──► ConvolverNode (convolution reverb)  ──┐
+    ├──► GainNode ──► DelayNode + feedback GainNode        ┤
+    ├──► GainNode ──► delay + BiquadFilter (chorus)        ┤
+    │                                                        │
+    ▼                                                        │
+DynamicsCompressorNode ◄────────────────────────────────────┘
+    │
+    ▼
+GainNode (master)
+    │
+    ▼
+AudioContext.destination
+```
+
+LFO (when on) modulates either filter cutoff or master gain via a `GainNode` depth controller.
+
+---
+
 ## Done
 
 - Polyphonic keyboard synth — multiple notes simultaneously

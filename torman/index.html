@@ -580,7 +580,9 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+import { noteStringToFreq, makeImpulse, makePinkNoise, makeWhiteNoise } from '../core/audio.js';
+
 (() => {
   'use strict';
 
@@ -600,7 +602,6 @@
     hintShown: true,
   };
 
-  const NOTE_OFFSETS = { C: -9, 'C#': -8, D: -7, 'D#': -6, E: -5, F: -4, 'F#': -3, G: -2, 'G#': -1, A: 0, 'A#': 1, B: 2 };
   // Two octaves of minor pentatonic intervals (root, b3, 4, 5, b7 -> repeated up an octave)
   const PENTATONIC_INTERVALS = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22];
   const REGISTER_COLORS = { sub: '#00e5cc', bass: '#39ff6a', upper: '#f5a623', harmonic: '#b06fff' };
@@ -626,15 +627,6 @@
     evolve: false,
   };
 
-  function noteToFreq(note) {
-    const m = note.match(/^([A-G]#?)(-?\d+)$/);
-    if (!m) return 110;
-    const [, name, octStr] = m;
-    const octave = parseInt(octStr, 10);
-    const semitone = NOTE_OFFSETS[name] + (octave - 4) * 12;
-    return 440 * Math.pow(2, semitone / 12);
-  }
-
   function buildScale(rootFreq) {
     return PENTATONIC_INTERVALS.map((semi) => rootFreq * Math.pow(2, semi / 12));
   }
@@ -646,7 +638,7 @@
     return REGISTER_COLORS.harmonic;
   }
 
-  bassEngine.scaleFreqs = buildScale(noteToFreq(bassEngine.rootNote));
+  bassEngine.scaleFreqs = buildScale(noteStringToFreq(bassEngine.rootNote));
 
   /* =====================================================================
      AUDIO ENGINE
@@ -657,43 +649,6 @@
   let bassOsc1, bassGain1, bassOsc2, bassGain2;
   let audioStartTime = 0;
   let lastTriggerTime = 0;
-
-  function createImpulseResponse(ctx, duration, decay) {
-    const rate = ctx.sampleRate;
-    const length = Math.max(1, Math.floor(rate * duration));
-    const impulse = ctx.createBuffer(2, length, rate);
-    for (let ch = 0; ch < 2; ch++) {
-      const data = impulse.getChannelData(ch);
-      for (let i = 0; i < length; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
-      }
-    }
-    return impulse;
-  }
-
-  function createNoiseBuffer(ctx, seconds, color) {
-    const length = Math.floor(ctx.sampleRate * seconds);
-    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    if (color === 'white') {
-      for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
-    } else {
-      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
-      for (let i = 0; i < length; i++) {
-        const white = Math.random() * 2 - 1;
-        b0 = 0.99886 * b0 + white * 0.0555179;
-        b1 = 0.99332 * b1 + white * 0.0750759;
-        b2 = 0.96900 * b2 + white * 0.1538520;
-        b3 = 0.86650 * b3 + white * 0.3104856;
-        b4 = 0.55000 * b4 + white * 0.5329522;
-        b5 = -0.7616 * b5 - white * 0.0168980;
-        const pink = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
-        b6 = white * 0.115926;
-        data[i] = pink * 0.11;
-      }
-    }
-    return buffer;
-  }
 
   function initAudio() {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -737,7 +692,7 @@
     bassWetGain.gain.value = bassEngine.reverbMix;
 
     bassConvolver = audioCtx.createConvolver();
-    bassConvolver.buffer = createImpulseResponse(audioCtx, 2.5, 2.5);
+    bassConvolver.buffer = makeImpulse(audioCtx, 2.5, 2.5);
 
     bassDelay = audioCtx.createDelay(2.0);
     bassDelay.delayTime.value = bassEngine.delayTime;
@@ -965,7 +920,7 @@
 
   function initWaves() {
     const src = audioCtx.createBufferSource();
-    src.buffer = createNoiseBuffer(audioCtx, 4, 'pink');
+    src.buffer = makePinkNoise(audioCtx, 4);
     src.loop = true;
 
     const filter = audioCtx.createBiquadFilter();
@@ -992,7 +947,7 @@
 
   function initRain() {
     const src = audioCtx.createBufferSource();
-    src.buffer = createNoiseBuffer(audioCtx, 4, 'white');
+    src.buffer = makeWhiteNoise(audioCtx, 4);
     src.loop = true;
 
     const hp = audioCtx.createBiquadFilter();
@@ -1026,7 +981,7 @@
 
     // Distant rumble band
     const src2 = audioCtx.createBufferSource();
-    src2.buffer = createNoiseBuffer(audioCtx, 4, 'white');
+    src2.buffer = makeWhiteNoise(audioCtx, 4);
     src2.loop = true;
     const lp = audioCtx.createBiquadFilter();
     lp.type = 'lowpass';
@@ -1126,7 +1081,7 @@
   }
 
   function initGhostKeys() {
-    ghostScale = buildGhostScale(noteToFreq(bassEngine.rootNote));
+    ghostScale = buildGhostScale(noteStringToFreq(bassEngine.rootNote));
 
     ghostMasterGain = audioCtx.createGain();
     ghostMasterGain.gain.value = 0.18;
@@ -1141,7 +1096,7 @@
     ghostDry.connect(ghostMasterGain);
 
     ghostConvolver = audioCtx.createConvolver();
-    ghostConvolver.buffer = createImpulseResponse(audioCtx, 4.5, 3.5);
+    ghostConvolver.buffer = makeImpulse(audioCtx, 4.5, 3.5);
     ghostConvolverGain = audioCtx.createGain();
     ghostConvolverGain.gain.value = 0.8;
     ghostWet.connect(ghostConvolver);
@@ -1925,8 +1880,8 @@
         btn.setAttribute('aria-pressed', 'true');
         const root = btn.dataset.root + '2';
         bassEngine.rootNote = root;
-        bassEngine.scaleFreqs = buildScale(noteToFreq(root));
-        ghostScale = buildGhostScale(noteToFreq(root));
+        bassEngine.scaleFreqs = buildScale(noteStringToFreq(root));
+        ghostScale = buildGhostScale(noteStringToFreq(root));
         demoRootOffset = ROOT_SEMITONES[btn.dataset.root] || 0;
       });
     });

@@ -453,10 +453,10 @@ A S D F G H J K L ;</pre>
   </div>
 </div>
 
-<script>
-// ── constants ──────────────────────────────────────────
+<script type="module">
+import { CHROMATIC, noteToFreq, makeImpulse, distCurve } from '../core/audio.js';
 
-const CHROMATIC=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+// ── constants ──────────────────────────────────────────
 const KEY_MAP={
   'a':0,'w':1,'s':2,'e':3,'d':4,'f':5,
   't':6,'g':7,'y':8,'h':9,'u':10,'j':11,
@@ -507,21 +507,6 @@ const pianoPointers=new Map(); // pointerId → {vkey,name,oct,hasMoved,wasUnlat
 let showNotes=true;
 
 // ── audio init ─────────────────────────────────────────
-
-function noteToFreq(name,oct){
-  return 440*Math.pow(2,(oct-4)+(CHROMATIC.indexOf(name)-9)/12);
-}
-function makeImpulse(c,dur=2.5,decay=2){
-  const len=c.sampleRate*dur, buf=c.createBuffer(2,len,c.sampleRate);
-  for(let ch=0;ch<2;ch++){const d=buf.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay);}
-  return buf;
-}
-function distCurve(drive){
-  if(!drive)return null;
-  const n=256,k=drive*100,c=new Float32Array(n);
-  for(let i=0;i<n;i++){const x=(i*2)/n-1;c[i]=((Math.PI+k)*x)/(Math.PI+k*Math.abs(x));}
-  return c;
-}
 
 function initAudio(){
   if(ctx)return;

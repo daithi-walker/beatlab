@@ -1,6 +1,6 @@
 # ADR-005: Host on GitHub Pages
 
-**Status:** Decided, not yet implemented
+**Status:** Implemented
 
 ## Context
 
@@ -35,6 +35,10 @@ A root `index.html` will serve as the landing page.
 
 We need user accounts, saved state server-side, or a backend. For now, localStorage is sufficient for pattern persistence.
 
-## Not yet done
+## Implementation
 
-Apps need more polish before publishing. This ADR records the decision; implementation happens when the suite is ready to share.
+- `.github/workflows/pages.yml` — deploys on push to `main` via GitHub Actions
+- `index.html` at repo root — landing page linking all four apps
+- GitHub Pages must be enabled in the repo settings: **Settings → Pages → Source → GitHub Actions**
+
+The `core/audio.js` imports use relative paths (`../core/audio.js`) which work both locally via Docker and on Pages (`daithi-walker.github.io/beatlab/`) since browsers resolve relative module specifiers from the importing file's URL.

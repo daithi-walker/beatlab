@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BeatLab</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #080c10;
+    --surface:  #0e1318;
+    --divider:  #1a2830;
+    --text:     #d4e8e0;
+    --muted:    #6a8f80;
+    --teal:     #00e5cc;
+    --green:    #39ff6a;
+    --amber:    #f5a623;
+    --purple:   #b06fff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+  }
+
+  h1 {
+    font-size: clamp(2rem, 6vw, 4rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--teal);
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 1rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 56px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    width: 100%;
+    max-width: 900px;
+  }
+
+  a.card {
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--divider);
+    border-radius: 12px;
+    padding: 28px 24px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+
+  a.card:hover {
+    border-color: var(--teal);
+    transform: translateY(-2px);
+  }
+
+  .card-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .card-name span {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+  }
+
+  .card-desc {
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .badge {
+    display: inline-block;
+    margin-top: 14px;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--divider);
+    color: var(--muted);
+  }
+
+  .badge.working { background: #0d2a1a; color: var(--green); }
+  .badge.progress { background: #1a1a08; color: var(--amber); }
+  .badge.early { background: #12081a; color: var(--purple); }
+</style>
+</head>
+<body>
+
+<h1>BeatLab</h1>
+<p class="subtitle">Browser-based music tools</p>
+
+<div class="grid">
+
+  <a class="card" href="multibank/index.html">
+    <div class="card-name">
+      <span style="background:var(--teal)"></span>Multibank
+    </div>
+    <div class="card-desc">16-step drum and synth sequencer. Add banks, paint steps, shape sound per channel.</div>
+    <div class="badge working">Working</div>
+  </a>
+
+  <a class="card" href="synth/index.html">
+    <div class="card-name">
+      <span style="background:var(--amber)"></span>Synth
+    </div>
+    <div class="card-desc">Polyphonic keyboard synth with arpeggiator, LFO, ADSR, and XY filter pad.</div>
+    <div class="badge progress">In progress</div>
+  </a>
+
+  <a class="card" href="nectar/index.html">
+    <div class="card-name">
+      <span style="background:var(--purple)"></span>Nectar
+    </div>
+    <div class="card-desc">Guitar theory explorer — scales, chords, chord identification, and tab viewer.</div>
+    <div class="badge early">Early</div>
+  </a>
+
+</div>
+
+<p style="margin-top:48px;font-size:0.8rem;color:var(--muted);text-align:center;">
+  Also check out <a href="https://thunder-clapper.github.io/torman/" style="color:var(--teal);text-decoration:none;">Torman</a>
+  — canvas gesture bass synth by <a href="https://github.com/thunder-clapper" style="color:var(--teal);text-decoration:none;">thunder-clapper</a>.
+</p>
+
+</body>
+</html>

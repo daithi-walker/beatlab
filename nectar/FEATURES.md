@@ -4,6 +4,31 @@ All features currently implemented in the app.
 
 ---
 
+## Signal Chain
+
+```
+fretboard click / strum gesture
+    │
+    ▼
+AudioWorklet (Karplus-Strong synthesis, inline blob)
+    │   delay buffer (length = sample rate / frequency)
+    │   feedback loop → BiquadFilterNode (lowpass, per-string damping)
+    │   noise burst seeds the buffer on each new note
+    │
+    ▼
+GainNode (per-string output)
+    │
+    ▼
+GainNode (master)
+    │
+    ▼
+AudioContext.destination
+```
+
+Each string pluck is a separate AudioWorkletNode. The worklet holds its own ring buffer — no OscillatorNode is used. Damping coefficients (0.493–0.498) are tuned per string so lower strings decay more slowly, matching physical behaviour.
+
+---
+
 ## Guitar Neck
 
 - Full 21-fret neck in standard EADGBE tuning
