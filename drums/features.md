@@ -18,14 +18,22 @@
   - Loop length: 1 / 2 / 4 / 8 bars
   - **Free timing** (default) — records exactly when you tap
   - **Snap to grid** — snaps each hit to nearest 16th note
-  - After recording: sheet reopens with pending take row showing ▶ (loop on pads) and → Seq immediately — no save required to hear it
+  - Progress bar counts down by ~1/8 beat during recording so you know time remaining
+  - After recording: save state appears with ▶ (loop on pads) and name+save input; no save required to hear it
+  - Pending take survives preview — pressing ▶ to audition does not discard the take; stopping playback re-shows the save form
   - Backdrop tap does not dismiss sheet while a pending unsaved take exists — prevents accidental loss
   - ✕ explicitly discards the pending take
   - Takes saved as beat-relative events under `beatlab:drums:rec:<name>`; BPM-agnostic so playback is correct at any tempo
   - No-hits feedback: amber hint if nothing was tapped during recording
+  - Any action (Record, play a take) stops existing playback first
 - **Live take looping** — saved takes can be looped directly on the pads without converting to the step grid; BPM-aware (stretches/compresses live with tempo changes); animates pads in sync; runs independently alongside the step sequencer
 - **Takes in Patterns dropdown** — saved takes appear in a "Takes" section of the Patterns menu so they're accessible without opening the Rec sheet
 - **→ Seq** — loads a take into the step sequencer grid (converts beat-relative events to step indices) and switches to Sequencer view
+- **Desktop right panel** (≥900px) — permanent 280px panel on the right side of the screen:
+  - **Pads mode**: recording controls (loop length, timing, ⏺ Rec) + saved takes list; play/stop buttons sync with pad animations
+  - **Sequencer mode**: built-in presets + saved patterns list + name-and-save input
+  - Mobile (<900px): panel hidden; existing bottom sheet and Patterns topbar dropdown unchanged
+  - View separation: takes never appear in Sequencer panel; step patterns never appear in Pads panel
 - **Cross-track drag** in sequencer — paint or erase steps across all tracks in any direction; single container listener with setPointerCapture
 - **Time signature** — 1–32 beats/bar; changes step count live, rebuilds grid
 - **Per-track step length (polymeter)** — each track loops independently; tracks drift in and out of phase automatically
