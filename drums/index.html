@@ -1289,6 +1289,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
 </script>
 
 <style>
+  /* Sequencer: full-screen blocker in portrait */
   #rotate-prompt {
     display: none; position: fixed; inset: 0; z-index: 9999;
     background: var(--bg); flex-direction: column; align-items: center; justify-content: center; gap: 16px;
@@ -1296,7 +1297,29 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   }
   body.is-touch.is-portrait:not(.pads-mode) #rotate-prompt { display: flex; }
   #rotate-prompt svg { opacity: 0.4; }
+
+  /* Pads: soft hint banner in landscape */
+  #pads-landscape-hint {
+    display: none;
+    position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+    z-index: 200;
+    background: rgba(14,19,24,0.92); backdrop-filter: blur(12px);
+    border: 1px solid rgba(245,166,35,0.3); border-radius: 999px;
+    padding: 8px 16px 8px 14px;
+    display: none; align-items: center; gap: 10px;
+    font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--amber);
+    white-space: nowrap;
+    animation: hint-in 200ms ease;
+  }
+  @keyframes hint-in { from { opacity:0; transform: translateX(-50%) translateY(8px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
+  #pads-landscape-hint.visible { display: flex; }
+  #pads-hint-dismiss {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 0.75rem; padding: 0 2px; line-height: 1; transition: color 120ms;
+  }
+  #pads-hint-dismiss:hover { color: var(--amber); }
 </style>
+
 <div id="rotate-prompt">
   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
     <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
@@ -1304,17 +1327,52 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   </svg>
   Rotate to landscape
 </div>
+
+<div id="pads-landscape-hint">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.7;flex-shrink:0">
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+  </svg>
+  Portrait works better for pads
+  <button id="pads-hint-dismiss">✕</button>
+</div>
+
 <script>
 (function() {
   var isTouch = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
-  if (isTouch) {
-    document.body.classList.add('is-touch');
-    function checkOrientation() {
-      document.body.classList.toggle('is-portrait', window.innerHeight > window.innerWidth);
+  if (!isTouch) return;
+
+  document.body.classList.add('is-touch');
+
+  var hint = document.getElementById('pads-landscape-hint');
+  var hintDismissed = false;
+
+  function checkOrientation() {
+    var isPortrait = window.innerHeight > window.innerWidth;
+    document.body.classList.toggle('is-portrait', isPortrait);
+
+    // Show pads landscape hint when: touch device, pads mode, landscape, not dismissed
+    var inPadsMode = document.body.classList.contains('pads-mode');
+    if (inPadsMode && !isPortrait && !hintDismissed) {
+      hint.classList.add('visible');
+    } else {
+      hint.classList.remove('visible');
     }
-    checkOrientation();
-    window.addEventListener('resize', checkOrientation);
+    // Reset dismissed flag when they go back to portrait (so hint reappears if they go landscape again)
+    if (isPortrait) hintDismissed = false;
   }
+
+  document.getElementById('pads-hint-dismiss').addEventListener('click', function(e) {
+    e.stopPropagation();
+    hintDismissed = true;
+    hint.classList.remove('visible');
+  });
+
+  // Re-evaluate hint when mode changes (pads-mode class toggled by setMode())
+  var modeObs = new MutationObserver(checkOrientation);
+  modeObs.observe(document.body, { attributeFilter: ['class'] });
+
+  checkOrientation();
+  window.addEventListener('resize', checkOrientation);
 })();
 </script>
 </body>
