@@ -65,9 +65,17 @@ const CSS = `
 
   /* Shared topbar divider — usable by all apps */
   .topbar-divider-v { width: 1px; height: 24px; background: var(--divider, #1a2830); flex-shrink: 0; }
+
+  /* App name label injected by topnav */
+  .bl-app-name {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text, #d4e8e0); white-space: nowrap;
+    flex-shrink: 0;
+  }
+  @media (max-width: 600px) { .bl-app-name { display: none; } }
 `;
 
-export function initTopnav({ current = '', root = '../' } = {}) {
+export function initTopnav({ current = '', root = '../', label = '' } = {}) {
   // Inject CSS once
   if (!document.getElementById('bl-topnav-css')) {
     const style = document.createElement('style');
@@ -118,12 +126,18 @@ export function initTopnav({ current = '', root = '../' } = {}) {
 
   document.body.appendChild(menu);
 
-  // Prepend logo + divider to #topbar (supports id="topbar", id="top-bar", .topbar)
+  // Prepend logo [+ name] + divider to #topbar (supports id="topbar", id="top-bar", .topbar)
   const topbar = document.getElementById('topbar')
     || document.getElementById('top-bar')
     || document.querySelector('.topbar');
   if (topbar) {
     topbar.insertBefore(divider, topbar.firstChild);
+    if (label) {
+      const nameEl = document.createElement('span');
+      nameEl.className = 'bl-app-name';
+      nameEl.textContent = label;
+      topbar.insertBefore(nameEl, topbar.firstChild);
+    }
     topbar.insertBefore(logoBtn, topbar.firstChild);
   }
 

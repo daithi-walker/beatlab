@@ -56,7 +56,7 @@
   .ctrl-value:focus { outline: none; border-bottom-color: var(--teal); }
   .ctrl-value::-webkit-inner-spin-button,
   .ctrl-value::-webkit-outer-spin-button { -webkit-appearance: none; }
-  #bpm-slider, #vol-slider { width: 72px; }
+  #vol-slider { width: 72px; }
   #right-controls { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
   /* ── TOPBAR DROPDOWNS ─────────────────────────────────────── */
@@ -90,6 +90,11 @@
     overflow: hidden; flex-direction: column;
   }
   #app-nav-menu { min-width: 160px; }
+  .bl-app-name {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text); white-space: nowrap; flex-shrink: 0;
+  }
+  @media (max-width: 600px) { .bl-app-name { display: none; } }
   .tb-drop-menu.open { display: flex; }
   .tb-drop-item {
     display: flex; align-items: center; gap: 10px;
@@ -418,6 +423,8 @@
     <button id="app-logo-btn" title="BeatLab apps"><img src="../icon.png" alt="BeatLab"></button>
   </div>
 
+  <span class="bl-app-name">Drums</span>
+
   <div class="divider-v"></div>
 
   <!-- View dropdown: Sequencer / Pads -->
@@ -477,11 +484,6 @@
     <div class="ctrl-group">
       <span class="ctrl-label">Vol</span>
       <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.5">
-    </div>
-    <div class="ctrl-group" id="bpm-group">
-      <span class="ctrl-label">BPM</span>
-      <input type="range" id="bpm-slider" min="60" max="200" value="120">
-      <input type="number" class="ctrl-value" id="bpm-value" min="60" max="200" value="120">
     </div>
   </div>
 </header>
@@ -1484,7 +1486,6 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     document.getElementById('patterns-drop').style.display = isSeq ? '' : 'none';
     document.getElementById('patterns-divider').style.display = isSeq ? '' : 'none';
     document.getElementById('kit-drop').style.display = '';
-    document.getElementById('bpm-group').style.display = isSeq ? '' : 'none';
     recTrigger.style.display = isSeq ? 'none' : 'flex';
     document.getElementById('seq-view').classList.toggle('hidden', !isSeq);
     document.getElementById('beat-row').classList.toggle('hidden', !isSeq);
@@ -2053,6 +2054,11 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
 </div>
 <div class="tb-drop-menu" id="kit-menu"></div>
 <div class="tb-drop-menu" id="timing-menu">
+  <div class="timing-row">
+    <span class="timing-lbl">BPM</span>
+    <input type="range" id="bpm-slider" min="60" max="200" value="120" style="width:90px;">
+    <input type="number" class="ctrl-value" id="bpm-value" min="60" max="200" value="120">
+  </div>
   <div class="timing-row">
     <span class="timing-lbl">Steps</span>
     <button class="tb-drop-item" id="steps-btn" style="flex:1;padding:4px 8px;">16</button>
