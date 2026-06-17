@@ -130,7 +130,8 @@
 
   /* ── PATTERNS ─────────────────────────────────────────────── */
   .tb-drop-section-lbl { padding: 6px 14px 3px; font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
-  #patterns-list { max-height: 160px; overflow-y: auto; }
+  #patterns-menu { max-height: calc(100vh - var(--topbar-h) - 24px); overflow-y: auto; overflow-x: hidden; }
+  #patterns-list { max-height: none; }
   .pattern-row { display: flex; align-items: center; gap: 6px; padding: 7px 14px; cursor: pointer; transition: background 100ms; }
   .pattern-row:hover { background: rgba(0,229,204,0.08); }
   .pattern-row-name { flex: 1; font-size: 0.72rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
