@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nectar — Chord Identify</title>
+  <title>Nectar — BeatLab</title>
+  <link rel="icon" type="image/png" href="../icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet">
   <style>
@@ -259,8 +260,6 @@
 <body>
   <div id="app">
     <header id="top-bar">
-      <a href="../index.html" class="home-link">⌂ BeatLab</a>
-      <div class="topbar-divider"></div>
       <span class="wordmark">Nectar</span>
       <div class="topbar-divider"></div>
       <a href="index.html" class="nectar-tab">Scales</a>
@@ -1046,5 +1045,9 @@ registerProcessor('ks', KSProcessor);
     <p>Rotate for best experience</p>
   </div>
 
+<script type="module">
+import { initTopnav } from '../core/topnav.js';
+initTopnav({ current: 'nectar', root: '../' });
+</script>
 </body>
 </html>

@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Multibank — 16-step synth</title>
+<title>Multibank — BeatLab</title>
+<link rel="icon" type="image/png" href="../icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -322,8 +323,6 @@
 <body>
 
 <header id="topbar">
-  <a href="../index.html" class="topbar-btn" style="text-decoration:none;font-size:11px;letter-spacing:.08em;">⌂ BeatLab</a>
-  <div class="divider-v"></div>
   <div class="logo">Multibank</div>
   <button class="topbar-btn" id="play-btn">▶ Play</button>
 
@@ -387,6 +386,8 @@
 <script type="module">
 import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNoise, distCurve as makeDistortionCurve } from '../core/audio.js';
 import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/storage.js';
+import { initTopnav } from '../core/topnav.js';
+initTopnav({ current: 'multibank', root: '../' });
 
 (() => {
   'use strict';

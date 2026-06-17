@@ -123,33 +123,13 @@
 
   /* mode-tab removed — replaced by view dropdown */
 
-  /* ── PATTERNS POPOVER ────────────────────────────────────── */
-  .patterns-group { position: relative; }
-  #patterns-popover {
-    display: none; position: absolute; top: calc(100% + 6px); right: 0;
-    min-width: 200px; background: var(--surface); border: 1px solid var(--divider);
-    border-radius: 8px; z-index: 300; box-shadow: 0 8px 24px rgba(0,0,0,0.5); overflow: hidden;
-  }
-  #patterns-popover.open { display: flex; flex-direction: column; }
-  #patterns-list { max-height: 200px; overflow-y: auto; }
+  /* ── PATTERNS ─────────────────────────────────────────────── */
   .pattern-row { display: flex; align-items: center; gap: 6px; padding: 7px 10px; cursor: pointer; transition: background 100ms; }
   .pattern-row:hover { background: rgba(0,229,204,0.08); }
   .pattern-row-name { flex: 1; font-size: 0.72rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pattern-row-del { background: none; border: none; color: var(--faint); cursor: pointer; font-size: 0.72rem; padding: 2px 4px; transition: color 120ms; }
   .pattern-row-del:hover { color: var(--pink); }
-  #patterns-list-empty { padding: 12px 10px; font-size: 0.68rem; color: var(--muted); }
-  #patterns-save-row { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid var(--divider); }
-  #patterns-name-input {
-    flex: 1; background: var(--surface-2); border: 1px solid var(--divider); border-radius: 4px;
-    color: var(--text); font-size: 0.72rem; padding: 4px 8px; font-family: inherit; outline: none;
-  }
-  #patterns-name-input:focus { border-color: var(--teal); }
-  #patterns-save-btn {
-    background: rgba(0,229,204,0.12); border: 1px solid rgba(0,229,204,0.3);
-    border-radius: 4px; color: var(--teal); cursor: pointer; font-size: 0.68rem;
-    letter-spacing: 0.06em; padding: 4px 10px; font-family: inherit; transition: background 120ms;
-  }
-  #patterns-save-btn:hover { background: rgba(0,229,204,0.22); }
+  #patterns-list-empty { padding: 8px 10px; font-size: 0.68rem; color: var(--muted); }
 
   /* ── SEQUENCER VIEW ───────────────────────────────────────── */
   #seq-view {
@@ -241,7 +221,8 @@
   .step.current { border-color: #fff; }
   .step.on.current { background: #fff; border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,0.5); }
   /* loop-length marker — dim steps beyond a track's own length */
-  .step.beyond { opacity: 0.25; }
+  .step.beyond { opacity: 0.3; }
+  .step.beyond.on { opacity: 0.55; }
   .step-gap { width: 4px; height: 34px; }
   @media (pointer: coarse) { .step { height: 40px; border-radius: 6px; background: #1a2830; } }
   .section-label { font-size: 0.52rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); padding: 8px 0 2px var(--label-w); }
@@ -445,7 +426,7 @@
   <!-- Kit dropdown -->
   <div class="tb-drop" id="kit-drop">
     <button class="tb-drop-btn" id="kit-drop-btn">
-      808
+      Kit
       <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     </button>
   </div>
@@ -472,15 +453,11 @@
     <button class="topbar-btn" id="clear-btn">Reset</button>
     <div class="divider-v"></div>
     <button class="topbar-btn" id="share-btn">Share</button>
-    <div class="patterns-group">
-      <button class="topbar-btn" id="patterns-btn">Patterns ▾</button>
-      <div id="patterns-popover">
-        <div id="patterns-list"></div>
-        <div id="patterns-save-row">
-          <input id="patterns-name-input" type="text" placeholder="pattern name" spellcheck="false">
-          <button id="patterns-save-btn">Save</button>
-        </div>
-      </div>
+    <div class="tb-drop" id="patterns-drop">
+      <button class="tb-drop-btn" id="patterns-btn">
+        Patterns
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
     </div>
   </div>
 
@@ -938,6 +915,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
 
     view.addEventListener('pointerdown', e => {
       const btn = e.target.closest('.step'); if (!btn) return;
+      if (btn.classList.contains('beyond')) return; // grey zone is read-only
       e.preventDefault();
       const ts = state[btn.dataset.trackId]; if (!ts) return;
       const s = parseInt(btn.dataset.step, 10);
@@ -986,9 +964,10 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   function euclidean(hits, steps) {
     if (hits <= 0) return Array(steps).fill(false);
     hits = Math.min(hits, steps);
-    const pattern = Array(steps).fill(false);
-    for (let i = 0; i < hits; i++) pattern[Math.floor(i * steps / hits)] = true;
-    return pattern;
+    // Bjorklund: step s gets a hit if floor(s*hits/steps) != floor((s-1)*hits/steps)
+    return Array.from({ length: steps }, (_, s) =>
+      Math.floor(s * hits / steps) !== Math.floor((s - 1) * hits / steps)
+    );
   }
 
   let openEuclidPop = null;
@@ -1104,7 +1083,8 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     const len = ts.trackLen || STEPS;
     for (let s = 0; s < STEPS; s++) {
       if (s > 0 && s % STEPS_PER_BEAT === 0) { const gap = document.createElement('div'); gap.className = 'step-gap'; grid.appendChild(gap); }
-      const cell = ts.steps[s] || { on: false, prob: 100 };
+      // For steps in the grey "beyond" zone, show what will actually play (the loop repeat)
+      const cell = ts.steps[s % len] || { on: false, prob: 100 };
       const btn = document.createElement('div');
       btn.className = 'step' + (cell.on ? ' on' : '') + (s >= len ? ' beyond' : '');
       btn.dataset.trackId = track.id; btn.dataset.step = s;
@@ -1160,7 +1140,10 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     const menu = document.getElementById('kit-menu');
     const dropBtn = document.getElementById('kit-drop-btn');
     if (menu) menu.querySelectorAll('.tb-drop-item').forEach(b => b.classList.toggle('active', b.textContent === currentKit));
-    if (dropBtn) dropBtn.childNodes[0].textContent = currentKit;
+    if (dropBtn) {
+      const txt = Array.from(dropBtn.childNodes).find(n => n.nodeType === 3 && n.textContent.trim());
+      if (txt) txt.textContent = currentKit;
+    }
   }
 
   /* ── PADS VIEW ────────────────────────────────────────────── */
@@ -1174,13 +1157,12 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
       btn.textContent = kit;
       btn.addEventListener('click', () => {
         currentKit = kit;
-        dropBtn.childNodes[0].textContent = kit;
-        menu.querySelectorAll('.tb-drop-item').forEach(b => b.classList.toggle('active', b.textContent === kit));
+        syncKitUI();
         closeAllDrops();
       });
       menu.appendChild(btn);
     });
-    dropBtn.childNodes[0].textContent = currentKit;
+    syncKitUI();
   }
 
   function firePad(id, padEl) {
@@ -1466,7 +1448,9 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     const label = isSeq ? 'Sequencer' : 'Pads';
     document.getElementById('mode-seq-btn').classList.toggle('active', isSeq);
     document.getElementById('mode-pads-btn').classList.toggle('active', !isSeq);
-    document.getElementById('view-drop-btn').childNodes[0].textContent = label;
+    const viewBtn = document.getElementById('view-drop-btn');
+    const viewTxt = Array.from(viewBtn.childNodes).find(n => n.nodeType === 3 && n.textContent.trim());
+    if (viewTxt) viewTxt.textContent = label;
     document.getElementById('seq-controls').style.display = isSeq ? 'contents' : 'none';
     document.getElementById('timing-drop').style.display = isSeq ? '' : 'none';
     document.getElementById('kit-drop').style.display = '';
@@ -1610,14 +1594,105 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     names.forEach(name => {
       const row = document.createElement('div'); row.className = 'pattern-row';
       const nameEl = document.createElement('span'); nameEl.className = 'pattern-row-name'; nameEl.textContent = name;
-      nameEl.addEventListener('click', () => { applyState(loadPattern(APP_ID, name)); closePatterns(); });
+      nameEl.addEventListener('click', () => { applyState(loadPattern(APP_ID, name)); closeAllDrops(); });
       const del = document.createElement('button'); del.className = 'pattern-row-del'; del.textContent = '✕';
       del.addEventListener('click', e => { e.stopPropagation(); deletePattern(APP_ID, name); renderPatternList(); });
       row.appendChild(nameEl); row.appendChild(del); list.appendChild(row);
     });
   }
 
-  function closePatterns() { document.getElementById('patterns-popover').classList.remove('open'); }
+  function closePatterns() { document.getElementById('patterns-menu').classList.remove('open'); }
+
+  /* ── BUILT-IN PRESETS ─────────────────────────────────────── */
+  // Each preset is a full applyState-compatible object.
+  // trackLen drives the polyrhythm — 0 means follow global STEPS.
+  const PRESETS = [
+    {
+      name: 'Four on the Floor',
+      state: {
+        bpm: 120, beatsPerBar: 4, steps: 16, kit: '808',
+        tracks: {
+          kick:    { muted:false, trackLen:0, steps: on([0,4,8,12]) },
+          snare:   { muted:false, trackLen:0, steps: on([4,12]) },
+          hihat:   { muted:false, trackLen:0, steps: on([0,2,4,6,8,10,12,14]) },
+          clap:    { muted:false, trackLen:0, steps: blank() },
+          openhat: { muted:false, trackLen:0, steps: blank() },
+          crash:   { muted:false, trackLen:0, steps: on([0]) },
+          tomhi:   { muted:false, trackLen:0, steps: blank() },
+          tomlo:   { muted:false, trackLen:0, steps: blank() },
+          rim:     { muted:false, trackLen:0, steps: blank() },
+          shaker:  { muted:false, trackLen:0, steps: blank() },
+          cowbell: { muted:false, trackLen:0, steps: blank() },
+          clave:   { muted:false, trackLen:0, steps: blank() },
+        }
+      }
+    },
+    {
+      name: 'Polyrhythm 3/5/7',
+      state: {
+        bpm: 110, beatsPerBar: 4, steps: 16, kit: '808',
+        tracks: {
+          kick:    { muted:false, trackLen:12, steps: eucPre(3,12) },  // 3-cycle
+          snare:   { muted:false, trackLen:20, steps: eucPre(5,20) },  // 5-cycle
+          hihat:   { muted:false, trackLen:28, steps: eucPre(7,28) },  // 7-cycle
+          clap:    { muted:false, trackLen:0,  steps: blank() },
+          openhat: { muted:false, trackLen:0,  steps: blank() },
+          crash:   { muted:false, trackLen:0,  steps: blank() },
+          tomhi:   { muted:false, trackLen:0,  steps: blank() },
+          tomlo:   { muted:false, trackLen:0,  steps: blank() },
+          rim:     { muted:false, trackLen:0,  steps: blank() },
+          shaker:  { muted:false, trackLen:0,  steps: blank() },
+          cowbell: { muted:false, trackLen:0,  steps: blank() },
+          clave:   { muted:false, trackLen:0,  steps: blank() },
+        }
+      }
+    },
+    {
+      name: 'Clave Groove',
+      state: {
+        bpm: 95, beatsPerBar: 4, steps: 16, kit: 'Lo-Fi',
+        tracks: {
+          kick:    { muted:false, trackLen:0,  steps: on([0,6,10]) },
+          snare:   { muted:false, trackLen:0,  steps: on([4,12]) },
+          hihat:   { muted:false, trackLen:0,  steps: on([0,2,4,6,8,10,12,14]) },
+          clap:    { muted:false, trackLen:0,  steps: blank() },
+          openhat: { muted:false, trackLen:0,  steps: on([6]) },
+          crash:   { muted:false, trackLen:0,  steps: blank() },
+          tomhi:   { muted:false, trackLen:0,  steps: blank() },
+          tomlo:   { muted:false, trackLen:0,  steps: blank() },
+          rim:     { muted:false, trackLen:0,  steps: blank() },
+          shaker:  { muted:false, trackLen:12, steps: eucPre(5,12) },
+          cowbell: { muted:false, trackLen:0,  steps: blank() },
+          clave:   { muted:false, trackLen:16, steps: on([0,3,6,10,13]) },
+        }
+      }
+    },
+  ];
+
+  function blank() { return Array(32).fill(null).map(() => ({ on: false, prob: 100 })); }
+  function on(indices) {
+    const a = blank();
+    indices.forEach(i => { if (i < 32) a[i].on = true; });
+    return a;
+  }
+  function eucPre(hits, steps) {
+    const pattern = euclidean(hits, steps);
+    const a = blank();
+    pattern.forEach((v, i) => { if (i < 32) a[i].on = v; });
+    return a;
+  }
+
+  function renderPresets() {
+    const list = document.getElementById('presets-list');
+    list.innerHTML = '';
+    PRESETS.forEach(p => {
+      const row = document.createElement('div'); row.className = 'pattern-row';
+      const nameEl = document.createElement('span'); nameEl.className = 'pattern-row-name'; nameEl.textContent = p.name;
+      nameEl.addEventListener('click', () => { applyState(p.state); closeAllDrops(); });
+      row.appendChild(nameEl);
+      list.appendChild(row);
+    });
+  }
 
   /* ── TOPBAR DROPDOWNS ─────────────────────────────────────── */
   function closeAllDrops() {
@@ -1647,16 +1722,29 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   wireDropdown('kit-drop-btn', 'kit-menu');
   wireDropdown('timing-drop-btn', 'timing-menu');
 
+  // Patterns dropdown — body-level like all others
+  (function() {
+    const btn = document.getElementById('patterns-btn');
+    const menu = document.getElementById('patterns-menu');
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const wasOpen = menu.classList.contains('open');
+      closeAllDrops();
+      if (!wasOpen) {
+        renderPresets();
+        renderPatternList();
+        const rect = btn.getBoundingClientRect();
+        menu.style.left = rect.left + 'px';
+        menu.classList.add('open');
+        btn.classList.add('open');
+      }
+    });
+  })();
+
   document.addEventListener('pointerdown', e => {
-    if (!e.target.closest('.tb-drop') && !e.target.closest('.tb-drop-menu') && !e.target.closest('.patterns-group')) closeAllDrops();
+    if (!e.target.closest('.tb-drop') && !e.target.closest('.tb-drop-menu')) closeAllDrops();
   });
 
-  document.getElementById('patterns-btn').addEventListener('click', e => {
-    e.stopPropagation();
-    const pop = document.getElementById('patterns-popover');
-    if (!pop.classList.contains('open')) renderPatternList();
-    pop.classList.toggle('open');
-  });
   document.getElementById('patterns-save-btn').addEventListener('click', () => {
     const input = document.getElementById('patterns-name-input');
     const name = input.value.trim(); if (!name) { input.focus(); return; }
@@ -1664,10 +1752,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   });
   document.getElementById('patterns-name-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('patterns-save-btn').click();
-    if (e.key === 'Escape') closePatterns();
-  });
-  document.addEventListener('click', e => {
-    if (!e.target.closest('.patterns-group')) closePatterns();
+    if (e.key === 'Escape') closeAllDrops();
   });
 
   /* ── VOLUME & BPM ─────────────────────────────────────────── */
@@ -1915,6 +2000,17 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   <div class="timing-row">
     <span class="timing-lbl">Beats/bar</span>
     <input type="number" class="ctrl-value" id="timesig-input" min="1" max="32" value="4" style="width:3ch;">
+  </div>
+</div>
+<div class="tb-drop-menu" id="patterns-menu" style="min-width:220px;">
+  <div style="padding:6px 10px 4px;font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);">Presets</div>
+  <div id="presets-list"></div>
+  <div class="tb-drop-divider"></div>
+  <div style="padding:6px 10px 4px;font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);">Saved</div>
+  <div id="patterns-list" style="max-height:160px;overflow-y:auto;"></div>
+  <div id="patterns-save-row" style="display:flex;gap:6px;padding:8px 10px;border-top:1px solid var(--divider);">
+    <input id="patterns-name-input" type="text" placeholder="name and save…" spellcheck="false" style="flex:1;background:var(--surface-2);border:1px solid var(--divider);border-radius:4px;color:var(--text);font-size:0.72rem;padding:4px 8px;font-family:inherit;outline:none;">
+    <button id="patterns-save-btn" style="background:rgba(0,229,204,0.12);border:1px solid rgba(0,229,204,0.3);border-radius:4px;color:var(--teal);cursor:pointer;font-size:0.68rem;letter-spacing:0.06em;padding:4px 10px;font-family:inherit;">Save</button>
   </div>
 </div>
 </body>
