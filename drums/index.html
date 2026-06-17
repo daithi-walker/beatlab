@@ -333,7 +333,10 @@
     <div class="divider-v"></div>
     <button class="topbar-btn" id="play-btn">▶ Play</button>
     <button class="topbar-btn" id="steps-btn">16 steps</button>
-    <button class="topbar-btn" id="timesig-btn">4/4</button>
+    <div class="ctrl-group">
+      <input type="number" class="ctrl-value" id="timesig-input" min="2" max="16" value="4" style="width:2.6ch;" title="Beats per bar">
+      <span class="ctrl-label">/4</span>
+    </div>
     <button class="topbar-btn" id="mute-all-btn">Mute All</button>
     <button class="topbar-btn" id="clear-btn">Clear</button>
     <div class="divider-v"></div>
@@ -449,15 +452,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   const TICK_MS   = 25;
 
   const STEPS_PER_BEAT = 4; // 16th-note resolution — never changes
-  const TIME_SIGS = [
-    { label: '4/4', beats: 4 },
-    { label: '3/4', beats: 3 },
-    { label: '5/4', beats: 5 },
-    { label: '6/8', beats: 6 },
-    { label: '7/8', beats: 7 },
-  ];
-  let timeSigIdx  = 0;
-  let BEATS_PER_BAR = TIME_SIGS[timeSigIdx].beats;
+  let BEATS_PER_BAR = 4;
   let STEPS = BEATS_PER_BAR * STEPS_PER_BEAT; // 16
   let bpm   = 120;
   let mode  = 'seq';
@@ -1179,17 +1174,22 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   });
 
   /* ── TIME SIG ─────────────────────────────────────────────── */
-  document.getElementById('timesig-btn').addEventListener('click', () => {
+  function applyTimeSig(beats) {
+    beats = Math.max(2, Math.min(16, beats));
+    if (!isFinite(beats) || beats === BEATS_PER_BAR) return;
     const wasPlaying = playing;
     if (wasPlaying) stopTransport();
-    timeSigIdx = (timeSigIdx + 1) % TIME_SIGS.length;
-    BEATS_PER_BAR = TIME_SIGS[timeSigIdx].beats;
+    BEATS_PER_BAR = beats;
     STEPS = BEATS_PER_BAR * STEPS_PER_BEAT;
-    document.getElementById('timesig-btn').textContent = TIME_SIGS[timeSigIdx].label;
+    document.getElementById('timesig-input').value = beats;
     document.getElementById('steps-btn').textContent = STEPS + ' steps';
     currentStep = 0; buildGrid(); rebuildBeatRow();
     if (wasPlaying) startTransport();
-  });
+  }
+
+  const timeSigInput = document.getElementById('timesig-input');
+  timeSigInput.addEventListener('change', e => applyTimeSig(parseInt(e.target.value, 10)));
+  timeSigInput.addEventListener('keydown', e => { if (e.key === 'Enter') { applyTimeSig(parseInt(timeSigInput.value, 10)); timeSigInput.blur(); } });
 
   /* ── CLEAR ────────────────────────────────────────────────── */
   document.getElementById('clear-btn').addEventListener('click', () => {
@@ -1216,7 +1216,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
 
   /* ── PATTERNS ─────────────────────────────────────────────── */
   function captureState() {
-    const out = { bpm, steps: STEPS, timeSig: TIME_SIGS[timeSigIdx].label, kit: currentKit, tracks: {} };
+    const out = { bpm, steps: STEPS, beatsPerBar: BEATS_PER_BAR, kit: currentKit, tracks: {} };
     TRACKS.forEach(t => { out.tracks[t.id] = { steps: [...state[t.id].steps], muted: state[t.id].muted }; });
     return out;
   }
@@ -1224,14 +1224,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   function applyState(saved) {
     if (playing) stopTransport();
     if (saved.bpm) setBpm(saved.bpm);
-    if (saved.timeSig) {
-      const idx = TIME_SIGS.findIndex(t => t.label === saved.timeSig);
-      if (idx >= 0) {
-        timeSigIdx = idx;
-        BEATS_PER_BAR = TIME_SIGS[idx].beats;
-        document.getElementById('timesig-btn').textContent = saved.timeSig;
-      }
-    }
+    if (saved.beatsPerBar) applyTimeSig(saved.beatsPerBar);
     if (saved.steps && saved.steps !== STEPS) {
       STEPS = saved.steps;
       document.getElementById('steps-btn').textContent = STEPS + ' steps';
