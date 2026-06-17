@@ -43,7 +43,6 @@
   }
   .topbar-btn:hover   { background: rgba(0,229,204,0.16); }
   .topbar-btn.playing { background: rgba(0,229,204,0.18); border-color: var(--teal); }
-  .logo { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--teal); flex-shrink: 0; }
   .divider-v { width: 1px; height: 24px; background: var(--divider); flex-shrink: 0; }
   .ctrl-group { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
   .ctrl-label { font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
@@ -59,6 +58,59 @@
   #bpm-slider, #vol-slider { width: 72px; }
   #right-controls { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
+  /* ── TOPBAR DROPDOWNS ─────────────────────────────────────── */
+  .tb-drop { position: relative; flex-shrink: 0; }
+  .tb-drop-btn {
+    font-family: inherit; font-size: 0.68rem; letter-spacing: 0.06em;
+    color: var(--text); background: none; border: none;
+    padding: 6px 8px; cursor: pointer; white-space: nowrap;
+    display: flex; align-items: center; gap: 5px;
+    border-radius: 6px; transition: background 120ms, color 120ms;
+  }
+  .tb-drop-btn:hover { background: rgba(255,255,255,0.05); }
+  .tb-drop-btn.open { color: var(--teal); }
+  .tb-drop-btn svg { opacity: 0.45; transition: opacity 120ms; }
+  .tb-drop-btn.open svg, .tb-drop-btn:hover svg { opacity: 0.8; }
+
+  /* App logo button */
+  #app-logo-btn {
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(0,229,204,0.12); border: 1px solid rgba(0,229,204,0.25);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background 120ms; padding: 0;
+    font-size: 0.6rem; font-weight: 700; letter-spacing: 0.04em; color: var(--teal);
+    font-family: inherit;
+  }
+  #app-logo-btn:hover { background: rgba(0,229,204,0.22); }
+  #app-logo-btn.open { background: rgba(0,229,204,0.22); }
+
+  .tb-drop-menu {
+    display: none; position: absolute; top: calc(100% + 6px); left: 0;
+    min-width: 180px; background: var(--surface); border: 1px solid var(--divider);
+    border-radius: 8px; z-index: 300; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    overflow: hidden; flex-direction: column;
+  }
+  #app-nav-menu { min-width: 160px; }
+  .tb-drop-menu.open { display: flex; }
+  .tb-drop-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 14px; cursor: pointer; font-size: 0.72rem; color: var(--text);
+    transition: background 100ms; text-decoration: none; white-space: nowrap;
+    background: none; border: none; font-family: inherit; width: 100%; text-align: left;
+  }
+  .tb-drop-item:hover { background: rgba(0,229,204,0.08); color: var(--teal); }
+  .tb-drop-item.active { color: var(--teal); }
+  .tb-drop-item .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .tb-drop-divider { height: 1px; background: var(--divider); margin: 4px 0; }
+
+  /* Timing dropdown inner layout */
+  #timing-menu { min-width: 200px; padding: 10px 14px; gap: 10px; }
+  .timing-row { display: flex; align-items: center; gap: 8px; }
+  .timing-lbl { font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); width: 60px; }
+
+  /* Kit selector — now a dropdown */
+  #kit-selector { display: none; }
+
   /* Rec trigger in topbar (pads mode only) */
   #pads-rec-trigger {
     display: none; font-family: inherit; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
@@ -70,15 +122,7 @@
   #pads-rec-trigger.recording { background: var(--pink); color: #fff; border-color: var(--pink); animation: pulse-rec 500ms ease-in-out infinite; }
   @keyframes pulse-rec { 0%,100% { opacity:1; box-shadow: 0 0 10px var(--pink); } 50% { opacity:0.7; box-shadow: none; } }
 
-  /* ── MODE TABS ────────────────────────────────────────────── */
-  .mode-tab {
-    font-family: inherit; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--muted); background: none; border: none; border-bottom: 2px solid transparent;
-    padding: 6px 10px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
-    transition: color 120ms, border-color 120ms;
-  }
-  .mode-tab.active { color: var(--teal); border-bottom-color: var(--teal); }
-  .mode-tab:hover:not(.active) { color: var(--text); }
+  /* mode-tab removed — replaced by view dropdown */
 
   /* ── PATTERNS POPOVER ────────────────────────────────────── */
   .patterns-group { position: relative; }
@@ -222,14 +266,6 @@
   }
   #pads-view.active { display: flex; }
 
-  #kit-selector { display: flex; gap: 6px; flex-shrink: 0; }
-  .kit-btn {
-    font-family: inherit; font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--muted); background: none; border: 1px solid var(--divider); border-radius: 6px;
-    padding: 4px 10px; cursor: pointer; transition: all 120ms; white-space: nowrap;
-  }
-  .kit-btn:hover { color: var(--text); border-color: var(--muted); }
-  .kit-btn.active { color: var(--teal); border-color: var(--teal); background: rgba(0,229,204,0.1); }
 
   #pad-grid {
     display: grid;
@@ -389,26 +425,71 @@
 <body>
 
 <header id="topbar">
-  <a href="../index.html" class="topbar-btn" style="text-decoration:none;font-size:11px;letter-spacing:.08em;">⌂ BeatLab</a>
-  <div class="divider-v"></div>
-  <div class="logo">Drums</div>
+
+  <!-- BeatLab nav dropdown -->
+  <div class="tb-drop" id="app-nav-drop">
+    <button id="app-logo-btn" title="BeatLab apps">BL</button>
+    <div class="tb-drop-menu" id="app-nav-menu">
+      <a class="tb-drop-item active" href="index.html"><span class="dot" style="background:var(--green)"></span>Drums</a>
+      <a class="tb-drop-item" href="../multibank/index.html"><span class="dot" style="background:var(--teal)"></span>Multibank</a>
+      <a class="tb-drop-item" href="../synth/index.html"><span class="dot" style="background:var(--amber)"></span>Synth</a>
+      <a class="tb-drop-item" href="../nectar/index.html"><span class="dot" style="background:var(--purple)"></span>Nectar</a>
+    </div>
+  </div>
+
   <div class="divider-v"></div>
 
-  <button class="mode-tab active" id="mode-seq-btn">Sequencer</button>
-  <button class="mode-tab" id="mode-pads-btn">Pads</button>
+  <!-- View dropdown: Sequencer / Pads -->
+  <div class="tb-drop" id="view-drop">
+    <button class="tb-drop-btn" id="view-drop-btn">
+      Sequencer
+      <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+    <div class="tb-drop-menu" id="view-menu">
+      <button class="tb-drop-item active" id="mode-seq-btn">Sequencer</button>
+      <button class="tb-drop-item" id="mode-pads-btn">Pads</button>
+    </div>
+  </div>
 
   <div class="divider-v"></div>
-  <div id="kit-selector"></div>
+
+  <!-- Kit dropdown -->
+  <div class="tb-drop" id="kit-drop">
+    <button class="tb-drop-btn" id="kit-drop-btn">
+      808
+      <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+    <div class="tb-drop-menu" id="kit-menu"></div>
+  </div>
+
+  <div class="divider-v"></div>
+
+  <!-- Timing dropdown: steps + time sig -->
+  <div class="tb-drop" id="timing-drop">
+    <button class="tb-drop-btn" id="timing-drop-btn">
+      Timing
+      <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+    <div class="tb-drop-menu" id="timing-menu">
+      <div class="timing-row">
+        <span class="timing-lbl">Steps</span>
+        <button class="tb-drop-item" id="steps-btn" style="flex:1;padding:4px 8px;">16</button>
+      </div>
+      <div class="timing-row">
+        <span class="timing-lbl">Beats/bar</span>
+        <input type="number" class="ctrl-value" id="timesig-input" min="1" max="32" value="4" style="width:3ch;">
+      </div>
+    </div>
+  </div>
+
+  <div class="divider-v"></div>
+
+  <!-- hidden kit-selector kept for JS compat -->
+  <div id="kit-selector" style="display:none;"></div>
 
   <!-- Sequencer-only controls -->
   <div id="seq-controls" style="display:contents;">
-    <div class="divider-v"></div>
     <button class="topbar-btn" id="play-btn">▶ Play</button>
-    <button class="topbar-btn" id="steps-btn">16 steps</button>
-    <div class="ctrl-group">
-      <input type="number" class="ctrl-value" id="timesig-input" min="1" max="32" value="4" style="width:2.6ch;" title="Beats per bar">
-      <span class="ctrl-label">/4</span>
-    </div>
     <button class="topbar-btn" id="mute-all-btn">Mute All</button>
     <button class="topbar-btn" id="clear-btn">Reset</button>
     <div class="divider-v"></div>
@@ -425,7 +506,6 @@
   </div>
 
   <div id="right-controls">
-    <!-- Pads-mode record trigger -->
     <button id="pads-rec-trigger">⏺ Rec</button>
     <div class="ctrl-group">
       <span class="ctrl-label">Vol</span>
@@ -1097,20 +1177,31 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     }
   }
 
+  function syncKitUI() {
+    const menu = document.getElementById('kit-menu');
+    const dropBtn = document.getElementById('kit-drop-btn');
+    if (menu) menu.querySelectorAll('.tb-drop-item').forEach(b => b.classList.toggle('active', b.textContent === currentKit));
+    if (dropBtn) dropBtn.childNodes[0].textContent = currentKit;
+  }
+
   /* ── PADS VIEW ────────────────────────────────────────────── */
   function buildKitSelector() {
-    const sel = document.getElementById('kit-selector');
-    sel.innerHTML = '';
+    const menu = document.getElementById('kit-menu');
+    const dropBtn = document.getElementById('kit-drop-btn');
+    menu.innerHTML = '';
     Object.keys(KITS).forEach(kit => {
       const btn = document.createElement('button');
-      btn.className = 'kit-btn' + (kit === currentKit ? ' active' : '');
+      btn.className = 'tb-drop-item' + (kit === currentKit ? ' active' : '');
       btn.textContent = kit;
       btn.addEventListener('click', () => {
         currentKit = kit;
-        sel.querySelectorAll('.kit-btn').forEach(b => b.classList.toggle('active', b.textContent === kit));
+        dropBtn.childNodes[0].textContent = kit;
+        menu.querySelectorAll('.tb-drop-item').forEach(b => b.classList.toggle('active', b.textContent === kit));
+        closeAllDrops();
       });
-      sel.appendChild(btn);
+      menu.appendChild(btn);
     });
+    dropBtn.childNodes[0].textContent = currentKit;
   }
 
   function firePad(id, padEl) {
@@ -1375,7 +1466,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     const targetSteps = take.bars * BEATS_PER_BAR * STEPS_PER_BEAT;
     if (targetSteps !== STEPS) {
       STEPS = targetSteps;
-      document.getElementById('steps-btn').textContent = STEPS + ' steps';
+      document.getElementById('steps-btn').textContent = STEPS;
     }
     take.events.forEach(ev => {
       const step = Math.round(ev.beat * STEPS_PER_BEAT) % STEPS;
@@ -1383,7 +1474,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     });
     if (take.kit && KITS[take.kit]) {
       currentKit = take.kit;
-      document.querySelectorAll('.kit-btn').forEach(b => b.classList.toggle('active', b.textContent === currentKit));
+      syncKitUI();
     }
     buildGrid(); rebuildBeatRow();
     setMode('seq');
@@ -1393,9 +1484,13 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   function setMode(m) {
     mode = m;
     const isSeq = m === 'seq';
+    const label = isSeq ? 'Sequencer' : 'Pads';
     document.getElementById('mode-seq-btn').classList.toggle('active', isSeq);
     document.getElementById('mode-pads-btn').classList.toggle('active', !isSeq);
+    document.getElementById('view-drop-btn').childNodes[0].textContent = label;
     document.getElementById('seq-controls').style.display = isSeq ? 'contents' : 'none';
+    document.getElementById('timing-drop').style.display = isSeq ? '' : 'none';
+    document.getElementById('kit-drop').style.display = '';
     document.getElementById('bpm-group').style.display = isSeq ? '' : 'none';
     recTrigger.style.display = isSeq ? 'none' : '';
     document.getElementById('seq-view').classList.toggle('hidden', !isSeq);
@@ -1404,6 +1499,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     document.body.classList.toggle('pads-mode', !isSeq);
     if (!isSeq && playing) stopTransport();
     if (isSeq) closeRecSheet();
+    closeAllDrops();
   }
 
   document.getElementById('mode-seq-btn').addEventListener('click', () => setMode('seq'));
@@ -1416,7 +1512,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     // Toggle between 1-bar and 2-bar at current time sig
     const onebar = BEATS_PER_BAR * STEPS_PER_BEAT;
     STEPS = STEPS === onebar ? onebar * 2 : onebar;
-    document.getElementById('steps-btn').textContent = STEPS + ' steps';
+    document.getElementById('steps-btn').textContent = STEPS;
     currentStep = 0; buildGrid(); rebuildBeatRow();
     if (wasPlaying) startTransport();
   });
@@ -1430,7 +1526,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     BEATS_PER_BAR = beats;
     STEPS = BEATS_PER_BAR * STEPS_PER_BEAT;
     document.getElementById('timesig-input').value = beats;
-    document.getElementById('steps-btn').textContent = STEPS + ' steps';
+    document.getElementById('steps-btn').textContent = STEPS;
     currentStep = 0; buildGrid(); rebuildBeatRow();
     if (wasPlaying) startTransport();
   }
@@ -1497,11 +1593,11 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     if (saved.beatsPerBar) applyTimeSig(saved.beatsPerBar);
     if (saved.steps && saved.steps !== STEPS) {
       STEPS = saved.steps;
-      document.getElementById('steps-btn').textContent = STEPS + ' steps';
+      document.getElementById('steps-btn').textContent = STEPS;
     }
     if (saved.kit && KITS[saved.kit]) {
       currentKit = saved.kit;
-      document.querySelectorAll('.kit-btn').forEach(b => b.classList.toggle('active', b.textContent === currentKit));
+      syncKitUI();
     }
     TRACKS.forEach(t => {
       if (saved.tracks?.[t.id]) {
@@ -1543,6 +1639,33 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   }
 
   function closePatterns() { document.getElementById('patterns-popover').classList.remove('open'); }
+
+  /* ── TOPBAR DROPDOWNS ─────────────────────────────────────── */
+  function closeAllDrops() {
+    document.querySelectorAll('.tb-drop-menu.open').forEach(m => m.classList.remove('open'));
+    document.querySelectorAll('.tb-drop-btn.open, #app-logo-btn.open').forEach(b => b.classList.remove('open'));
+    closePatterns();
+  }
+
+  function wireDropdown(btnId, menuId) {
+    const btn = document.getElementById(btnId);
+    const menu = document.getElementById(menuId);
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const wasOpen = menu.classList.contains('open');
+      closeAllDrops();
+      if (!wasOpen) { menu.classList.add('open'); btn.classList.add('open'); }
+    });
+  }
+
+  wireDropdown('app-logo-btn', 'app-nav-menu');
+  wireDropdown('view-drop-btn', 'view-menu');
+  wireDropdown('kit-drop-btn', 'kit-menu');
+  wireDropdown('timing-drop-btn', 'timing-menu');
+
+  document.addEventListener('pointerdown', e => {
+    if (!e.target.closest('.tb-drop') && !e.target.closest('#app-nav-drop') && !e.target.closest('.patterns-group')) closeAllDrops();
+  });
 
   document.getElementById('patterns-btn').addEventListener('click', e => {
     e.stopPropagation();
