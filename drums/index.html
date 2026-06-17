@@ -222,11 +222,11 @@
   }
   #pads-view.active { display: flex; }
 
-  #kit-selector { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; flex-shrink: 0; }
+  #kit-selector { display: flex; gap: 6px; flex-shrink: 0; }
   .kit-btn {
-    font-family: inherit; font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
+    font-family: inherit; font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--muted); background: none; border: 1px solid var(--divider); border-radius: 6px;
-    padding: 5px 14px; cursor: pointer; transition: all 120ms;
+    padding: 4px 10px; cursor: pointer; transition: all 120ms; white-space: nowrap;
   }
   .kit-btn:hover { color: var(--text); border-color: var(--muted); }
   .kit-btn.active { color: var(--teal); border-color: var(--teal); background: rgba(0,229,204,0.1); }
@@ -397,17 +397,20 @@
   <button class="mode-tab active" id="mode-seq-btn">Sequencer</button>
   <button class="mode-tab" id="mode-pads-btn">Pads</button>
 
+  <div class="divider-v"></div>
+  <div id="kit-selector"></div>
+
   <!-- Sequencer-only controls -->
   <div id="seq-controls" style="display:contents;">
     <div class="divider-v"></div>
     <button class="topbar-btn" id="play-btn">▶ Play</button>
     <button class="topbar-btn" id="steps-btn">16 steps</button>
     <div class="ctrl-group">
-      <input type="number" class="ctrl-value" id="timesig-input" min="2" max="16" value="4" style="width:2.6ch;" title="Beats per bar">
+      <input type="number" class="ctrl-value" id="timesig-input" min="1" max="32" value="4" style="width:2.6ch;" title="Beats per bar">
       <span class="ctrl-label">/4</span>
     </div>
     <button class="topbar-btn" id="mute-all-btn">Mute All</button>
-    <button class="topbar-btn" id="clear-btn">Clear</button>
+    <button class="topbar-btn" id="clear-btn">Reset</button>
     <div class="divider-v"></div>
     <div class="patterns-group">
       <button class="topbar-btn" id="patterns-btn">Patterns ▾</button>
@@ -439,9 +442,8 @@
 <!-- Sequencer view -->
 <div id="seq-view"></div>
 
-<!-- Pads view — clean, just kit + pads -->
+<!-- Pads view -->
 <div id="pads-view" style="position:relative;">
-  <div id="kit-selector"></div>
   <div id="pad-grid" style="position:relative;">
     <div id="rec-countdown-pill"></div>
   </div>
@@ -925,16 +927,9 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   function euclidean(hits, steps) {
     if (hits <= 0) return Array(steps).fill(false);
     hits = Math.min(hits, steps);
-    let pattern = Array.from({ length: steps }, (_, i) => i < hits);
-    let groups = [pattern.filter(Boolean).map(() => [true]), pattern.filter(b => !b).map(() => [false])];
-    while (groups[1].length > 1) {
-      const [longer, shorter] = groups[0].length >= groups[1].length ? [groups[0], groups[1]] : [groups[1], groups[0]];
-      const merged = shorter.map((s, i) => longer[i].concat(s));
-      const remainder = longer.slice(shorter.length);
-      groups = remainder.length ? [merged, remainder] : [merged, []];
-      if (!groups[1].length) break;
-    }
-    return groups.flat().map(g => g[0]);
+    const pattern = Array(steps).fill(false);
+    for (let i = 0; i < hits; i++) pattern[Math.floor(i * steps / hits)] = true;
+    return pattern;
   }
 
   let openEuclidPop = null;
@@ -1428,7 +1423,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
 
   /* ── TIME SIG ─────────────────────────────────────────────── */
   function applyTimeSig(beats) {
-    beats = Math.max(2, Math.min(16, beats));
+    beats = Math.max(1, Math.min(32, beats));
     if (!isFinite(beats) || beats === BEATS_PER_BAR) return;
     const wasPlaying = playing;
     if (wasPlaying) stopTransport();
@@ -1446,8 +1441,23 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
 
   /* ── CLEAR ────────────────────────────────────────────────── */
   document.getElementById('clear-btn').addEventListener('click', () => {
-    TRACKS.forEach(t => { state[t.id].steps.forEach(c => { c.on = false; c.prob = 100; }); });
-    document.querySelectorAll('.step.on').forEach(el => { el.classList.remove('on'); delete el.dataset.prob; });
+    if (playing) stopTransport();
+    // Reset all track state
+    TRACKS.forEach(t => {
+      const ts = state[t.id];
+      ts.steps.forEach(c => { c.on = false; c.prob = 100; });
+      ts.muted = false;
+      ts.trackLen = 0;
+      ts.trackPos = 0;
+    });
+    // Reset time signature and BPM to defaults
+    BEATS_PER_BAR = 0; // force applyTimeSig to not early-return
+    applyTimeSig(4);
+    setBpm(120);
+    // Reset mute-all button state
+    allMuted = false;
+    muteAllBtn.textContent = 'Mute All';
+    muteAllBtn.style.color = muteAllBtn.style.borderColor = muteAllBtn.style.background = '';
   });
 
   /* ── MUTE ALL ─────────────────────────────────────────────── */
@@ -1590,26 +1600,6 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
 
   /* ── INIT ─────────────────────────────────────────────────── */
   buildGrid(); rebuildBeatRow(); buildKitSelector(); buildPads(); initSeqDrag();
-
-  // Preload a waltz pattern in 3/4 at 160 BPM
-  (function loadWaltz() {
-    applyTimeSig(3);        // 3 beats per bar → 12 steps
-    setBpm(160);
-
-    // Classic waltz: STRONG beat 1 (kick + crash), light beats 2 & 3 (hi-hat)
-    // Steps:  0  1  2  3  | 4  5  6  7  | 8  9  10 11
-    // Beat:   1            | 2           | 3
-    const hits = {
-      kick:    [0],
-      crash:   [0],
-      hihat:   [4, 8],
-      rim:     [6],         // light "and" of beat 2 — gives it the lilt
-    };
-    Object.entries(hits).forEach(([id, steps]) => {
-      steps.forEach(s => { state[id].steps[s].on = true; });
-    });
-    buildGrid();
-  })();
 
 })();
 </script>

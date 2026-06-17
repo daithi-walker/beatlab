@@ -21,6 +21,12 @@
   - **→ Seq** button loads a take into the step sequencer grid and switches to Sequencer view
   - No-hits feedback: if nothing was recorded, sheet reopens with an amber hint
 - **Cross-track drag** in sequencer — dragging in any direction (horizontal, vertical, diagonal) paints or erases steps across all tracks; single container listener with setPointerCapture
+- **Time signature** — free number input (1–32 beats/bar) in topbar; changes step count live, rebuilds grid
+- **Per-track step length (polymeter)** — each track has its own loop length independent of the global bar length. Set it per-track via a small input in the track label. Tracks drift in and out of phase automatically as they loop at different lengths.
+- **Step probability** — right-click (or long-press on mobile) an active step to cycle its fire chance: 100% → 75% → 50% → 25%. Displayed as a darkening overlay + percentage label on the step button.
+- **Euclidean rhythm generator** — per-track "E" button opens a popover: dial in hits and total steps, click Fill. Spaces hits as evenly as possible using Bresenham's line algorithm. Always starts on beat 1. Classic patterns: E(3,8) = son clave, E(5,8) = bossa nova, E(7,12) = cascara.
+- **Kit selector in topbar** — 4 kits (808, Acoustic, Lo-Fi, Electronic) always visible in both Sequencer and Pads modes
+- **Reset** — single button restores all steps, mutes, per-track lengths, time signature (4/4), and BPM (120) to defaults
 - **BPM** — slider + editable number input, bidirectional sync
 - **Master volume** — slider in topbar
 - **Lookahead scheduler** — 25ms tick, 100ms lookahead; timing locked to audio clock
@@ -31,15 +37,8 @@
 
 ## Next Steps
 
-- **Per-track step length (polymeter)** — each track loops at its own step count independently of the global. Kick at 16, hi-hat at 12, cowbell at 7 — they drift in and out of phase creating evolving patterns. Each track needs its own `currentStep` counter mod its own length; scheduler already calls per-track so the change is contained.
-
-- **Step probability** — each step gets a 0–100% chance of firing on any given pass through the loop. The most musical form of "randomness" — a ghost snare at 30%, cowbell at 15% — generative without being chaotic. Store a `vel` (0–100) alongside the boolean `on` per step; scheduler rolls `Math.random()` on fire.
-
-- **Euclidean rhythm generator** — distribute N hits as evenly as possible across M steps (Bjorklund algorithm). Automatically generates clave, bossa nova, Afrobeat patterns. "3 hits in 8 steps" = son clave. Add a small popover per track: hits / steps → fill button.
-
 - **Swing** — offset odd 16th notes by a percentage; single `swingAmount` param in `scheduleStep()`
 - **Per-step velocity** — a second row per track (or hold-to-set) lets steps play at different volumes
 - **Take playback in Pads** — replay a saved take through the pads view so hits animate as they play
 - **Overdub** — record additional taps on top of an existing take without clearing it
 - **WAV export** — render the current pattern to a downloadable file via `OfflineAudioContext`
-- **Variable pattern length per track** — each track loops at its own step count (polyrhythm)
