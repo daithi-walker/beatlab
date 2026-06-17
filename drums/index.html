@@ -22,6 +22,7 @@
     --pink:      #ff6b9d;
     --topbar-h:  52px;
     --label-w:   88px;
+    --panel-w:   280px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; }
@@ -427,6 +428,83 @@
     padding: 8px 18px; backdrop-filter: blur(12px); z-index: 20; transition: opacity 300ms;
   }
   #audio-banner.hidden { opacity: 0; pointer-events: none; }
+
+  /* ── DESKTOP RIGHT PANEL ──────────────────────────────────── */
+  #rec-panel {
+    display: none;
+    position: fixed; top: var(--topbar-h); right: 0; bottom: 0;
+    width: var(--panel-w);
+    background: var(--surface); border-left: 1px solid var(--divider);
+    flex-direction: column; overflow-y: auto; z-index: 50;
+  }
+  #rp-pads, #rp-seq { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .rp-header {
+    font-size: 0.62rem; font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted);
+    padding-bottom: 10px; border-bottom: 1px solid var(--divider); flex-shrink: 0;
+  }
+  .rp-section-lbl { font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  #rp-rec-btn {
+    width: 100%; font-family: inherit; font-size: 0.78rem; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--pink); background: rgba(255,107,157,0.1);
+    border: 1px solid rgba(255,107,157,0.35); border-radius: 10px;
+    padding: 12px; cursor: pointer; transition: background 120ms;
+  }
+  #rp-rec-btn:hover { background: rgba(255,107,157,0.2); }
+  #rp-rec-btn.recording { background: var(--pink); color: #fff; border-color: var(--pink); animation: pulse-rec 500ms ease-in-out infinite; }
+
+  /* Progress bar */
+  #rp-progress-track {
+    height: 4px; border-radius: 2px; background: var(--divider); overflow: hidden;
+  }
+  #rp-progress-bar {
+    height: 100%; border-radius: 2px; background: var(--pink);
+    width: 100%; transition: width 200ms linear;
+  }
+  #rp-progress-label {
+    font-size: 0.62rem; color: var(--muted); margin-top: 6px; text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Takes / patterns lists in panel — reuse existing .take-row, .pattern-row styles */
+  #rp-takes-list .take-row, #rp-patterns-list .pattern-row { padding: 6px 0; }
+  #rp-takes-list-empty, #rp-patterns-list-empty { font-size: 0.68rem; color: var(--muted); padding: 4px 0; }
+
+  /* Save row in panel */
+  #rp-save .rec-save-row, #rp-patterns-save-row { margin-top: 0; }
+  #rp-name-input, #rp-patterns-name-input {
+    flex: 1; background: var(--surface-2); border: 1px solid var(--divider); border-radius: 6px;
+    color: var(--text); font-size: 0.8rem; padding: 7px 10px; font-family: inherit; outline: none;
+    transition: border-color 120ms;
+  }
+  #rp-name-input:focus { border-color: var(--purple); }
+  #rp-patterns-name-input:focus { border-color: var(--teal); }
+  #rp-save-btn, #rp-patterns-save-btn {
+    background: rgba(176,111,255,0.12); border: 1px solid rgba(176,111,255,0.3);
+    border-radius: 6px; color: var(--purple); cursor: pointer; font-size: 0.7rem;
+    letter-spacing: 0.06em; padding: 7px 12px; font-family: inherit; white-space: nowrap; transition: background 120ms;
+  }
+  #rp-save-btn:hover { background: rgba(176,111,255,0.22); }
+  #rp-patterns-save-btn {
+    background: rgba(0,229,204,0.12); border-color: rgba(0,229,204,0.3); color: var(--teal);
+  }
+  #rp-patterns-save-btn:hover { background: rgba(0,229,204,0.22); }
+
+  /* Countdown pill also visible on desktop (in panel area) */
+  #rp-countdown { font-size: 0.8rem; font-weight: 700; color: var(--amber); text-align: center; }
+  #rp-countdown.go { color: var(--pink); }
+
+  /* ── DESKTOP BREAKPOINT ───────────────────────────────────── */
+  @media (min-width: 900px) {
+    #rec-panel { display: flex; }
+    #seq-view  { right: var(--panel-w); }
+    #pads-view { right: var(--panel-w); }
+    /* Suppress mobile-only UI */
+    #rec-sheet, #rec-sheet-backdrop { display: none !important; }
+    #patterns-drop, #patterns-divider { display: none !important; }
+    #pads-rec-trigger, #pads-takes-btn { display: none !important; }
+  }
 </style>
 </head>
 <body>
@@ -905,10 +983,14 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
   }
 
   function stopLiveLoop() {
+    const wasPending = liveLoop?._name === '__pending__';
     liveLoop = null;
     clearInterval(liveLoopTimer); liveLoopTimer = null;
-    renderTakesList();
-    updatePadsTakesBtn();
+    if (wasPending && pendingTake) {
+      showSaveState();   // mobile sheet
+      showRpSave();      // desktop panel
+    }
+    renderTakesList(); renderTakesNav(); updatePadsTakesBtn(); renderRpTakesList();
   }
 
   function tickLiveLoop(now) {
@@ -1365,9 +1447,9 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
 
   function closeRecSheet(force = false) {
     if (recActive) stopRecording();
-    // Don't dismiss on backdrop tap if there's an unsaved pending take
     if (!force && pendingTake) return;
-    pendingTake = null;
+    // Keep pendingTake alive while we're previewing it via live loop
+    if (!(liveLoop && liveLoop._name === '__pending__')) pendingTake = null;
     recSheet.classList.remove('open');
     recBackdrop.classList.remove('open');
   }
@@ -1395,21 +1477,21 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     openRecSheet();
   });
 
-  /* Bar length chips */
+  /* Bar length chips — cross-sync sheet and panel */
   let recBars = 1;
   document.querySelectorAll('.bar-chip').forEach(chip => {
     chip.addEventListener('click', () => {
       recBars = parseInt(chip.dataset.bars, 10);
-      document.querySelectorAll('.bar-chip').forEach(c => c.classList.toggle('active', c === chip));
+      document.querySelectorAll('.bar-chip').forEach(c => c.classList.toggle('active', c.dataset.bars === chip.dataset.bars));
     });
   });
 
-  /* Timing options */
+  /* Timing options — cross-sync sheet and panel */
   let recQuantize = false;
   document.querySelectorAll('.timing-opt').forEach(opt => {
     opt.addEventListener('click', () => {
       recQuantize = opt.dataset.quantize === 'true';
-      document.querySelectorAll('.timing-opt').forEach(o => o.classList.toggle('active', o === opt));
+      document.querySelectorAll('.timing-opt').forEach(o => o.classList.toggle('active', o.dataset.quantize === opt.dataset.quantize));
     });
   });
 
@@ -1425,7 +1507,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
   }
 
   /* ── RECORDING ────────────────────────────────────────────── */
-  let recActive = false, recStartTime = 0, recEvents = [], pendingTake = null, recTimer = null;
+  let recActive = false, recStartTime = 0, recEvents = [], pendingTake = null, recTimer = null, progressTimer = null;
 
   document.getElementById('rec-start-btn').addEventListener('click', startCountIn);
 
@@ -1433,7 +1515,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     if (!ctx) initAudio();
     ctx.resume();
 
-    // Close sheet immediately so pads are visible and tappable
+    // Close sheet so pads are visible and tappable
     recSheet.classList.remove('open');
     recBackdrop.classList.remove('open');
 
@@ -1443,6 +1525,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     let n = 4;
     countdownPill.textContent = n;
     countdownPill.className = 'visible';
+    showRpCountdown(n);
 
     const iv = setInterval(() => {
       n--;
@@ -1450,9 +1533,12 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
         clearInterval(iv);
         countdownPill.textContent = '● REC';
         countdownPill.className = 'visible go';
+        const cd = document.getElementById('rp-countdown');
+        cd.textContent = '● REC'; cd.className = 'go';
         beginRecording(now + 4 * beatDuration());
       } else {
         countdownPill.textContent = n;
+        showRpCountdown(n);
       }
     }, beatDuration() * 1000);
   }
@@ -1474,12 +1560,26 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     const totalBeats = recBars * BEATS_PER_BAR;
     for (let i = 0; i <= totalBeats; i++) scheduleClick(startTime + i * beatDuration(), i % BEATS_PER_BAR === 0);
 
-    const msDuration = recBars * BEATS_PER_BAR * beatDuration() * 1000;
+    const totalSec = totalBeats * beatDuration();
+    const msDuration = totalSec * 1000;
     recTimer = setTimeout(stopRecording, msDuration + (startTime - ctx.currentTime) * 1000);
+
+    // Progress bar — ticks every ~125ms (1/8 beat at 120bpm)
+    showRpRecording();
+    progressTimer = setInterval(() => {
+      const elapsed = Math.max(0, ctx.currentTime - recStartTime);
+      const pct = Math.min(1, elapsed / totalSec);
+      const beatsLeft = Math.max(0, Math.ceil((totalSec - elapsed) / beatDuration()));
+      const bar = document.getElementById('rp-progress-bar');
+      const lbl = document.getElementById('rp-progress-label');
+      if (bar) bar.style.width = (100 * (1 - pct)) + '%';
+      if (lbl) lbl.textContent = beatsLeft + ' beat' + (beatsLeft !== 1 ? 's' : '') + ' left';
+    }, 125);
   }
 
   function stopRecording() {
     clearTimeout(recTimer);
+    clearInterval(progressTimer); progressTimer = null;
     if (!recActive) return;
     recActive = false;
     recTrigger.classList.remove('recording');
@@ -1516,10 +1616,11 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
 
     pendingTake = { version: 1, bpm, bars: recBars, kit: currentKit, quantized: recQuantize, events };
 
-    // Reopen sheet to save state
+    // Show save state — sheet on mobile, panel on desktop
     recSheet.classList.add('open');
     recBackdrop.classList.add('open');
     showSaveState();
+    showRpSave();
   }
 
   /* ── TAKES LIST ───────────────────────────────────────────── */
@@ -1569,14 +1670,65 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     if (!name || !pendingTake) { input.focus(); return; }
     savePattern(REC_ID, name, pendingTake);
     input.value = ''; pendingTake = null;
-    renderTakesList();
-    renderTakesNav();
-    showSetupState();
+    renderTakesList(); renderTakesNav(); renderRpTakesList();
+    showSetupState(); showRpSetup();
   });
 
   document.getElementById('takes-name-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('takes-save-btn').click();
     if (e.key === 'Escape') closeRecSheet();
+  });
+
+  /* ── DESKTOP PANEL WIRING ─────────────────────────────────── */
+  // Bar chips and timing opts are handled globally above — no panel-specific listeners needed.
+
+  // Rec button in panel
+  document.getElementById('rp-rec-btn').addEventListener('click', () => {
+    if (recActive) { stopRecording(); return; }
+    startCountIn();
+  });
+
+  // Play/stop pending take in panel
+  document.getElementById('rp-play-btn').addEventListener('click', () => {
+    if (!pendingTake) return;
+    const btn = document.getElementById('rp-play-btn');
+    if (liveLoop && liveLoop._name === '__pending__') {
+      stopLiveLoop();
+      btn.textContent = '▶'; btn.classList.remove('active');
+      return;
+    }
+    startLiveLoop(pendingTake, '__pending__');
+    btn.textContent = '◼'; btn.classList.add('active');
+    // Also sync mobile pending play btn
+    const mpb = document.getElementById('pending-play-btn');
+    if (mpb) { mpb.textContent = '◼'; mpb.classList.add('active'); }
+  });
+
+  // Save take from panel
+  document.getElementById('rp-save-btn').addEventListener('click', () => {
+    const input = document.getElementById('rp-name-input');
+    const name = input.value.trim();
+    if (!name || !pendingTake) { input.focus(); return; }
+    savePattern(REC_ID, name, pendingTake);
+    input.value = ''; pendingTake = null;
+    renderRpTakesList(); renderTakesList(); renderTakesNav();
+    showRpSetup();
+    showSetupState();
+  });
+  document.getElementById('rp-name-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('rp-save-btn').click();
+  });
+
+  // Panel patterns save
+  document.getElementById('rp-patterns-save-btn').addEventListener('click', () => {
+    const input = document.getElementById('rp-patterns-name-input');
+    const name = input.value.trim(); if (!name) { input.focus(); return; }
+    savePattern(APP_ID, name, captureState());
+    input.value = ''; dirty = false;
+    renderRpPatternList(); renderPatternList();
+  });
+  document.getElementById('rp-patterns-name-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('rp-patterns-save-btn').click();
   });
 
   /* ── LOAD TAKE INTO SEQUENCER ─────────────────────────────── */
@@ -1623,6 +1775,13 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     if (!isSeq && playing) stopTransport();
     if (isSeq) closeRecSheet();
     closeAllDrops();
+    // Desktop panel sections
+    const rpPads = document.getElementById('rp-pads');
+    const rpSeq  = document.getElementById('rp-seq');
+    if (rpPads) rpPads.style.display = isSeq ? 'none' : '';
+    if (rpSeq)  rpSeq.style.display  = isSeq ? '' : 'none';
+    if (isSeq) { renderRpPresets(); renderRpPatternList(); }
+    else { showRpSetup(); renderRpTakesList(); }
   }
 
   document.getElementById('mode-seq-btn').addEventListener('click', () => setMode('seq'));
@@ -1801,6 +1960,119 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
 
   function closePatterns() { document.getElementById('patterns-menu').classList.remove('open'); }
 
+  /* ── DESKTOP PANEL RENDERS ────────────────────────────────── */
+  function renderRpTakesList() {
+    const list = document.getElementById('rp-takes-list');
+    if (!list) return;
+    list.innerHTML = '';
+    const names = listPatterns(REC_ID);
+    if (!names.length) {
+      const em = document.createElement('div'); em.className = 'rp-takes-list-empty';
+      em.style.cssText = 'font-size:0.68rem;color:var(--muted);padding:4px 0;';
+      em.textContent = 'No saved takes yet.'; list.appendChild(em); return;
+    }
+    names.forEach(name => {
+      const row = document.createElement('div'); row.className = 'take-row';
+      const nameEl = document.createElement('span'); nameEl.className = 'take-row-name'; nameEl.textContent = name;
+      const playBtn = document.createElement('button');
+      playBtn.className = 'take-row-play' + (liveLoop?._name === name ? ' active' : '');
+      playBtn.textContent = (liveLoop?._name === name) ? '◼' : '▶';
+      playBtn.title = 'Loop on pads';
+      playBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (liveLoop && liveLoop._name === name) { stopLiveLoop(); return; }
+        const take = loadPattern(REC_ID, name);
+        if (take) startLiveLoop(take, name);
+      });
+      const del = document.createElement('button'); del.className = 'take-row-del'; del.textContent = '✕';
+      del.addEventListener('click', e => { e.stopPropagation(); deletePattern(REC_ID, name); renderRpTakesList(); renderTakesNav(); });
+      row.appendChild(nameEl); row.appendChild(playBtn); row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+
+  function renderRpPatternList() {
+    const list = document.getElementById('rp-patterns-list');
+    if (!list) return;
+    list.innerHTML = '';
+    const names = listPatterns(APP_ID);
+    if (!names.length) {
+      const em = document.createElement('div');
+      em.style.cssText = 'font-size:0.68rem;color:var(--muted);padding:4px 0;';
+      em.textContent = 'No saved patterns yet.'; list.appendChild(em); return;
+    }
+    names.forEach(name => {
+      const row = document.createElement('div'); row.className = 'pattern-row';
+      const nameEl = document.createElement('span'); nameEl.className = 'pattern-row-name'; nameEl.textContent = name;
+      nameEl.addEventListener('click', () => {
+        if (dirty && !confirm(`Load "${name}"? Unsaved changes will be lost.`)) return;
+        applyState(loadPattern(APP_ID, name));
+        document.getElementById('rp-patterns-name-input').value = name;
+      });
+      const del = document.createElement('button'); del.className = 'pattern-row-del'; del.textContent = '✕';
+      del.addEventListener('click', e => { e.stopPropagation(); deletePattern(APP_ID, name); renderRpPatternList(); renderPatternList(); });
+      row.appendChild(nameEl); row.appendChild(del); list.appendChild(row);
+    });
+  }
+
+  function renderRpPresets() {
+    const list = document.getElementById('rp-presets-list');
+    if (!list) return;
+    list.innerHTML = '';
+    PRESETS.forEach(p => {
+      const btn = document.createElement('button'); btn.className = 'tb-drop-item';
+      btn.textContent = p.name;
+      btn.addEventListener('click', () => {
+        if (dirty && !confirm(`Load "${p.name}"? Unsaved changes will be lost.`)) return;
+        applyState(p.state);
+      });
+      list.appendChild(btn);
+    });
+  }
+
+  function showRpSetup() {
+    document.getElementById('rp-setup').style.display = '';
+    document.getElementById('rp-countdown').style.display = 'none';
+    document.getElementById('rp-progress-wrap').style.display = 'none';
+    document.getElementById('rp-save').style.display = 'none';
+    document.getElementById('rp-rec-btn').textContent = '⏺ Record';
+    document.getElementById('rp-rec-btn').classList.remove('recording');
+  }
+
+  function showRpCountdown(n) {
+    document.getElementById('rp-setup').style.display = 'none';
+    const cd = document.getElementById('rp-countdown');
+    cd.style.display = '';
+    cd.textContent = n;
+    cd.className = '';
+    document.getElementById('rp-progress-wrap').style.display = 'none';
+    document.getElementById('rp-save').style.display = 'none';
+  }
+
+  function showRpRecording() {
+    document.getElementById('rp-setup').style.display = 'none';
+    document.getElementById('rp-countdown').style.display = 'none';
+    document.getElementById('rp-progress-wrap').style.display = '';
+    document.getElementById('rp-save').style.display = 'none';
+    document.getElementById('rp-progress-bar').style.width = '100%';
+    document.getElementById('rp-rec-btn').textContent = '◼ Stop';
+    document.getElementById('rp-rec-btn').classList.add('recording');
+  }
+
+  function showRpSave() {
+    document.getElementById('rp-setup').style.display = 'none';
+    document.getElementById('rp-countdown').style.display = 'none';
+    document.getElementById('rp-progress-wrap').style.display = 'none';
+    document.getElementById('rp-save').style.display = '';
+    document.getElementById('rp-rec-btn').textContent = '⏺ Record';
+    document.getElementById('rp-rec-btn').classList.remove('recording');
+    const ppb = document.getElementById('rp-play-btn');
+    if (ppb) { ppb.textContent = '▶'; ppb.classList.remove('active'); }
+    renderRpTakesList();
+    const inp = document.getElementById('rp-name-input');
+    if (inp) inp.focus();
+  }
+
   /* ── BUILT-IN PRESETS ─────────────────────────────────────── */
   // Each preset is a full applyState-compatible object.
   // trackLen drives the polyrhythm — 0 means follow global STEPS.
@@ -1978,7 +2250,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     input.value = '';
     document.getElementById('patterns-save-btn').textContent = 'Save';
     dirty = false;
-    renderPatternList();
+    renderPatternList(); renderRpPatternList();
   });
   document.getElementById('patterns-name-input').addEventListener('input', updateSaveBtn);
   document.getElementById('patterns-name-input').addEventListener('keydown', e => {
@@ -2156,6 +2428,8 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
   if (savedKit && KITS[savedKit]) { currentKit = savedKit; syncKitUI(); }
   renderTakesNav(); updatePadsTakesBtn();
   setMode(localStorage.getItem('beatlab:drums:mode') || 'seq');
+  // Init desktop panel (setMode already handles sections, but ensure lists populated)
+  renderRpTakesList(); renderRpPatternList(); renderRpPresets();
 
 })();
 </script>
@@ -2270,5 +2544,77 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     <div id="takes-nav-list"></div>
   </div>
 </div>
+
+<!-- Desktop right panel (≥900px) -->
+<div id="rec-panel">
+  <!-- Pads mode: recording + takes -->
+  <div id="rp-pads">
+    <div class="rp-header">Record</div>
+
+    <div id="rp-setup">
+      <div class="rp-section-lbl">Loop length</div>
+      <div class="bar-chips" id="rp-bar-chips">
+        <button class="bar-chip active" data-bars="1">1 bar</button>
+        <button class="bar-chip" data-bars="2">2 bars</button>
+        <button class="bar-chip" data-bars="4">4 bars</button>
+        <button class="bar-chip" data-bars="8">8 bars</button>
+      </div>
+      <div class="rp-section-lbl">Timing</div>
+      <div class="timing-options" id="rp-timing-opts">
+        <button class="timing-opt" data-quantize="true">
+          <span class="timing-opt-name">Snap to grid</span>
+          <span class="timing-opt-desc">Aligns to nearest 16th note</span>
+        </button>
+        <button class="timing-opt active" data-quantize="false">
+          <span class="timing-opt-name">Free timing</span>
+          <span class="timing-opt-desc">Records exactly when you tap</span>
+        </button>
+      </div>
+      <button id="rp-rec-btn">⏺ Record</button>
+    </div>
+
+    <!-- Countdown (desktop) -->
+    <div id="rp-countdown" style="display:none;"></div>
+
+    <!-- Progress bar during recording -->
+    <div id="rp-progress-wrap" style="display:none;">
+      <div id="rp-progress-track"><div id="rp-progress-bar"></div></div>
+      <div id="rp-progress-label"></div>
+    </div>
+
+    <!-- Save state after recording -->
+    <div id="rp-save" style="display:none;">
+      <div class="rp-section-lbl">New take</div>
+      <div class="take-row">
+        <span class="take-row-name" style="color:var(--muted);font-style:italic;">unsaved</span>
+        <button id="rp-play-btn" class="take-row-play">▶</button>
+      </div>
+      <div class="rec-save-row" style="margin-top:8px;">
+        <input id="rp-name-input" type="text" placeholder="name and save…" spellcheck="false">
+        <button id="rp-save-btn">Save</button>
+      </div>
+    </div>
+
+    <!-- Takes list (always visible in pads mode) -->
+    <div>
+      <div class="rp-section-lbl">Saved takes</div>
+      <div id="rp-takes-list"></div>
+    </div>
+  </div>
+
+  <!-- Sequencer mode: presets + patterns -->
+  <div id="rp-seq" style="display:none;">
+    <div class="rp-header">Patterns</div>
+    <div class="rp-section-lbl">Presets</div>
+    <div id="rp-presets-list"></div>
+    <div class="rp-section-lbl" style="margin-top:4px;">Saved</div>
+    <div id="rp-patterns-list"></div>
+    <div class="rec-save-row" id="rp-patterns-save-row">
+      <input id="rp-patterns-name-input" type="text" placeholder="name and save…" spellcheck="false">
+      <button id="rp-patterns-save-btn">Save</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
