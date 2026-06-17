@@ -25,46 +25,48 @@
     color: var(--text);
     font-family: 'Space Grotesk', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
-    min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 40px 16px;
+    padding: 24px 16px;
+    overflow-y: auto;
   }
 
   h1 {
-    font-size: clamp(2rem, 10vw, 4rem);
+    font-size: clamp(1.6rem, 6vw, 3rem);
     font-weight: 700;
     letter-spacing: -0.02em;
     color: var(--teal);
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     text-align: center;
   }
 
   .subtitle {
     color: var(--muted);
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    margin-bottom: 40px;
+    margin-bottom: 24px;
     text-align: center;
   }
 
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
     width: 100%;
-    max-width: 900px;
+    max-width: 640px;
   }
 
   a.card {
-    display: block;
+    display: flex;
+    flex-direction: column;
     background: var(--surface);
     border: 1px solid var(--divider);
     border-radius: 12px;
-    padding: 22px 20px;
+    padding: 16px;
     text-decoration: none;
     color: inherit;
     transition: border-color 0.15s;
@@ -72,54 +74,51 @@
   }
 
   @media (hover: hover) {
-    a.card:hover {
-      border-color: var(--teal);
-    }
+    a.card:hover { border-color: var(--teal); }
   }
 
-  a.card:active {
-    border-color: var(--teal);
-    opacity: 0.85;
-  }
+  a.card:active { border-color: var(--teal); opacity: 0.85; }
 
   .card-name {
-    font-size: 1.25rem;
+    font-size: 1rem;
     font-weight: 600;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
   }
 
   .card-name span {
     display: inline-block;
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
-    margin-right: 8px;
-    vertical-align: middle;
-    position: relative;
-    top: -1px;
+    flex-shrink: 0;
   }
 
   .card-desc {
     color: var(--muted);
-    font-size: 0.9rem;
-    line-height: 1.5;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    flex: 1;
   }
 
   .badge {
     display: inline-block;
-    margin-top: 14px;
-    font-size: 0.7rem;
+    margin-top: 10px;
+    font-size: 0.62rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    padding: 3px 8px;
+    padding: 2px 7px;
     border-radius: 4px;
     background: var(--divider);
     color: var(--muted);
+    align-self: flex-start;
   }
 
-  .badge.working { background: #0d2a1a; color: var(--green); }
+  .badge.working  { background: #0d2a1a; color: var(--green); }
   .badge.progress { background: #1a1a08; color: var(--amber); }
-  .badge.early { background: #12081a; color: var(--purple); }
+  .badge.early    { background: #12081a; color: var(--purple); }
 </style>
 </head>
 <body>
@@ -163,7 +162,7 @@
 
 </div>
 
-<p style="margin-top:48px;font-size:0.8rem;color:var(--muted);text-align:center;">
+<p style="margin-top:24px;font-size:0.75rem;color:var(--muted);text-align:center;">
   Also check out <a href="https://thunder-clapper.github.io/torman/" style="color:var(--teal);text-decoration:none;">Torman</a>
   — canvas gesture bass synth by <a href="https://github.com/thunder-clapper" style="color:var(--teal);text-decoration:none;">thunder-clapper</a>.
 </p>
