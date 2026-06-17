@@ -333,6 +333,7 @@
     <div class="divider-v"></div>
     <button class="topbar-btn" id="play-btn">▶ Play</button>
     <button class="topbar-btn" id="steps-btn">16 steps</button>
+    <button class="topbar-btn" id="timesig-btn">4/4</button>
     <button class="topbar-btn" id="mute-all-btn">Mute All</button>
     <button class="topbar-btn" id="clear-btn">Clear</button>
     <div class="divider-v"></div>
@@ -447,10 +448,20 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   const LOOKAHEAD = 0.1;
   const TICK_MS   = 25;
 
-  let STEPS = 16;
+  const STEPS_PER_BEAT = 4; // 16th-note resolution — never changes
+  const TIME_SIGS = [
+    { label: '4/4', beats: 4 },
+    { label: '3/4', beats: 3 },
+    { label: '5/4', beats: 5 },
+    { label: '6/8', beats: 6 },
+    { label: '7/8', beats: 7 },
+  ];
+  let timeSigIdx  = 0;
+  let BEATS_PER_BAR = TIME_SIGS[timeSigIdx].beats;
+  let STEPS = BEATS_PER_BAR * STEPS_PER_BEAT; // 16
   let bpm   = 120;
   let mode  = 'seq';
-  function stepDuration() { return 60 / bpm / 4; }
+  function stepDuration() { return 60 / bpm / STEPS_PER_BEAT; }
   function beatDuration()  { return 60 / bpm; }
 
   /* ── TRACKS ───────────────────────────────────────────────── */
@@ -732,7 +743,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   }
 
   /* ── SEQUENCER GRID ───────────────────────────────────────── */
-  const gridColsStyle = () => `repeat(${STEPS + Math.floor(STEPS / 4) - 1}, 1fr)`;
+  const gridColsStyle = () => `repeat(${STEPS + Math.floor(STEPS / STEPS_PER_BEAT) - 1}, 1fr)`;
 
   function buildGrid() {
     const view = document.getElementById('seq-view');
@@ -745,10 +756,10 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     const nums = document.createElement('div');
     nums.style.cssText = `display:grid;flex:1;grid-template-columns:${gridColsStyle()};gap:2px;`;
     for (let i = 0; i < STEPS; i++) {
-      if (i > 0 && i % 4 === 0) { const gap = document.createElement('div'); gap.style.width = '4px'; nums.appendChild(gap); }
+      if (i > 0 && i % STEPS_PER_BEAT === 0) { const gap = document.createElement('div'); gap.style.width = '4px'; nums.appendChild(gap); }
       const n = document.createElement('div');
-      n.className = 'beat-num' + (i % 4 === 0 ? ' quarter' : '');
-      n.textContent = i % 4 === 0 ? String(Math.floor(i / 4) + 1) : '·';
+      n.className = 'beat-num' + (i % STEPS_PER_BEAT === 0 ? ' quarter' : '');
+      n.textContent = i % STEPS_PER_BEAT === 0 ? String(Math.floor(i / STEPS_PER_BEAT) + 1) : '·';
       nums.appendChild(n);
     }
     header.appendChild(nums); view.appendChild(header);
@@ -815,7 +826,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     grid.style.gridTemplateColumns = gridColsStyle();
     grid.style.setProperty('--accent', track.color);
     for (let s = 0; s < STEPS; s++) {
-      if (s > 0 && s % 4 === 0) { const gap = document.createElement('div'); gap.className = 'step-gap'; grid.appendChild(gap); }
+      if (s > 0 && s % STEPS_PER_BEAT === 0) { const gap = document.createElement('div'); gap.className = 'step-gap'; grid.appendChild(gap); }
       const btn = document.createElement('div');
       btn.className = 'step' + (ts.steps[s] ? ' on' : '');
       btn.dataset.trackId = track.id; btn.dataset.step = s;
@@ -838,7 +849,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     beatRow.innerHTML = '';
     for (let i = 0; i < STEPS; i++) {
       const dot = document.createElement('div');
-      dot.className = 'beat-dot' + (i % 4 === 0 ? ' quarter' : '');
+      dot.className = 'beat-dot' + (i % STEPS_PER_BEAT === 0 ? ' quarter' : '');
       beatRow.appendChild(dot);
     }
   }
@@ -1024,10 +1035,10 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     document.getElementById('pad-grid').classList.add('recording');
 
     // Metronome through the recording window
-    const totalBeats = recBars * 4;
-    for (let i = 0; i <= totalBeats; i++) scheduleClick(startTime + i * beatDuration(), i % 4 === 0);
+    const totalBeats = recBars * BEATS_PER_BAR;
+    for (let i = 0; i <= totalBeats; i++) scheduleClick(startTime + i * beatDuration(), i % BEATS_PER_BAR === 0);
 
-    const msDuration = recBars * 4 * beatDuration() * 1000;
+    const msDuration = recBars * BEATS_PER_BAR * beatDuration() * 1000;
     recTimer = setTimeout(stopRecording, msDuration + (startTime - ctx.currentTime) * 1000);
   }
 
@@ -1056,8 +1067,8 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
 
     let events = recEvents.map(ev => {
       let beat = ev.beat;
-      if (recQuantize) beat = Math.round(beat * 4) / 4;
-      beat = Math.max(0, Math.min(beat, recBars * 4 - 0.001));
+      if (recQuantize) beat = Math.round(beat * STEPS_PER_BEAT) / STEPS_PER_BEAT;
+      beat = Math.max(0, Math.min(beat, recBars * BEATS_PER_BAR - 0.001));
       return { id: ev.id, beat };
     });
     const seen = new Set();
@@ -1118,13 +1129,13 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   function applyTake(take) {
     if (playing) stopTransport();
     TRACKS.forEach(t => { state[t.id].steps.fill(false); });
-    const targetSteps = take.bars <= 1 ? 16 : 32;
+    const targetSteps = take.bars * BEATS_PER_BAR * STEPS_PER_BEAT;
     if (targetSteps !== STEPS) {
       STEPS = targetSteps;
       document.getElementById('steps-btn').textContent = STEPS + ' steps';
     }
     take.events.forEach(ev => {
-      const step = Math.round(ev.beat * 4) % STEPS;
+      const step = Math.round(ev.beat * STEPS_PER_BEAT) % STEPS;
       if (state[ev.id]) state[ev.id].steps[step] = true;
     });
     if (take.kit && KITS[take.kit]) {
@@ -1159,7 +1170,22 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   document.getElementById('steps-btn').addEventListener('click', () => {
     const wasPlaying = playing;
     if (wasPlaying) stopTransport();
-    STEPS = STEPS === 16 ? 32 : 16;
+    // Toggle between 1-bar and 2-bar at current time sig
+    const onebar = BEATS_PER_BAR * STEPS_PER_BEAT;
+    STEPS = STEPS === onebar ? onebar * 2 : onebar;
+    document.getElementById('steps-btn').textContent = STEPS + ' steps';
+    currentStep = 0; buildGrid(); rebuildBeatRow();
+    if (wasPlaying) startTransport();
+  });
+
+  /* ── TIME SIG ─────────────────────────────────────────────── */
+  document.getElementById('timesig-btn').addEventListener('click', () => {
+    const wasPlaying = playing;
+    if (wasPlaying) stopTransport();
+    timeSigIdx = (timeSigIdx + 1) % TIME_SIGS.length;
+    BEATS_PER_BAR = TIME_SIGS[timeSigIdx].beats;
+    STEPS = BEATS_PER_BAR * STEPS_PER_BEAT;
+    document.getElementById('timesig-btn').textContent = TIME_SIGS[timeSigIdx].label;
     document.getElementById('steps-btn').textContent = STEPS + ' steps';
     currentStep = 0; buildGrid(); rebuildBeatRow();
     if (wasPlaying) startTransport();
@@ -1190,7 +1216,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
 
   /* ── PATTERNS ─────────────────────────────────────────────── */
   function captureState() {
-    const out = { bpm, steps: STEPS, kit: currentKit, tracks: {} };
+    const out = { bpm, steps: STEPS, timeSig: TIME_SIGS[timeSigIdx].label, kit: currentKit, tracks: {} };
     TRACKS.forEach(t => { out.tracks[t.id] = { steps: [...state[t.id].steps], muted: state[t.id].muted }; });
     return out;
   }
@@ -1198,6 +1224,14 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   function applyState(saved) {
     if (playing) stopTransport();
     if (saved.bpm) setBpm(saved.bpm);
+    if (saved.timeSig) {
+      const idx = TIME_SIGS.findIndex(t => t.label === saved.timeSig);
+      if (idx >= 0) {
+        timeSigIdx = idx;
+        BEATS_PER_BAR = TIME_SIGS[idx].beats;
+        document.getElementById('timesig-btn').textContent = saved.timeSig;
+      }
+    }
     if (saved.steps && saved.steps !== STEPS) {
       STEPS = saved.steps;
       document.getElementById('steps-btn').textContent = STEPS + ' steps';
