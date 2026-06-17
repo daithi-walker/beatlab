@@ -2440,7 +2440,8 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
   const savedKit = localStorage.getItem('beatlab:drums:kit');
   if (savedKit && KITS[savedKit]) { currentKit = savedKit; syncKitUI(); }
   renderTakesNav(); updatePadsTakesBtn();
-  setMode(localStorage.getItem('beatlab:drums:mode') || 'seq');
+  const defaultMode = window.matchMedia('(pointer: fine)').matches ? 'seq' : 'pads';
+  setMode(localStorage.getItem('beatlab:drums:mode') || defaultMode);
   // Init desktop panel (setMode already handles sections, but ensure lists populated)
   renderRpTakesList(); renderRpPatternList(); renderRpPresets();
 
