@@ -216,6 +216,11 @@
   </div>
 
   <div class="bpm-group">
+    <span class="ctrl-label">Vol</span>
+    <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.85">
+  </div>
+
+  <div class="bpm-group">
     <span class="ctrl-label">BPM</span>
     <input type="range" id="bpm-slider" min="60" max="200" value="120">
     <input type="number" class="ctrl-value" id="bpm-value" min="60" max="200" value="120">
@@ -730,6 +735,10 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   });
 
   /* ── BPM ──────────────────────────────────────────────────── */
+  document.getElementById('vol-slider').addEventListener('input', e => {
+    if (masterGain) masterGain.gain.setTargetAtTime(parseFloat(e.target.value), ctx.currentTime, 0.02);
+  });
+
   const bpmSlider = document.getElementById('bpm-slider');
   const bpmInput  = document.getElementById('bpm-value');
 
