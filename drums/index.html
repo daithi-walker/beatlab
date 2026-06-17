@@ -493,6 +493,7 @@
     <button class="topbar-btn" id="mute-all-btn">Mute All</button>
     <button class="topbar-btn" id="clear-btn">Reset</button>
     <div class="divider-v"></div>
+    <button class="topbar-btn" id="share-btn">Share</button>
     <div class="patterns-group">
       <button class="topbar-btn" id="patterns-btn">Patterns ▾</button>
       <div id="patterns-popover">
@@ -1726,8 +1727,37 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     }, { passive: true })
   );
 
+  /* ── SHARE ────────────────────────────────────────────────── */
+  function encodeState() {
+    try { return btoa(unescape(encodeURIComponent(JSON.stringify(captureState())))); }
+    catch { return null; }
+  }
+
+  function decodeState(hash) {
+    try { return JSON.parse(decodeURIComponent(escape(atob(hash)))); }
+    catch { return null; }
+  }
+
+  document.getElementById('share-btn').addEventListener('click', () => {
+    const encoded = encodeState();
+    if (!encoded) return;
+    const url = location.href.split('#')[0] + '#' + encoded;
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = document.getElementById('share-btn');
+      btn.textContent = 'Copied!';
+      btn.style.color = 'var(--teal)';
+      setTimeout(() => { btn.textContent = 'Share'; btn.style.color = ''; }, 2000);
+    });
+  });
+
   /* ── INIT ─────────────────────────────────────────────────── */
   buildGrid(); rebuildBeatRow(); buildKitSelector(); buildPads(); initSeqDrag();
+
+  // Restore from shared URL if present
+  if (location.hash.length > 1) {
+    const saved = decodeState(location.hash.slice(1));
+    if (saved) applyState(saved);
+  }
 
 })();
 </script>
