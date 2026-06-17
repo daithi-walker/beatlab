@@ -767,6 +767,31 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     });
   }
 
+  // Global drag state — shared across all rows so vertical drag works
+  let seqDragIntent = null;
+  function initSeqDrag() {
+    const view = document.getElementById('seq-view');
+    view.addEventListener('pointerdown', e => {
+      const btn = e.target.closest('.step'); if (!btn) return;
+      e.preventDefault();
+      const ts = state[btn.dataset.trackId]; if (!ts) return;
+      const s = parseInt(btn.dataset.step, 10);
+      seqDragIntent = ts.steps[s] ? 'off' : 'on';
+      applyStep(ts, btn, s, seqDragIntent);
+      view.setPointerCapture(e.pointerId);
+    });
+    view.addEventListener('pointermove', e => {
+      if (seqDragIntent === null) return;
+      e.preventDefault();
+      const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('.step');
+      if (!target) return;
+      const ts = state[target.dataset.trackId]; if (!ts) return;
+      applyStep(ts, target, parseInt(target.dataset.step, 10), seqDragIntent);
+    }, { passive: false });
+    view.addEventListener('pointerup',     () => { seqDragIntent = null; });
+    view.addEventListener('pointercancel', () => { seqDragIntent = null; });
+  }
+
   function buildTrackRow(track) {
     const ts = state[track.id];
     const row = document.createElement('div');
@@ -799,24 +824,6 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
       btn.dataset.trackId = track.id; btn.dataset.step = s;
       grid.appendChild(btn);
     }
-    let dragIntent = null;
-    grid.addEventListener('pointerdown', e => {
-      const btn = e.target.closest('.step');
-      if (!btn || btn.dataset.trackId !== track.id) return;
-      e.preventDefault();
-      const s = parseInt(btn.dataset.step, 10);
-      dragIntent = ts.steps[s] ? 'off' : 'on';
-      applyStep(ts, btn, s, dragIntent);
-    });
-    grid.addEventListener('pointermove', e => {
-      if (dragIntent === null) return;
-      e.preventDefault();
-      const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('.step');
-      if (!target || target.dataset.trackId !== track.id) return;
-      applyStep(ts, target, parseInt(target.dataset.step, 10), dragIntent);
-    }, { passive: false });
-    grid.addEventListener('pointerup',     () => { dragIntent = null; });
-    grid.addEventListener('pointercancel', () => { dragIntent = null; });
     row.appendChild(grid);
     return row;
   }
@@ -1289,7 +1296,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   );
 
   /* ── INIT ─────────────────────────────────────────────────── */
-  buildGrid(); rebuildBeatRow(); buildKitSelector(); buildPads();
+  buildGrid(); rebuildBeatRow(); buildKitSelector(); buildPads(); initSeqDrag();
 
 })();
 </script>
