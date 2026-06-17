@@ -337,6 +337,10 @@
 
   <div class="divider-v"></div>
 
+  <button class="topbar-btn" id="mute-all-btn">Mute All</button>
+
+  <div class="divider-v"></div>
+
   <div class="patterns-group" style="position:relative;">
     <button class="topbar-btn" id="patterns-btn">Patterns ▾</button>
     <div id="patterns-popover">
@@ -1193,6 +1197,26 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   rebuildBeatRow();
 
   document.getElementById('play-btn').addEventListener('click', toggleTransport);
+
+  const muteAllBtn = document.getElementById('mute-all-btn');
+  let allMuted = false;
+  muteAllBtn.addEventListener('click', () => {
+    allMuted = !allMuted;
+    panels.forEach(panel => {
+      panel.muted = allMuted;
+      const row = document.querySelector(`.panel-row[data-instance-id="${panel.instanceId}"]`);
+      if (!row) return;
+      const mb = row.querySelector('.mute-btn');
+      if (!mb) return;
+      mb.classList.toggle('muted', allMuted);
+      mb.querySelector('.mute-x').style.display    = allMuted ? '' : 'none';
+      mb.querySelector('.vol-waves').style.display = allMuted ? 'none' : '';
+    });
+    muteAllBtn.textContent       = allMuted ? 'Unmute All' : 'Mute All';
+    muteAllBtn.style.color       = allMuted ? 'var(--pink)' : '';
+    muteAllBtn.style.borderColor = allMuted ? 'rgba(255,107,157,0.4)' : '';
+    muteAllBtn.style.background  = allMuted ? 'rgba(255,107,157,0.08)' : '';
+  });
 
   document.getElementById('add-bank-btn').addEventListener('click', () => {
     addPanel('kick');

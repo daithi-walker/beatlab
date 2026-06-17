@@ -59,6 +59,17 @@
   #bpm-slider, #vol-slider { width: 72px; }
   #right-controls { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
+  /* Rec trigger in topbar (pads mode only) */
+  #pads-rec-trigger {
+    display: none; font-family: inherit; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--pink); background: rgba(255,107,157,0.08); border: 1px solid rgba(255,107,157,0.25);
+    border-radius: 6px; padding: 6px 12px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    transition: background 120ms;
+  }
+  #pads-rec-trigger:hover { background: rgba(255,107,157,0.18); }
+  #pads-rec-trigger.recording { background: var(--pink); color: #fff; border-color: var(--pink); animation: pulse-rec 500ms ease-in-out infinite; }
+  @keyframes pulse-rec { 0%,100% { opacity:1; box-shadow: 0 0 10px var(--pink); } 50% { opacity:0.7; box-shadow: none; } }
+
   /* ── MODE TABS ────────────────────────────────────────────── */
   .mode-tab {
     font-family: inherit; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
@@ -74,8 +85,7 @@
   #patterns-popover {
     display: none; position: absolute; top: calc(100% + 6px); right: 0;
     min-width: 200px; background: var(--surface); border: 1px solid var(--divider);
-    border-radius: 8px; z-index: 300; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-    overflow: hidden;
+    border-radius: 8px; z-index: 300; box-shadow: 0 8px 24px rgba(0,0,0,0.5); overflow: hidden;
   }
   #patterns-popover.open { display: flex; flex-direction: column; }
   #patterns-list { max-height: 200px; overflow-y: auto; }
@@ -106,13 +116,8 @@
   }
   #seq-view.hidden { display: none; }
 
-  /* ── BEAT HEADER ─────────────────────────────────────────── */
-  #beat-header { display: flex; align-items: center; margin-bottom: 4px; padding: 0 2px; }
-  #beat-header .label-spacer { width: var(--label-w); flex-shrink: 0; }
   .beat-num { text-align: center; font-size: 0.5rem; letter-spacing: 0.06em; color: var(--faint); font-variant-numeric: tabular-nums; }
   .beat-num.quarter { color: var(--muted); font-weight: 600; }
-
-  /* ── TRACK ROW ────────────────────────────────────────────── */
   .track { display: flex; align-items: center; }
   .track-label { width: var(--label-w); flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
   .track-name { font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -147,7 +152,6 @@
   }
   #pads-view.active { display: flex; }
 
-  /* Kit selector */
   #kit-selector { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; flex-shrink: 0; }
   .kit-btn {
     font-family: inherit; font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
@@ -157,68 +161,6 @@
   .kit-btn:hover { color: var(--text); border-color: var(--muted); }
   .kit-btn.active { color: var(--teal); border-color: var(--teal); background: rgba(0,229,204,0.1); }
 
-  /* Recording toolbar */
-  #rec-toolbar {
-    display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; justify-content: center;
-  }
-  .rec-chip {
-    font-family: inherit; font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--muted); background: none; border: 1px solid var(--divider); border-radius: 4px;
-    padding: 4px 10px; cursor: pointer; transition: all 120ms;
-  }
-  .rec-chip.active { color: var(--teal); border-color: var(--teal); background: rgba(0,229,204,0.1); }
-  .rec-chip:hover:not(.active) { color: var(--text); border-color: var(--muted); }
-  #quantize-toggle { font-family: inherit; font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: none; border: 1px solid var(--divider); border-radius: 4px; padding: 4px 10px; cursor: pointer; transition: all 120ms; }
-  #quantize-toggle.on { color: var(--teal); border-color: var(--teal); background: rgba(0,229,204,0.1); }
-  #rec-btn {
-    font-family: inherit; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--pink); background: rgba(255,107,157,0.08); border: 1px solid rgba(255,107,157,0.3);
-    border-radius: 6px; padding: 6px 16px; cursor: pointer; transition: all 120ms;
-  }
-  #rec-btn:hover { background: rgba(255,107,157,0.18); }
-  #rec-btn.counting { animation: pulse-amber 600ms ease-in-out infinite; }
-  #rec-btn.recording { color: #fff; background: var(--pink); border-color: var(--pink); animation: pulse-red 500ms ease-in-out infinite; }
-  @keyframes pulse-amber { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
-  @keyframes pulse-red   { 0%,100% { opacity:1; box-shadow: 0 0 12px var(--pink); } 50% { opacity:0.7; box-shadow: none; } }
-
-  /* Takes popover */
-  .takes-group { position: relative; }
-  #takes-btn {
-    font-family: inherit; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--purple); background: rgba(176,111,255,0.08); border: 1px solid rgba(176,111,255,0.25);
-    border-radius: 6px; padding: 6px 12px; cursor: pointer; transition: all 120ms; white-space: nowrap;
-  }
-  #takes-btn:hover { background: rgba(176,111,255,0.18); }
-  #takes-popover {
-    display: none; position: absolute; top: calc(100% + 6px); right: 0;
-    min-width: 220px; background: var(--surface); border: 1px solid var(--divider);
-    border-radius: 8px; z-index: 300; box-shadow: 0 8px 24px rgba(0,0,0,0.5); overflow: hidden;
-  }
-  #takes-popover.open { display: flex; flex-direction: column; }
-  #takes-list { max-height: 200px; overflow-y: auto; }
-  .take-row { display: flex; align-items: center; gap: 6px; padding: 7px 10px; }
-  .take-row-name { flex: 1; font-size: 0.72rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-  .take-row-name:hover { color: var(--teal); }
-  .take-row-seq { background: none; border: 1px solid var(--divider); border-radius: 3px; color: var(--muted); cursor: pointer; font-size: 0.6rem; padding: 2px 6px; font-family: inherit; white-space: nowrap; transition: all 100ms; }
-  .take-row-seq:hover { color: var(--teal); border-color: var(--teal); }
-  .take-row-del { background: none; border: none; color: var(--faint); cursor: pointer; font-size: 0.72rem; padding: 2px 4px; transition: color 120ms; }
-  .take-row-del:hover { color: var(--pink); }
-  #takes-list-empty { padding: 12px 10px; font-size: 0.68rem; color: var(--muted); }
-  #takes-save-row { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid var(--divider); }
-  #takes-name-input {
-    flex: 1; background: var(--surface-2); border: 1px solid var(--divider); border-radius: 4px;
-    color: var(--text); font-size: 0.72rem; padding: 4px 8px; font-family: inherit; outline: none;
-  }
-  #takes-name-input:focus { border-color: var(--purple); }
-  #takes-save-btn {
-    background: rgba(176,111,255,0.12); border: 1px solid rgba(176,111,255,0.3);
-    border-radius: 4px; color: var(--purple); cursor: pointer; font-size: 0.68rem;
-    letter-spacing: 0.06em; padding: 4px 10px; font-family: inherit; transition: background 120ms;
-  }
-  #takes-save-btn:hover { background: rgba(176,111,255,0.22); }
-  #takes-save-row.hidden { display: none; }
-
-  /* Pad grid */
   #pad-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -231,48 +173,135 @@
   #pad-grid.recording { outline: 2px solid var(--pink); outline-offset: 4px; border-radius: 6px; }
 
   .pad {
-    border-radius: 14px;
-    border: 2px solid var(--divider);
-    background: var(--surface);
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    cursor: pointer; touch-action: none;
-    gap: 5px;
+    border-radius: 14px; border: 2px solid var(--divider); background: var(--surface);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; touch-action: none; gap: 5px;
     transition: transform 80ms, background 80ms, border-color 80ms, box-shadow 80ms;
     position: relative; overflow: hidden;
   }
   .pad::after {
     content: ''; position: absolute; inset: 0;
     background: var(--pad-color, var(--teal));
-    opacity: 0; border-radius: inherit;
-    transition: opacity 300ms;
+    opacity: 0; border-radius: inherit; transition: opacity 300ms;
   }
   .pad.hit::after { opacity: 0.22; transition: opacity 0ms; }
   .pad.hit {
-    transform: scale(0.93);
-    border-color: var(--pad-color, var(--teal));
+    transform: scale(0.93); border-color: var(--pad-color, var(--teal));
     box-shadow: 0 0 22px color-mix(in srgb, var(--pad-color, var(--teal)) 45%, transparent);
     transition: transform 80ms, border-color 0ms, box-shadow 0ms;
   }
-  .pad-name {
-    font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
-    color: var(--pad-color, var(--teal)); position: relative; z-index: 1;
+  .pad-name { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pad-color, var(--teal)); position: relative; z-index: 1; }
+  .pad-sub  { font-size: 0.52rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); position: relative; z-index: 1; }
+
+  /* ── RECORDING SHEET ──────────────────────────────────────── */
+  #rec-sheet-backdrop {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.4);
   }
-  .pad-sub {
-    font-size: 0.52rem; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--muted); position: relative; z-index: 1;
+  #rec-sheet-backdrop.open { display: block; }
+
+  #rec-sheet {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 201;
+    background: var(--surface); border-top: 1px solid var(--divider);
+    border-radius: 20px 20px 0 0;
+    transform: translateY(100%);
+    transition: transform 280ms cubic-bezier(0.32, 0.72, 0, 1);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  #rec-sheet.open { transform: translateY(0); }
+
+  #rec-sheet-handle {
+    width: 36px; height: 4px; border-radius: 2px; background: var(--divider);
+    margin: 12px auto 0;
   }
 
-  /* Count-in overlay */
-  #countdown-overlay {
-    display: none; position: absolute; inset: 0; z-index: 50;
-    background: rgba(8,12,16,0.85); backdrop-filter: blur(4px);
-    align-items: center; justify-content: center; flex-direction: column; gap: 8px;
-    pointer-events: none;
+  #rec-sheet-inner { padding: 16px 20px 24px; }
+
+  .rec-sheet-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .rec-sheet-title { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text); }
+  #rec-sheet-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; padding: 4px; transition: color 120ms; }
+  #rec-sheet-close:hover { color: var(--text); }
+
+  .rec-section { margin-bottom: 16px; }
+  .rec-section-label { font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+
+  /* Bar length chips */
+  .bar-chips { display: flex; gap: 6px; }
+  .bar-chip {
+    font-family: inherit; font-size: 0.68rem; letter-spacing: 0.06em;
+    color: var(--muted); background: none; border: 1px solid var(--divider);
+    border-radius: 6px; padding: 6px 14px; cursor: pointer; transition: all 120ms; flex: 1; text-align: center;
   }
-  #countdown-overlay.visible { display: flex; }
-  #countdown-num { font-size: clamp(3rem, 15vw, 6rem); font-weight: 700; color: var(--amber); line-height: 1; }
-  #countdown-label { font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+  .bar-chip:hover { color: var(--text); border-color: var(--muted); }
+  .bar-chip.active { color: var(--teal); border-color: var(--teal); background: rgba(0,229,204,0.1); }
+
+  /* Timing options — two clear radio-style choices */
+  .timing-options { display: flex; gap: 8px; }
+  .timing-opt {
+    flex: 1; display: flex; flex-direction: column; gap: 3px;
+    background: var(--surface-2); border: 1px solid var(--divider);
+    border-radius: 8px; padding: 10px 12px; cursor: pointer; text-align: left;
+    transition: border-color 120ms, background 120ms;
+    font-family: inherit;
+  }
+  .timing-opt:hover { border-color: var(--muted); }
+  .timing-opt.active { border-color: var(--teal); background: rgba(0,229,204,0.06); }
+  .timing-opt-name { font-size: 0.7rem; font-weight: 600; color: var(--muted); transition: color 120ms; }
+  .timing-opt.active .timing-opt-name { color: var(--teal); }
+  .timing-opt-desc { font-size: 0.6rem; color: var(--faint); line-height: 1.3; transition: color 120ms; }
+  .timing-opt.active .timing-opt-desc { color: var(--muted); }
+
+  /* Record button in sheet */
+  #rec-start-btn {
+    width: 100%; font-family: inherit; font-size: 0.78rem; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--pink); background: rgba(255,107,157,0.1);
+    border: 1px solid rgba(255,107,157,0.35); border-radius: 10px;
+    padding: 14px; cursor: pointer; margin-top: 4px; transition: background 120ms;
+  }
+  #rec-start-btn:hover { background: rgba(255,107,157,0.2); }
+
+  /* Floating count-in pill — overlays the pads without blocking them */
+  #rec-countdown-pill {
+    display: none; position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    z-index: 50; pointer-events: none;
+    background: rgba(8,12,16,0.88); backdrop-filter: blur(12px);
+    border: 1px solid var(--amber); border-radius: 999px;
+    padding: 6px 18px; white-space: nowrap;
+    font-size: 0.8rem; font-weight: 700; letter-spacing: 0.06em; color: var(--amber);
+    animation: pill-pulse 500ms ease-in-out infinite;
+  }
+  #rec-countdown-pill.visible { display: block; }
+  @keyframes pill-pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+  #rec-countdown-pill.go { color: var(--pink); border-color: var(--pink); animation: none; }
+
+  /* Save state */
+  #rec-save-state { display: none; }
+  #rec-save-state.visible { display: block; }
+  .rec-save-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  #takes-name-input {
+    flex: 1; background: var(--surface-2); border: 1px solid var(--divider); border-radius: 6px;
+    color: var(--text); font-size: 0.8rem; padding: 8px 12px; font-family: inherit; outline: none;
+    transition: border-color 120ms;
+  }
+  #takes-name-input:focus { border-color: var(--purple); }
+  #takes-save-btn {
+    background: rgba(176,111,255,0.12); border: 1px solid rgba(176,111,255,0.3);
+    border-radius: 6px; color: var(--purple); cursor: pointer; font-size: 0.7rem;
+    letter-spacing: 0.06em; padding: 8px 14px; font-family: inherit; white-space: nowrap; transition: background 120ms;
+  }
+  #takes-save-btn:hover { background: rgba(176,111,255,0.22); }
+
+  /* Takes list */
+  #takes-list { max-height: 160px; overflow-y: auto; }
+  #takes-list-empty { font-size: 0.68rem; color: var(--muted); padding: 4px 0; }
+  .take-row { display: flex; align-items: center; gap: 6px; padding: 7px 0; border-bottom: 1px solid var(--divider); }
+  .take-row:last-child { border-bottom: none; }
+  .take-row-name { flex: 1; font-size: 0.72rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .take-row-seq { background: none; border: 1px solid var(--divider); border-radius: 4px; color: var(--muted); cursor: pointer; font-size: 0.6rem; padding: 3px 8px; font-family: inherit; transition: all 100ms; }
+  .take-row-seq:hover { color: var(--teal); border-color: var(--teal); }
+  .take-row-del { background: none; border: none; color: var(--faint); cursor: pointer; font-size: 0.72rem; padding: 2px 4px; transition: color 120ms; }
+  .take-row-del:hover { color: var(--pink); }
 
   /* ── AUDIO BANNER ─────────────────────────────────────────── */
   #audio-banner {
@@ -320,6 +349,8 @@
   </div>
 
   <div id="right-controls">
+    <!-- Pads-mode record trigger -->
+    <button id="pads-rec-trigger">⏺ Rec</button>
     <div class="ctrl-group">
       <span class="ctrl-label">Vol</span>
       <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.85">
@@ -335,38 +366,74 @@
 <!-- Sequencer view -->
 <div id="seq-view"></div>
 
-<!-- Pads view -->
-<div id="pads-view">
+<!-- Pads view — clean, just kit + pads -->
+<div id="pads-view" style="position:relative;">
   <div id="kit-selector"></div>
-
-  <div id="rec-toolbar">
-    <button class="rec-chip active" data-bars="1">1 bar</button>
-    <button class="rec-chip" data-bars="2">2 bars</button>
-    <button class="rec-chip" data-bars="4">4 bars</button>
-    <button id="quantize-toggle" class="on">Quantize</button>
-    <button id="rec-btn">● Record</button>
-    <div class="takes-group">
-      <button id="takes-btn">Takes ▾</button>
-      <div id="takes-popover">
-        <div id="takes-list"></div>
-        <div id="takes-save-row" class="hidden">
-          <input id="takes-name-input" type="text" placeholder="take name" spellcheck="false">
-          <button id="takes-save-btn">Save</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div id="pad-grid" style="position:relative;">
-    <div id="countdown-overlay">
-      <div id="countdown-num">4</div>
-      <div id="countdown-label">count in</div>
-    </div>
+    <div id="rec-countdown-pill"></div>
   </div>
 </div>
 
 <div id="beat-row"></div>
 <div id="audio-banner">tap anywhere to enable audio</div>
+
+<!-- Recording sheet -->
+<div id="rec-sheet-backdrop"></div>
+<div id="rec-sheet" role="dialog" aria-modal="true">
+  <div id="rec-sheet-handle"></div>
+  <div id="rec-sheet-inner">
+
+    <!-- Header -->
+    <div class="rec-sheet-row">
+      <span class="rec-sheet-title" id="rec-sheet-title">Record a take</span>
+      <button id="rec-sheet-close">✕</button>
+    </div>
+
+    <!-- Setup state -->
+    <div id="rec-setup">
+      <div class="rec-section">
+        <div class="rec-section-label">Loop length</div>
+        <div class="bar-chips">
+          <button class="bar-chip active" data-bars="1">1 bar</button>
+          <button class="bar-chip" data-bars="2">2 bars</button>
+          <button class="bar-chip" data-bars="4">4 bars</button>
+        </div>
+      </div>
+
+      <div class="rec-section">
+        <div class="rec-section-label">Timing</div>
+        <div class="timing-options">
+          <button class="timing-opt active" data-quantize="true">
+            <span class="timing-opt-name">Snap to grid</span>
+            <span class="timing-opt-desc">Each hit aligns to the nearest 16th note — tight and sequencer-ready</span>
+          </button>
+          <button class="timing-opt" data-quantize="false">
+            <span class="timing-opt-name">Free timing</span>
+            <span class="timing-opt-desc">Records exactly when you tap — keeps your natural feel and groove</span>
+          </button>
+        </div>
+      </div>
+
+      <button id="rec-start-btn">● Start recording</button>
+    </div>
+
+    <!-- Save state (shown after recording stops) -->
+    <div id="rec-save-state">
+      <div class="rec-section">
+        <div class="rec-section-label">Save take</div>
+        <div class="rec-save-row">
+          <input id="takes-name-input" type="text" placeholder="name this take…" spellcheck="false">
+          <button id="takes-save-btn">Save</button>
+        </div>
+      </div>
+      <div class="rec-section">
+        <div class="rec-section-label">Saved takes</div>
+        <div id="takes-list"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
 
 <script type="module">
 import { makeImpulse, makePinkNoise, makeWhiteNoise } from '../core/audio.js';
@@ -386,7 +453,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   function stepDuration() { return 60 / bpm / 4; }
   function beatDuration()  { return 60 / bpm; }
 
-  /* ── TRACK DEFINITIONS ────────────────────────────────────── */
+  /* ── TRACKS ───────────────────────────────────────────────── */
   const TRACKS = [
     { id:'kick',    name:'Kick',     sub:'drum',   section:'Drums', color:'var(--teal)'   },
     { id:'snare',   name:'Snare',    sub:'drum',   section:'Drums', color:'var(--teal)'   },
@@ -405,7 +472,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   const state = {};
   TRACKS.forEach(t => { state[t.id] = { steps: Array(32).fill(false), muted: false }; });
 
-  /* ── KIT DEFINITIONS ──────────────────────────────────────── */
+  /* ── KITS ─────────────────────────────────────────────────── */
   const KITS = {
     '808': {
       kick:    { startFreq:150, endFreq:40,  decay:0.45, gain:1.8  },
@@ -477,8 +544,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     masterGain.gain.value = parseFloat(document.getElementById('vol-slider').value);
     compressor = ctx.createDynamicsCompressor();
     compressor.threshold.value = -18; compressor.ratio.value = 4;
-    masterGain.connect(compressor);
-    compressor.connect(ctx.destination);
+    masterGain.connect(compressor); compressor.connect(ctx.destination);
     reverbConvolver = ctx.createConvolver();
     reverbConvolver.buffer = makeImpulse(ctx, 2.2, 2.5);
     reverbReturn = ctx.createGain(); reverbReturn.gain.value = 0.75;
@@ -503,110 +569,88 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     osc.connect(g); g.connect(masterGain);
     osc.start(time); osc.stop(time + p.decay + 0.05);
   }
-
   function voiceSnare(time, p) {
     const body = ctx.createOscillator(), bg = ctx.createGain();
     body.type = 'triangle';
     body.frequency.setValueAtTime(p.bodyFreq, time);
     body.frequency.exponentialRampToValueAtTime(p.bodyFreq * 0.45, time + 0.06);
-    bg.gain.setValueAtTime(1.0, time);
-    bg.gain.exponentialRampToValueAtTime(0.001, time + p.bodyDecay);
+    bg.gain.setValueAtTime(1.0, time); bg.gain.exponentialRampToValueAtTime(0.001, time + p.bodyDecay);
     body.connect(bg); bg.connect(masterGain);
     body.start(time); body.stop(time + p.bodyDecay + 0.03);
     const ns = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), ng = ctx.createGain();
     ns.buffer = pinkBuf; hp.type = 'highpass'; hp.frequency.value = p.noiseHp;
-    ng.gain.setValueAtTime(p.noiseGain, time);
-    ng.gain.exponentialRampToValueAtTime(0.001, time + p.noiseDecay);
+    ng.gain.setValueAtTime(p.noiseGain, time); ng.gain.exponentialRampToValueAtTime(0.001, time + p.noiseDecay);
     ns.connect(hp); hp.connect(ng); ng.connect(masterGain); reverbSend(ng, 0.12);
     ns.start(time); ns.stop(time + p.noiseDecay + 0.02);
   }
-
   function voiceClap(time, p) {
     [0, 0.008, 0.018].forEach(offset => {
       const ns = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
       ns.buffer = pinkBuf; hp.type = 'highpass'; hp.frequency.value = p.hp;
-      g.gain.setValueAtTime(p.gain, time + offset);
-      g.gain.exponentialRampToValueAtTime(0.001, time + offset + p.decay);
+      g.gain.setValueAtTime(p.gain, time + offset); g.gain.exponentialRampToValueAtTime(0.001, time + offset + p.decay);
       ns.connect(hp); hp.connect(g); g.connect(masterGain); reverbSend(g, 0.18);
       ns.start(time + offset); ns.stop(time + offset + p.decay + 0.02);
     });
   }
-
   function voiceHihat(time, p) {
     const ns = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
     ns.buffer = whiteBuf; hp.type = 'highpass'; hp.frequency.value = p.hp;
-    g.gain.setValueAtTime(p.gain, time);
-    g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
+    g.gain.setValueAtTime(p.gain, time); g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
     ns.connect(hp); hp.connect(g); g.connect(masterGain);
     ns.start(time); ns.stop(time + p.decay + 0.02);
   }
-
   function voiceOpenhat(time, p) {
     const ns = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
     ns.buffer = whiteBuf; hp.type = 'highpass'; hp.frequency.value = p.hp;
-    g.gain.setValueAtTime(p.gain, time);
-    g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
+    g.gain.setValueAtTime(p.gain, time); g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
     ns.connect(hp); hp.connect(g); g.connect(masterGain); reverbSend(g, 0.1);
     ns.start(time); ns.stop(time + p.decay + 0.03);
   }
-
   function voiceCrash(time, p) {
-    const ns = ctx.createBufferSource();
-    ns.buffer = whiteBuf;
+    const ns = ctx.createBufferSource(); ns.buffer = whiteBuf;
     const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = p.hp;
     const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = p.bp; bp.Q.value = 0.5;
     const g = ctx.createGain();
-    g.gain.setValueAtTime(p.gain, time);
-    g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
+    g.gain.setValueAtTime(p.gain, time); g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
     ns.connect(hp); hp.connect(bp); bp.connect(g); g.connect(masterGain); reverbSend(g, 0.25);
     ns.start(time); ns.stop(time + p.decay + 0.1);
   }
-
   function voiceTom(time, p) {
     const osc = ctx.createOscillator(), g = ctx.createGain();
     osc.type = 'sine';
     osc.frequency.setValueAtTime(p.startFreq, time);
     osc.frequency.exponentialRampToValueAtTime(p.endFreq, time + p.decay * 0.4);
-    g.gain.setValueAtTime(p.gain, time);
-    g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
+    g.gain.setValueAtTime(p.gain, time); g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
     osc.connect(g); g.connect(masterGain);
     osc.start(time); osc.stop(time + p.decay + 0.05);
   }
-
   function voiceRim(time, p) {
     const osc = ctx.createOscillator(), g = ctx.createGain();
     osc.type = 'square'; osc.frequency.value = p.freq;
-    g.gain.setValueAtTime(p.gain, time);
-    g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
+    g.gain.setValueAtTime(p.gain, time); g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
     osc.connect(g); g.connect(masterGain);
     osc.start(time); osc.stop(time + p.decay + 0.01);
   }
-
   function voiceShaker(time, p) {
     const ns = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
     ns.buffer = whiteBuf; hp.type = 'highpass'; hp.frequency.value = p.hp;
-    g.gain.setValueAtTime(p.gain, time);
-    g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
+    g.gain.setValueAtTime(p.gain, time); g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
     ns.connect(hp); hp.connect(g); g.connect(masterGain);
     ns.start(time); ns.stop(time + p.decay + 0.01);
   }
-
   function voiceCowbell(time, p) {
     const osc1 = ctx.createOscillator(), osc2 = ctx.createOscillator(), g = ctx.createGain();
     osc1.type = 'square'; osc1.frequency.value = p.freq1;
     osc2.type = 'square'; osc2.frequency.value = p.freq2;
-    g.gain.setValueAtTime(p.gain, time);
-    g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
+    g.gain.setValueAtTime(p.gain, time); g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
     osc1.connect(g); osc2.connect(g); g.connect(masterGain); reverbSend(g, 0.1);
     osc1.start(time); osc1.stop(time + p.decay + 0.05);
     osc2.start(time); osc2.stop(time + p.decay + 0.05);
   }
-
   function voiceClave(time, p) {
     const osc = ctx.createOscillator(), g = ctx.createGain();
     osc.type = 'sine'; osc.frequency.value = p.freq;
-    g.gain.setValueAtTime(p.gain, time);
-    g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
+    g.gain.setValueAtTime(p.gain, time); g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
     osc.connect(g); g.connect(masterGain);
     osc.start(time); osc.stop(time + p.decay + 0.01);
   }
@@ -693,23 +737,21 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   function buildGrid() {
     const view = document.getElementById('seq-view');
     view.innerHTML = '';
-
     const header = document.createElement('div');
-    header.id = 'beat-header';
     header.style.cssText = 'display:flex;align-items:center;margin-bottom:4px;';
-    const spacer = document.createElement('div'); spacer.className = 'label-spacer';
+    const spacer = document.createElement('div');
+    spacer.style.cssText = `width:var(--label-w);flex-shrink:0;`;
     header.appendChild(spacer);
     const nums = document.createElement('div');
     nums.style.cssText = `display:grid;flex:1;grid-template-columns:${gridColsStyle()};gap:2px;`;
     for (let i = 0; i < STEPS; i++) {
-      if (i > 0 && i % 4 === 0) { const gap = document.createElement('div'); gap.style.width='4px'; nums.appendChild(gap); }
+      if (i > 0 && i % 4 === 0) { const gap = document.createElement('div'); gap.style.width = '4px'; nums.appendChild(gap); }
       const n = document.createElement('div');
       n.className = 'beat-num' + (i % 4 === 0 ? ' quarter' : '');
       n.textContent = i % 4 === 0 ? String(Math.floor(i / 4) + 1) : '·';
       nums.appendChild(n);
     }
-    header.appendChild(nums);
-    view.appendChild(header);
+    header.appendChild(nums); view.appendChild(header);
 
     let lastSection = null;
     TRACKS.forEach(track => {
@@ -726,11 +768,9 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     const ts = state[track.id];
     const row = document.createElement('div');
     row.className = 'track'; row.dataset.trackId = track.id;
-
     const label = document.createElement('div'); label.className = 'track-label';
     const nameEl = document.createElement('span'); nameEl.className = 'track-name';
     nameEl.textContent = track.name; nameEl.style.color = track.color;
-
     const muteBtn = document.createElement('button');
     muteBtn.className = 'track-mute' + (ts.muted ? ' muted' : '');
     muteBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -744,15 +784,11 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
       muteBtn.querySelector('.mx').style.display = ts.muted ? '' : 'none';
       muteBtn.querySelector('.vw').style.display = ts.muted ? 'none' : '';
     });
-
-    label.appendChild(nameEl); label.appendChild(muteBtn);
-    row.appendChild(label);
-
+    label.appendChild(nameEl); label.appendChild(muteBtn); row.appendChild(label);
     const grid = document.createElement('div');
     grid.className = 'steps-row';
     grid.style.gridTemplateColumns = gridColsStyle();
     grid.style.setProperty('--accent', track.color);
-
     for (let s = 0; s < STEPS; s++) {
       if (s > 0 && s % 4 === 0) { const gap = document.createElement('div'); gap.className = 'step-gap'; grid.appendChild(gap); }
       const btn = document.createElement('div');
@@ -760,7 +796,6 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
       btn.dataset.trackId = track.id; btn.dataset.step = s;
       grid.appendChild(btn);
     }
-
     let dragIntent = null;
     grid.addEventListener('pointerdown', e => {
       const btn = e.target.closest('.step');
@@ -779,7 +814,6 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     }, { passive: false });
     grid.addEventListener('pointerup',     () => { dragIntent = null; });
     grid.addEventListener('pointercancel', () => { dragIntent = null; });
-
     row.appendChild(grid);
     return row;
   }
@@ -818,7 +852,6 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     });
   }
 
-  /* firePad — extracted so swipe and tap share one path */
   function firePad(id, padEl) {
     if (!ctx) initAudio();
     ctx.resume();
@@ -833,38 +866,28 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
 
   function buildPads() {
     const grid = document.getElementById('pad-grid');
-    // Keep countdown overlay, rebuild pads only
-    const overlay = document.getElementById('countdown-overlay');
+    // Preserve the countdown pill before clearing
+    const pill = document.getElementById('rec-countdown-pill');
     grid.innerHTML = '';
-    grid.appendChild(overlay);
-
-    const padEls = {};
+    if (pill) grid.appendChild(pill);
     TRACKS.forEach(track => {
       const pad = document.createElement('div');
       pad.className = 'pad';
       pad.dataset.trackId = track.id;
       pad.style.setProperty('--pad-color', track.color);
-
       const name = document.createElement('span'); name.className = 'pad-name'; name.textContent = track.name;
       const sub  = document.createElement('span'); sub.className  = 'pad-sub';  sub.textContent  = track.sub;
       pad.appendChild(name); pad.appendChild(sub);
       grid.appendChild(pad);
-      padEls[track.id] = pad;
     });
 
-    // Swipe support — delegate all pointer events to the grid container
-    let swipeActive = false;
-    let lastSwipedId = null;
-
+    let swipeActive = false, lastSwipedId = null;
     grid.addEventListener('pointerdown', e => {
-      const pad = e.target.closest('.pad');
-      if (!pad) return;
+      const pad = e.target.closest('.pad'); if (!pad) return;
       e.preventDefault();
-      swipeActive = true;
-      lastSwipedId = pad.dataset.trackId;
+      swipeActive = true; lastSwipedId = pad.dataset.trackId;
       firePad(pad.dataset.trackId, pad);
     });
-
     grid.addEventListener('pointermove', e => {
       if (!swipeActive) return;
       e.preventDefault();
@@ -873,12 +896,70 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
       lastSwipedId = el.dataset.trackId;
       firePad(el.dataset.trackId, el);
     }, { passive: false });
-
     grid.addEventListener('pointerup',     () => { swipeActive = false; lastSwipedId = null; });
     grid.addEventListener('pointercancel', () => { swipeActive = false; lastSwipedId = null; });
   }
 
-  /* ── METRONOME CLICK ──────────────────────────────────────── */
+  /* ── RECORDING SHEET ──────────────────────────────────────── */
+  const recSheet     = document.getElementById('rec-sheet');
+  const recBackdrop  = document.getElementById('rec-sheet-backdrop');
+  const recSetup     = document.getElementById('rec-setup');
+  const recSaveState = document.getElementById('rec-save-state');
+  const recTrigger   = document.getElementById('pads-rec-trigger');
+  const countdownPill = document.getElementById('rec-countdown-pill');
+
+  function openRecSheet() {
+    recSheet.classList.add('open');
+    recBackdrop.classList.add('open');
+    showSetupState();
+  }
+
+  function closeRecSheet() {
+    if (recActive) stopRecording();
+    recSheet.classList.remove('open');
+    recBackdrop.classList.remove('open');
+  }
+
+  function showSetupState() {
+    document.getElementById('rec-sheet-title').textContent = 'Record a take';
+    recSetup.style.display = '';
+    recSaveState.classList.remove('visible');
+  }
+
+  function showSaveState() {
+    document.getElementById('rec-sheet-title').textContent = 'Take recorded';
+    recSetup.style.display = 'none';
+    recSaveState.classList.add('visible');
+    renderTakesList();
+    document.getElementById('takes-name-input').focus();
+  }
+
+  recBackdrop.addEventListener('click', closeRecSheet);
+  document.getElementById('rec-sheet-close').addEventListener('click', closeRecSheet);
+  recTrigger.addEventListener('click', () => {
+    if (recActive) { stopRecording(); return; }
+    openRecSheet();
+  });
+
+  /* Bar length chips */
+  let recBars = 1;
+  document.querySelectorAll('.bar-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      recBars = parseInt(chip.dataset.bars, 10);
+      document.querySelectorAll('.bar-chip').forEach(c => c.classList.toggle('active', c === chip));
+    });
+  });
+
+  /* Timing options */
+  let recQuantize = true;
+  document.querySelectorAll('.timing-opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      recQuantize = opt.dataset.quantize === 'true';
+      document.querySelectorAll('.timing-opt').forEach(o => o.classList.toggle('active', o === opt));
+    });
+  });
+
+  /* ── METRONOME ────────────────────────────────────────────── */
   function scheduleClick(time, isDownbeat) {
     if (!ctx) return;
     const osc = ctx.createOscillator(), g = ctx.createGain();
@@ -890,61 +971,34 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   }
 
   /* ── RECORDING ────────────────────────────────────────────── */
-  let recBars     = 1;
-  let recQuantize = true;
-  let recActive   = false;
-  let recStartTime = 0;
-  let recEvents   = [];
-  let pendingTake = null;
-  let recTimer    = null;
+  let recActive = false, recStartTime = 0, recEvents = [], pendingTake = null, recTimer = null;
 
-  const countdownOverlay = document.getElementById('countdown-overlay');
-  const countdownNum     = document.getElementById('countdown-num');
-  const recBtn           = document.getElementById('rec-btn');
-
-  // Bar length selector chips
-  document.querySelectorAll('.rec-chip[data-bars]').forEach(chip => {
-    chip.addEventListener('click', () => {
-      recBars = parseInt(chip.dataset.bars, 10);
-      document.querySelectorAll('.rec-chip[data-bars]').forEach(c => c.classList.toggle('active', c === chip));
-    });
-  });
-
-  // Quantize toggle
-  const quantizeToggle = document.getElementById('quantize-toggle');
-  quantizeToggle.addEventListener('click', () => {
-    recQuantize = !recQuantize;
-    quantizeToggle.classList.toggle('on', recQuantize);
-    quantizeToggle.textContent = recQuantize ? 'Quantize' : 'Free';
-  });
+  document.getElementById('rec-start-btn').addEventListener('click', startCountIn);
 
   function startCountIn() {
     if (!ctx) initAudio();
     ctx.resume();
-    if (recActive) { stopRecording(); return; }
 
-    recBtn.classList.add('counting');
-    recBtn.textContent = '… counting';
+    // Close sheet immediately so pads are visible and tappable
+    recSheet.classList.remove('open');
+    recBackdrop.classList.remove('open');
 
-    // Schedule 4 count-in clicks (1 bar) then start recording
     const now = ctx.currentTime + 0.1;
-    for (let i = 0; i < 4; i++) {
-      scheduleClick(now + i * beatDuration(), i === 0);
-    }
+    for (let i = 0; i < 4; i++) scheduleClick(now + i * beatDuration(), i === 0);
 
-    // Update countdown display in real-time
-    let countdownVal = 4;
-    countdownNum.textContent = countdownVal;
-    countdownOverlay.classList.add('visible');
+    let n = 4;
+    countdownPill.textContent = n;
+    countdownPill.className = 'visible';
 
-    const countInterval = setInterval(() => {
-      countdownVal--;
-      if (countdownVal <= 0) {
-        clearInterval(countInterval);
-        countdownOverlay.classList.remove('visible');
+    const iv = setInterval(() => {
+      n--;
+      if (n <= 0) {
+        clearInterval(iv);
+        countdownPill.textContent = '● REC';
+        countdownPill.className = 'visible go';
         beginRecording(now + 4 * beatDuration());
       } else {
-        countdownNum.textContent = countdownVal;
+        countdownPill.textContent = n;
       }
     }, beatDuration() * 1000);
   }
@@ -955,44 +1009,50 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     recActive    = true;
     pendingTake  = null;
 
-    recBtn.classList.remove('counting');
-    recBtn.classList.add('recording');
-    recBtn.textContent = '◼ Stop';
+    // Close sheet so pads are fully accessible; trigger button shows state
+    recSheet.classList.remove('open');
+    recBackdrop.classList.remove('open');
+    recTrigger.classList.add('recording');
+    recTrigger.textContent = '◼ Stop';
     document.getElementById('pad-grid').classList.add('recording');
 
-    // Schedule metronome clicks through the recording window
+    // Metronome through the recording window
     const totalBeats = recBars * 4;
-    const now = ctx.currentTime;
-    for (let i = 0; i <= totalBeats; i++) {
-      scheduleClick(startTime + i * beatDuration(), i % 4 === 0);
-    }
+    for (let i = 0; i <= totalBeats; i++) scheduleClick(startTime + i * beatDuration(), i % 4 === 0);
 
-    // Auto-stop after the loop length
     const msDuration = recBars * 4 * beatDuration() * 1000;
-    recTimer = setTimeout(() => stopRecording(), msDuration + (startTime - ctx.currentTime) * 1000);
+    recTimer = setTimeout(stopRecording, msDuration + (startTime - ctx.currentTime) * 1000);
   }
 
   function stopRecording() {
-    if (!recActive && !recBtn.classList.contains('counting')) return;
     clearTimeout(recTimer);
+    if (!recActive) return;
     recActive = false;
-    recBtn.classList.remove('recording', 'counting');
-    recBtn.textContent = '● Record';
+    recTrigger.classList.remove('recording');
+    recTrigger.textContent = '⏺ Rec';
     document.getElementById('pad-grid').classList.remove('recording');
-    countdownOverlay.classList.remove('visible');
+    countdownPill.className = '';
 
-    if (!recEvents.length) return;
+    if (!recEvents.length) {
+      // Nothing recorded — reopen sheet at setup state with a hint
+      openRecSheet();
+      const hint = document.createElement('p');
+      hint.style.cssText = 'font-size:0.68rem;color:var(--amber);margin-top:8px;text-align:center;';
+      hint.textContent = 'No hits recorded — tap the pads while the ● REC indicator is showing.';
+      const existing = recSetup.querySelector('.rec-hint');
+      if (existing) existing.remove();
+      hint.className = 'rec-hint';
+      recSetup.appendChild(hint);
+      setTimeout(() => hint.remove(), 4000);
+      return;
+    }
 
-    // Quantize if enabled: snap beat to nearest 16th (0.25 quarter notes)
     let events = recEvents.map(ev => {
       let beat = ev.beat;
       if (recQuantize) beat = Math.round(beat * 4) / 4;
-      // Clamp to loop window
       beat = Math.max(0, Math.min(beat, recBars * 4 - 0.001));
       return { id: ev.id, beat };
     });
-
-    // Deduplicate same id+beat
     const seen = new Set();
     events = events.filter(ev => {
       const k = ev.id + ':' + ev.beat;
@@ -1001,27 +1061,14 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     });
 
     pendingTake = { version: 1, bpm, bars: recBars, kit: currentKit, quantized: recQuantize, events };
-    showTakeSaveRow();
+
+    // Reopen sheet to save state
+    recSheet.classList.add('open');
+    recBackdrop.classList.add('open');
+    showSaveState();
   }
 
-  recBtn.addEventListener('click', () => {
-    if (recActive || recBtn.classList.contains('counting')) {
-      stopRecording();
-    } else {
-      startCountIn();
-    }
-  });
-
-  /* ── TAKES UI ─────────────────────────────────────────────── */
-  function showTakeSaveRow() {
-    const row = document.getElementById('takes-save-row');
-    row.classList.remove('hidden');
-    const pop = document.getElementById('takes-popover');
-    renderTakesList();
-    pop.classList.add('open');
-    document.getElementById('takes-name-input').focus();
-  }
-
+  /* ── TAKES LIST ───────────────────────────────────────────── */
   function renderTakesList() {
     const list = document.getElementById('takes-list');
     list.innerHTML = '';
@@ -1032,84 +1079,51 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     }
     names.forEach(name => {
       const row = document.createElement('div'); row.className = 'take-row';
-
       const nameEl = document.createElement('span'); nameEl.className = 'take-row-name'; nameEl.textContent = name;
-      nameEl.title = 'Play this take in pads (preview)';
-
       const seqBtn = document.createElement('button'); seqBtn.className = 'take-row-seq'; seqBtn.textContent = '→ Seq';
-      seqBtn.title = 'Load into sequencer';
       seqBtn.addEventListener('click', e => {
         e.stopPropagation();
         const take = loadPattern(REC_ID, name);
-        if (take) { applyTake(take); closeTakes(); }
+        if (take) { applyTake(take); closeRecSheet(); }
       });
-
       const del = document.createElement('button'); del.className = 'take-row-del'; del.textContent = '✕';
-      del.addEventListener('click', e => {
-        e.stopPropagation();
-        deletePattern(REC_ID, name);
-        renderTakesList();
-      });
-
-      row.appendChild(nameEl); row.appendChild(seqBtn); row.appendChild(del);
-      list.appendChild(row);
+      del.addEventListener('click', e => { e.stopPropagation(); deletePattern(REC_ID, name); renderTakesList(); });
+      row.appendChild(nameEl); row.appendChild(seqBtn); row.appendChild(del); list.appendChild(row);
     });
   }
-
-  function closeTakes() {
-    document.getElementById('takes-popover').classList.remove('open');
-  }
-
-  document.getElementById('takes-btn').addEventListener('click', e => {
-    e.stopPropagation();
-    const pop = document.getElementById('takes-popover');
-    if (!pop.classList.contains('open')) renderTakesList();
-    pop.classList.toggle('open');
-  });
 
   document.getElementById('takes-save-btn').addEventListener('click', () => {
     const input = document.getElementById('takes-name-input');
     const name = input.value.trim();
     if (!name || !pendingTake) { input.focus(); return; }
     savePattern(REC_ID, name, pendingTake);
-    input.value = '';
-    pendingTake = null;
-    document.getElementById('takes-save-row').classList.add('hidden');
+    input.value = ''; pendingTake = null;
     renderTakesList();
+    showSetupState();
   });
 
   document.getElementById('takes-name-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('takes-save-btn').click();
-    if (e.key === 'Escape') closeTakes();
-  });
-
-  document.addEventListener('click', e => {
-    if (!e.target.closest('.takes-group')) closeTakes();
+    if (e.key === 'Escape') closeRecSheet();
   });
 
   /* ── LOAD TAKE INTO SEQUENCER ─────────────────────────────── */
   function applyTake(take) {
     if (playing) stopTransport();
     TRACKS.forEach(t => { state[t.id].steps.fill(false); });
-
-    // Determine step count from take bars (map to nearest supported: 16 or 32)
     const targetSteps = take.bars <= 1 ? 16 : 32;
     if (targetSteps !== STEPS) {
       STEPS = targetSteps;
       document.getElementById('steps-btn').textContent = STEPS + ' steps';
     }
-
-    const stepsPerBeat = 4; // 16th-note grid
     take.events.forEach(ev => {
-      const step = Math.round(ev.beat * stepsPerBeat) % STEPS;
+      const step = Math.round(ev.beat * 4) % STEPS;
       if (state[ev.id]) state[ev.id].steps[step] = true;
     });
-
     if (take.kit && KITS[take.kit]) {
       currentKit = take.kit;
       document.querySelectorAll('.kit-btn').forEach(b => b.classList.toggle('active', b.textContent === currentKit));
     }
-
     buildGrid(); rebuildBeatRow();
     setMode('seq');
   }
@@ -1118,21 +1132,17 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   function setMode(m) {
     mode = m;
     const isSeq = m === 'seq';
-
     document.getElementById('mode-seq-btn').classList.toggle('active', isSeq);
     document.getElementById('mode-pads-btn').classList.toggle('active', !isSeq);
-
     document.getElementById('seq-controls').style.display = isSeq ? 'contents' : 'none';
     document.getElementById('bpm-group').style.display = isSeq ? '' : 'none';
-
+    recTrigger.style.display = isSeq ? 'none' : '';
     document.getElementById('seq-view').classList.toggle('hidden', !isSeq);
     document.getElementById('beat-row').classList.toggle('hidden', !isSeq);
     document.getElementById('pads-view').classList.toggle('active', !isSeq);
-
     document.body.classList.toggle('pads-mode', !isSeq);
-
     if (!isSeq && playing) stopTransport();
-    if (!isSeq && (recActive || recBtn.classList.contains('counting'))) stopRecording();
+    if (isSeq) closeRecSheet();
   }
 
   document.getElementById('mode-seq-btn').addEventListener('click', () => setMode('seq'));
@@ -1144,8 +1154,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     if (wasPlaying) stopTransport();
     STEPS = STEPS === 16 ? 32 : 16;
     document.getElementById('steps-btn').textContent = STEPS + ' steps';
-    currentStep = 0;
-    buildGrid(); rebuildBeatRow();
+    currentStep = 0; buildGrid(); rebuildBeatRow();
     if (wasPlaying) startTransport();
   });
 
@@ -1166,10 +1175,10 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
       btn.querySelector('.mx').style.display = allMuted ? '' : 'none';
       btn.querySelector('.vw').style.display = allMuted ? 'none' : '';
     });
-    muteAllBtn.textContent = allMuted ? 'Unmute All' : 'Mute All';
-    muteAllBtn.style.color        = allMuted ? 'var(--pink)' : '';
-    muteAllBtn.style.borderColor  = allMuted ? 'rgba(255,107,157,0.4)' : '';
-    muteAllBtn.style.background   = allMuted ? 'rgba(255,107,157,0.08)' : '';
+    muteAllBtn.textContent    = allMuted ? 'Unmute All' : 'Mute All';
+    muteAllBtn.style.color       = allMuted ? 'var(--pink)' : '';
+    muteAllBtn.style.borderColor = allMuted ? 'rgba(255,107,157,0.4)' : '';
+    muteAllBtn.style.background  = allMuted ? 'rgba(255,107,157,0.08)' : '';
   });
 
   /* ── PATTERNS ─────────────────────────────────────────────── */
@@ -1230,18 +1239,15 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     if (!pop.classList.contains('open')) renderPatternList();
     pop.classList.toggle('open');
   });
-
   document.getElementById('patterns-save-btn').addEventListener('click', () => {
     const input = document.getElementById('patterns-name-input');
     const name = input.value.trim(); if (!name) { input.focus(); return; }
     savePattern(APP_ID, name, captureState()); input.value = ''; renderPatternList();
   });
-
   document.getElementById('patterns-name-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('patterns-save-btn').click();
     if (e.key === 'Escape') closePatterns();
   });
-
   document.addEventListener('click', e => {
     if (!e.target.closest('.patterns-group')) closePatterns();
   });
@@ -1280,16 +1286,12 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   );
 
   /* ── INIT ─────────────────────────────────────────────────── */
-  buildGrid();
-  rebuildBeatRow();
-  buildKitSelector();
-  buildPads();
+  buildGrid(); rebuildBeatRow(); buildKitSelector(); buildPads();
 
 })();
 </script>
 
 <style>
-  /* Sequencer: full-screen blocker in portrait */
   #rotate-prompt {
     display: none; position: fixed; inset: 0; z-index: 9999;
     background: var(--bg); flex-direction: column; align-items: center; justify-content: center; gap: 16px;
@@ -1298,9 +1300,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   body.is-touch.is-portrait:not(.pads-mode) #rotate-prompt { display: flex; }
   #rotate-prompt svg { opacity: 0.4; }
 
-  /* Pads: soft hint banner in landscape */
   #pads-landscape-hint {
-    display: none;
     position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
     z-index: 200;
     background: rgba(14,19,24,0.92); backdrop-filter: blur(12px);
@@ -1313,17 +1313,13 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   }
   @keyframes hint-in { from { opacity:0; transform: translateX(-50%) translateY(8px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
   #pads-landscape-hint.visible { display: flex; }
-  #pads-hint-dismiss {
-    background: none; border: none; color: var(--muted); cursor: pointer;
-    font-size: 0.75rem; padding: 0 2px; line-height: 1; transition: color 120ms;
-  }
+  #pads-hint-dismiss { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.75rem; padding: 0 2px; line-height: 1; transition: color 120ms; }
   #pads-hint-dismiss:hover { color: var(--amber); }
 </style>
 
 <div id="rotate-prompt">
   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-    <path d="M3 3v5h5"/>
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
   </svg>
   Rotate to landscape
 </div>
@@ -1340,37 +1336,22 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
 (function() {
   var isTouch = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
   if (!isTouch) return;
-
   document.body.classList.add('is-touch');
-
   var hint = document.getElementById('pads-landscape-hint');
   var hintDismissed = false;
-
   function checkOrientation() {
     var isPortrait = window.innerHeight > window.innerWidth;
     document.body.classList.toggle('is-portrait', isPortrait);
-
-    // Show pads landscape hint when: touch device, pads mode, landscape, not dismissed
     var inPadsMode = document.body.classList.contains('pads-mode');
-    if (inPadsMode && !isPortrait && !hintDismissed) {
-      hint.classList.add('visible');
-    } else {
-      hint.classList.remove('visible');
-    }
-    // Reset dismissed flag when they go back to portrait (so hint reappears if they go landscape again)
+    if (inPadsMode && !isPortrait && !hintDismissed) { hint.classList.add('visible'); }
+    else { hint.classList.remove('visible'); }
     if (isPortrait) hintDismissed = false;
   }
-
   document.getElementById('pads-hint-dismiss').addEventListener('click', function(e) {
-    e.stopPropagation();
-    hintDismissed = true;
-    hint.classList.remove('visible');
+    e.stopPropagation(); hintDismissed = true; hint.classList.remove('visible');
   });
-
-  // Re-evaluate hint when mode changes (pads-mode class toggled by setMode())
   var modeObs = new MutationObserver(checkOrientation);
   modeObs.observe(document.body, { attributeFilter: ['class'] });
-
   checkOrientation();
   window.addEventListener('resize', checkOrientation);
 })();
