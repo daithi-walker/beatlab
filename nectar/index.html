@@ -37,24 +37,70 @@
     }
 
     #top-bar {
-      height: 56px;
+      height: 52px;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
-      gap: 16px;
-      padding: 0 20px;
+      gap: 10px;
+      padding: 0 14px;
       flex-shrink: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
     }
 
+    .home-link {
+      text-decoration: none;
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      color: var(--root-color);
+      opacity: 0.6;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .home-link:hover { opacity: 1; }
+
+    .topbar-divider { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+
     .wordmark {
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.18em;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
       color: var(--root-color);
       text-transform: uppercase;
       white-space: nowrap;
       flex-shrink: 0;
+    }
+
+    .nectar-tab {
+      font-family: var(--font);
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      text-decoration: none;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 6px 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: color 0.12s, border-color 0.12s;
+    }
+    .nectar-tab:hover { color: var(--text); }
+    .nectar-tab.active { color: var(--root-color); border-bottom-color: var(--root-color); }
+
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .vol-label { font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+    #vol-slider {
+      -webkit-appearance: none; appearance: none;
+      width: 70px; height: 3px; background: rgba(255,160,60,0.2); border-radius: 999px; outline: none; cursor: pointer;
+    }
+    #vol-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%;
+      background: var(--root-color); cursor: pointer;
     }
 
     .controls {
@@ -257,22 +303,22 @@
 <body>
   <div id="app">
     <header id="top-bar">
-      <a href="../index.html" style="text-decoration:none;font-size:11px;letter-spacing:.08em;color:var(--accent);opacity:.7;margin-right:12px;">⌂ BeatLab</a>
+      <a href="../index.html" class="home-link">⌂ BeatLab</a>
+      <div class="topbar-divider"></div>
       <span class="wordmark">Nectar</span>
-      <div class="controls">
-        <select id="scale-select"></select>
-        <select id="root-select"></select>
-        <button id="play-btn">&#9654; Play</button>
-        <label class="bpm-label">
-          <span>BPM</span>
-          <input id="bpm-input" type="number" min="40" max="200" value="80">
-        </label>
-        <label class="box-label">
-          <input id="box-check" type="checkbox">
-          <span>Box</span>
-        </label>
-        <a href="identify.html" id="identify-link">Identify &#8594;</a>
-        <a href="chords.html" id="chords-link">Chords &#8594;</a>
+      <div class="topbar-divider"></div>
+      <a href="index.html" class="nectar-tab active">Scales</a>
+      <a href="chords.html" class="nectar-tab">Chords</a>
+      <a href="identify.html" class="nectar-tab">Identify</a>
+      <div class="topbar-divider"></div>
+      <select id="root-select"></select>
+      <select id="scale-select"></select>
+      <button id="play-btn">&#9654; Play</button>
+      <label class="bpm-label"><span>BPM</span><input id="bpm-input" type="number" min="40" max="200" value="80"></label>
+      <label class="box-label"><input id="box-check" type="checkbox"><span>Box</span></label>
+      <div class="topbar-right">
+        <span class="vol-label">Vol</span>
+        <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.8">
       </div>
     </header>
     <div id="fretboard-container">
@@ -927,6 +973,11 @@ registerProcessor('ks', KSProcessor);
         const opt = new Option(name, i);
         if (ROOT_MIDI[i] === currentRoot) opt.selected = true;
         rootSelect.appendChild(opt);
+      });
+
+      // Volume slider
+      document.getElementById('vol-slider').addEventListener('input', e => {
+        if (masterGain) masterGain.gain.value = parseFloat(e.target.value);
       });
 
       // Event listeners

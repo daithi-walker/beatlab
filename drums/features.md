@@ -10,12 +10,17 @@
 - **Swipe across pads** — dragging a finger across the grid fires each pad it crosses
 - **Save / load patterns** — Patterns ▾ popover, backed by `core/storage.js` / localStorage
 - **Mute per track** — speaker icon per row in sequencer
-- **Mute All / Unmute All** — single button to silence everything instantly
-- **Pad recording with metronome** — hit ● Record in Pads view; 4-click count-in, then tap pads live
-  - Loop length: 1 / 2 / 4 bars (selector in toolbar)
-  - Quantize mode: snaps taps to nearest 16th note (toggle to free timing)
+- **Mute All / Unmute All** — single button in topbar to silence all tracks instantly; turns pink when active
+- **Pad recording with metronome** — tap ⏺ Rec in topbar (pads mode) to open a recording sheet
+  - Sheet closes immediately on start so pads are visible and tappable during count-in
+  - Floating pill over pad grid shows countdown (4 3 2 1) then ● REC
+  - Loop length: 1 / 2 / 4 bars
+  - **Snap to grid** — snaps each hit to nearest 16th note (with description)
+  - **Free timing** — records exactly when you tap (with description)
   - Takes saved as beat-relative events in `core/storage.js` under `beatlab:drums:rec:<name>`
   - **→ Seq** button loads a take into the step sequencer grid and switches to Sequencer view
+  - No-hits feedback: if nothing was recorded, sheet reopens with an amber hint
+- **Cross-track drag** in sequencer — dragging in any direction (horizontal, vertical, diagonal) paints or erases steps across all tracks; single container listener with setPointerCapture
 - **BPM** — slider + editable number input, bidirectional sync
 - **Master volume** — slider in topbar
 - **Lookahead scheduler** — 25ms tick, 100ms lookahead; timing locked to audio clock

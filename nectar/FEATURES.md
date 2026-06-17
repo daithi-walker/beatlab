@@ -194,6 +194,13 @@ Separate page reachable via "Identify →" from the scale explorer or chord expl
 
 ---
 
+## Navigation & UI
+
+- **Consistent topbar across all pages** — BeatLab home link | Nectar wordmark | Scales / Chords / Identify tab strip (active tab highlighted in amber) | page-specific controls | Vol slider
+- **Volume slider** — present on all three pages (Scales, Chords, Identify), wired to masterGain
+
+---
+
 ## Next Steps
 
 ### Chord Identifier
