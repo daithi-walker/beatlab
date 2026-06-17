@@ -6,47 +6,56 @@
 step trigger
     │
     ▼
-OscillatorNode / AudioBufferSourceNode (noise)
+OscillatorNode / AudioBufferSourceNode (noise)   [short-lived, per-hit]
     │
     ▼
-GainNode (ADSR envelope)
+GainNode (ADSR envelope baked per voice)
+    │
+    ▼
+WaveShaperNode (distortion, per bank)
     │
     ▼
 BiquadFilterNode (per-bank filter)
     │   ╲
-    │    GainNode ──► LFO (detune filter cutoff)
+    │    GainNode ──► OscillatorNode LFO   [only created when lfoRate > 0]
     │
     ▼
-WaveShaperNode (distortion)
+GainNode (panel volume)
     │
-    ├──► GainNode ──► ConvolverNode (shared reverb) ──┐
-    ├──► GainNode ──► DelayNode + GainNode (feedback) ┤
-    ├──► GainNode ──► delay + BiquadFilter (chorus)   ┤
-    │                                                   │
-    ▼                                                   │
-GainNode (panel vol) ◄──────────────────────────────────┘
-    │
-    ▼
-AudioContext.destination
+    ├──► GainNode ──► shared ConvolverNode (reverb, one for all banks)
+    ├──► GainNode ──► shared DelayNode + feedback GainNode (one delay bus)
+    └──► GainNode ──► shared chorus DelayNode + LFO (one chorus bus)
+                              │
+                              ▼
+                     DynamicsCompressorNode
+                              │
+                              ▼
+                    AudioContext.destination
 ```
 
-Each bank has its own independent chain. All banks feed a single shared `ConvolverNode` for reverb (send/return pattern).
+Three buses are shared across all banks (reverb, delay, chorus). Each bank contributes a send gain to each. Per-bank nodes are distortion, filter, filterLFO (lazy), and volume only.
 
 ---
 
 ## Done
 
-- 16-step sequencer (industry standard — one bar of 4/4 at 16th-note resolution)
-- Dynamic bank add/remove — click Add Bank, configure inline
+- **16 or 32 step sequencer** — toggle in topbar; rebuilds all grids in place, preserves patterns
+- Dynamic bank add/remove — click Add Bank, configure inline; starts with one Kick bank pre-loaded
 - 13 bank types: Kick, Snare, Hi-Hat, Clap, Tom Hi, Tom Lo, Open Hat, Crash, Bass, Sub, Lead, Pluck, Pad
 - Per-panel type switcher — change type after adding, steps are preserved
 - Drag across steps to paint/erase (sets intent on first touch, applies across drag)
-- Mute per bank
+- Mute per bank — speaker icon in panel header (crossed-out = muted)
+- FX per bank — opens a side panel (desktop) or bottom sheet (mobile) with vertically-stacked sliders
+  - Vol, Filter, LFO Rate, Reverb / Delay, Distortion, Chorus
+- **Save / load patterns** — Patterns ▾ popover: name + Save, click to load, ✕ to delete; backed by `core/storage.js` / localStorage
+- BPM enterable as a number — slider + editable number input, bidirectional sync
+- Shared reverb/delay/chorus buses — eliminates per-bank oscillator and feedback-loop proliferation; audio stays clean with many banks open
+- FilterLFO is lazily created only when LFO Rate is dialled above zero
+- Delay bus time updates live when BPM changes
+- Fullscreen button in topbar (Fullscreen API, expand/collapse icon)
+- Mobile: step button contrast boosted at `(pointer: coarse)`
+- Mobile: portrait rotate overlay — CSS media query + JS `maxTouchPoints` fallback
 - Spacebar play/stop
-- Per-panel effects (2-column layout):
-  - Vol, Filter, LFO (filter modulation), Reverb
-  - Delay (8th-note synced, 40% feedback), Distortion (soft-clip sigmoid), Chorus (LFO-modulated delay)
-- Shared reverb convolver (send/return pattern — all panels feed one IR)
 - Lookahead scheduler (25ms tick, 100ms lookahead) — timing locked to audio clock, not JS
 
 ---
@@ -65,8 +74,7 @@ Each bank has its own independent chain. All banks feed a single shared `Convolv
   Requires a second row of controls per melodic panel. This is the single biggest jump toward
   a melodic sequencer vs. a pattern trigger.
 
-- **Delay sync to BPM** — delay time currently set at bank creation. Should update live when
-  BPM slider moves. Also expose a note-division selector (1/4, 1/8, 1/16, dotted).
+- **Delay division selector** — expose a note-division picker (1/4, 1/8, 1/16, dotted) instead of fixed 8th-note time. Delay already updates when BPM changes.
 
 - **Octave shift per bank** — ±2 octave buttons in the meta column. Lets you run two bass
   banks an octave apart without the note picker.
@@ -80,8 +88,7 @@ Each bank has its own independent chain. All banks feed a single shared `Convolv
 - **Swing** — push odd-numbered steps slightly late. A single `swingAmount` (0–50%) added to
   `nextBeatTime` for odd steps in `scheduleStep`.
 
-- **Pattern slots** — save/load up to 4 patterns per session and switch between them (like the
-  loop bank in DubCanvas). localStorage for persistence.
+- **Pattern slots** (done — unlimited named patterns via Patterns ▾ popover)
 
 ### UI
 

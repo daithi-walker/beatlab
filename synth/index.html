@@ -133,7 +133,14 @@ body {
 .srow { display:grid; grid-template-columns:28px 1fr 32px; align-items:center; gap:5px; }
 .srow label { font-size:9px; color:var(--muted); letter-spacing:.06em; }
 .srow input[type=range] { accent-color:var(--teal); width:100%; }
-.srow .v { font-size:9px; color:var(--teal); text-align:right; }
+.srow .v {
+  font-size:9px; color:var(--teal); text-align:center; width:3.6ch;
+  background:none; border:none; border-bottom:1px solid var(--divider);
+  padding:0; font-family:inherit; -moz-appearance:textfield;
+}
+.srow .v:focus { outline:none; border-bottom-color:var(--teal); }
+.srow .v::-webkit-inner-spin-button,
+.srow .v::-webkit-outer-spin-button { -webkit-appearance:none; }
 
 /* voice count */
 .feat-note { font-size:8px; color:var(--muted); opacity:.5; line-height:1.4; }
@@ -325,7 +332,7 @@ body {
         <div class="srow">
           <label>BPM</label>
           <input type="range" id="arp-bpm" min="60" max="240" step="1" value="120">
-          <span class="v" id="arp-bpm-v">120</span>
+          <input type="number" class="v" id="arp-bpm-v" min="60" max="240" value="120">
         </div>
         <div class="chip-row" id="arp-pats">
           <button class="chip active" data-pat="up">UP</button>
@@ -859,14 +866,18 @@ document.getElementById('arp-latch').addEventListener('click',()=>{
     arpNotes=[]; noteOff('arp');
   }
 });
-document.getElementById('arp-bpm').addEventListener('input',e=>{
-  arpBpm=+e.target.value;
-  document.getElementById('arp-bpm-v').textContent=arpBpm;
-  if(arpEnabled){
-    clearInterval(arpInterval);
-    arpInterval=setInterval(tickArp,Math.round(60000/arpBpm/2));
-  }
-});
+function setArpBpm(v){
+  v=Math.max(60,Math.min(240,Math.round(v)));
+  if(!isFinite(v))return;
+  arpBpm=v;
+  document.getElementById('arp-bpm').value=v;
+  document.getElementById('arp-bpm-v').value=v;
+  if(arpEnabled){clearInterval(arpInterval);arpInterval=setInterval(tickArp,Math.round(60000/arpBpm/2));}
+}
+document.getElementById('arp-bpm').addEventListener('input',e=>setArpBpm(+e.target.value));
+const arpBpmInput=document.getElementById('arp-bpm-v');
+arpBpmInput.addEventListener('change',e=>setArpBpm(+e.target.value));
+arpBpmInput.addEventListener('keydown',e=>{if(e.key==='Enter')arpBpmInput.blur();});
 document.querySelectorAll('#arp-pats .chip').forEach(btn=>{
   btn.addEventListener('click',()=>{
     arpPattern=btn.dataset.pat; arpStep=0;

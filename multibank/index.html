@@ -57,7 +57,15 @@
 
   .bpm-group { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
   .ctrl-label { font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
-  .ctrl-value { font-size: 0.7rem; color: var(--teal); min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }
+  .ctrl-value {
+    font-size: 0.7rem; color: var(--teal); width: 3.6ch; text-align: center;
+    font-variant-numeric: tabular-nums; background: none; border: none;
+    border-bottom: 1px solid var(--divider); padding: 0; font-family: inherit;
+    -moz-appearance: textfield;
+  }
+  .ctrl-value:focus { outline: none; border-bottom-color: var(--teal); }
+  .ctrl-value::-webkit-inner-spin-button,
+  .ctrl-value::-webkit-outer-spin-button { -webkit-appearance: none; }
 
   /* ── SLIDERS ──────────────────────────────────────────────── */
   input[type="range"] {
@@ -343,7 +351,7 @@
   <div class="bpm-group">
     <span class="ctrl-label">BPM</span>
     <input type="range" id="bpm-slider" min="60" max="200" value="120">
-    <span class="ctrl-value" id="bpm-value">120</span>
+    <input type="number" class="ctrl-value" id="bpm-value" min="60" max="200" value="120">
   </div>
 
   <button class="topbar-icon-btn" id="fullscreen-btn" title="Fullscreen" aria-label="Toggle fullscreen">
@@ -1218,11 +1226,21 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   // Start with one kick bank so there's something to play immediately
   addPanel('kick');
 
-  document.getElementById('bpm-slider').addEventListener('input', e => {
-    bpm = parseInt(e.target.value, 10);
-    document.getElementById('bpm-value').textContent = bpm;
+  const bpmSlider = document.getElementById('bpm-slider');
+  const bpmInput  = document.getElementById('bpm-value');
+
+  function setBpm(v) {
+    v = Math.max(60, Math.min(200, v));
+    if (!isFinite(v)) return;
+    bpm = v;
+    bpmSlider.value = v;
+    bpmInput.value  = v;
     if (sharedDelay) sharedDelay.delayTime.setTargetAtTime(60 / bpm / 2, ctx.currentTime, 0.1);
-  });
+  }
+
+  bpmSlider.addEventListener('input', e => setBpm(parseInt(e.target.value, 10)));
+  bpmInput.addEventListener('change', e => setBpm(parseInt(e.target.value, 10)));
+  bpmInput.addEventListener('keydown', e => { if (e.key === 'Enter') bpmInput.blur(); });
 
   // Steps toggle: 16 ↔ 32
   const stepsBtn = document.getElementById('steps-btn');
@@ -1285,12 +1303,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
       rebuildBeatRow();
     }
     // Restore BPM
-    if (saved.bpm) {
-      bpm = saved.bpm;
-      const sl = document.getElementById('bpm-slider');
-      sl.value = bpm;
-      document.getElementById('bpm-value').textContent = bpm;
-    }
+    if (saved.bpm) setBpm(saved.bpm);
     // Restore panels
     saved.panels.forEach(pd => {
       addPanel(pd.typeKey);

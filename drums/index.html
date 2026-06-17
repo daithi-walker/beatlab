@@ -48,7 +48,15 @@
   .divider-v { width: 1px; height: 24px; background: var(--divider); flex-shrink: 0; }
   .bpm-group { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
   .ctrl-label { font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
-  .ctrl-value { font-size: 0.7rem; color: var(--teal); min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }
+  .ctrl-value {
+    font-size: 0.7rem; color: var(--teal); width: 3.6ch; text-align: center;
+    font-variant-numeric: tabular-nums; background: none; border: none;
+    border-bottom: 1px solid var(--divider); padding: 0; font-family: inherit;
+    -moz-appearance: textfield;
+  }
+  .ctrl-value:focus { outline: none; border-bottom-color: var(--teal); }
+  .ctrl-value::-webkit-inner-spin-button,
+  .ctrl-value::-webkit-outer-spin-button { -webkit-appearance: none; }
   #bpm-slider { width: 80px; }
   .bpm-group { margin-left: auto; }
 
@@ -210,7 +218,7 @@
   <div class="bpm-group">
     <span class="ctrl-label">BPM</span>
     <input type="range" id="bpm-slider" min="60" max="200" value="120">
-    <span class="ctrl-value" id="bpm-value">120</span>
+    <input type="number" class="ctrl-value" id="bpm-value" min="60" max="200" value="120">
   </div>
 </header>
 
@@ -649,7 +657,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     if (saved.bpm) {
       bpm = saved.bpm;
       document.getElementById('bpm-slider').value = bpm;
-      document.getElementById('bpm-value').textContent = bpm;
+      document.getElementById('bpm-value').value = bpm;
     }
     if (saved.steps && saved.steps !== STEPS) {
       STEPS = saved.steps;
@@ -722,10 +730,20 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   });
 
   /* ── BPM ──────────────────────────────────────────────────── */
-  document.getElementById('bpm-slider').addEventListener('input', e => {
-    bpm = parseInt(e.target.value, 10);
-    document.getElementById('bpm-value').textContent = bpm;
-  });
+  const bpmSlider = document.getElementById('bpm-slider');
+  const bpmInput  = document.getElementById('bpm-value');
+
+  function setBpm(v) {
+    v = Math.max(60, Math.min(200, v));
+    if (!isFinite(v)) return;
+    bpm = v;
+    bpmSlider.value = v;
+    bpmInput.value  = v;
+  }
+
+  bpmSlider.addEventListener('input', e => setBpm(parseInt(e.target.value, 10)));
+  bpmInput.addEventListener('change', e => setBpm(parseInt(e.target.value, 10)));
+  bpmInput.addEventListener('keydown', e => { if (e.key === 'Enter') bpmInput.blur(); });
 
   /* ── PLAY / KEYBOARD ──────────────────────────────────────── */
   document.getElementById('play-btn').addEventListener('click', toggleTransport);
@@ -737,9 +755,9 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   const banner = document.getElementById('audio-banner');
   ['pointerdown','keydown'].forEach(evt =>
     document.addEventListener(evt, () => {
-      if (ctx) ctx.resume().then(() => { if (ctx.state === 'running') banner.classList.add('hidden'); });
-      else banner.classList.add('hidden');
-    }, { passive: true })
+      if (!ctx) initAudio();
+      ctx.resume().then(() => { if (ctx.state === 'running') banner.classList.add('hidden'); });
+    }, { once: false, passive: true })
   );
 
   /* ── INIT ─────────────────────────────────────────────────── */
