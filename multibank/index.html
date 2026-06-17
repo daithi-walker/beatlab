@@ -1442,7 +1442,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   });
 
   document.addEventListener('keydown', e => {
-    if (e.code === 'Space' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'INPUT') {
+    if (e.code === 'Space' && !['INPUT','BUTTON','SELECT','TEXTAREA'].includes(e.target.tagName)) {
       e.preventDefault();
       toggleTransport();
     }
