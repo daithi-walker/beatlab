@@ -1661,7 +1661,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
       });
 
       const del = document.createElement('button'); del.className = 'take-row-del'; del.textContent = '✕';
-      del.addEventListener('click', e => { e.stopPropagation(); deletePattern(REC_ID, name); renderTakesList(); });
+      del.addEventListener('click', e => { e.stopPropagation(); if (!confirm(`Delete take "${name}"?`)) return; deletePattern(REC_ID, name); renderTakesList(); });
 
       row.appendChild(nameEl); row.appendChild(playBtn); row.appendChild(seqBtn); row.appendChild(del);
       list.appendChild(row);
@@ -1989,7 +1989,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
         if (take) startLiveLoop(take, name);
       });
       const del = document.createElement('button'); del.className = 'take-row-del'; del.textContent = '✕';
-      del.addEventListener('click', e => { e.stopPropagation(); deletePattern(REC_ID, name); renderRpTakesList(); renderTakesNav(); });
+      del.addEventListener('click', e => { e.stopPropagation(); if (!confirm(`Delete take "${name}"?`)) return; deletePattern(REC_ID, name); renderRpTakesList(); renderTakesNav(); });
       row.appendChild(nameEl); row.appendChild(playBtn); row.appendChild(del);
       list.appendChild(row);
     });
