@@ -28,6 +28,34 @@ persistence. GitHub Pages deploys on push to `main` via `.github/workflows/pages
    non-obvious implementation details (scheduler, state format, encoding schema).
 3. **Check `CHANGELOG.md`** for the current version and what's already shipped.
 
+## Mobile & cross-browser requirements
+
+BeatLab is used on phones. iOS Safari and Android Chrome are first-class targets.
+Always consider these when writing or reviewing any code:
+
+### Web Audio
+- Create `AudioContext` and call `.resume()` in the **same synchronous gesture handler** — iOS Safari requires both in one call stack or it refuses to unlock audio.
+- Defer heavy buffer generation (`createBuffer`, `ConvolverNode` impulse responses, large noise buffers) with `setTimeout(0)` so the gesture handler returns fast.
+- Listen for **both `touchstart` and `pointerdown`** to unlock audio — `pointerdown` alone is unreliable on iOS.
+- Re-resume `AudioContext` on `visibilitychange` — iOS suspends it on screen lock, phone calls, and tab switches.
+- Null-guard any `BufferSourceNode` that depends on a deferred buffer; skip silently rather than throw.
+
+### Touch & interaction
+- Use `touch-action: none` on any element that handles `pointermove` for drag/paint gestures.
+- Use `pointer` events (not `mouse` or `touch` separately) — they work across all devices. Add `touchstart` only where needed for audio unlock.
+- Test tap targets at ≥44px — iOS enforces this for reliable touch.
+- `setPointerCapture` for drag operations so they survive leaving the source element.
+
+### Layout
+- Add `-webkit-backdrop-filter` alongside `backdrop-filter` — iOS Safari requires the prefix.
+- Use `env(safe-area-inset-*)` for padding near screen edges (notch, home indicator).
+- Avoid `vh` units for full-height layouts — use `height: 100%` on `html, body` instead; iOS Safari's dynamic toolbar changes `100vh`.
+- `position: fixed` menus must be at `<body>` level if any ancestor has `overflow: hidden` — clipping is stricter on WebKit.
+
+### ES Modules
+- All apps use `<script type="module">` — supported on iOS 10.3+ and Android Chrome 61+. Safe for our audience.
+- Module imports only work over HTTP(S), not `file://`. Always test via the local server or GitHub Pages.
+
 ## Rules
 
 ### Never break share links
