@@ -85,9 +85,9 @@
   #app-logo-btn.open { background: rgba(0,229,204,0.22); }
 
   .tb-drop-menu {
-    display: none; position: absolute; top: calc(100% + 6px); left: 0;
+    display: none; position: fixed; top: var(--topbar-h); left: auto;
     min-width: 180px; background: var(--surface); border: 1px solid var(--divider);
-    border-radius: 8px; z-index: 300; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    border-radius: 8px; z-index: 9000; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     overflow: hidden; flex-direction: column;
   }
   #app-nav-menu { min-width: 160px; }
@@ -1654,7 +1654,12 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
       e.stopPropagation();
       const wasOpen = menu.classList.contains('open');
       closeAllDrops();
-      if (!wasOpen) { menu.classList.add('open'); btn.classList.add('open'); }
+      if (!wasOpen) {
+        const rect = btn.getBoundingClientRect();
+        menu.style.left = rect.left + 'px';
+        menu.classList.add('open');
+        btn.classList.add('open');
+      }
     });
   }
 
