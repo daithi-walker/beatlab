@@ -400,6 +400,9 @@
   .take-row-name { flex: 1; font-size: 0.72rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .take-row-seq { background: none; border: 1px solid var(--divider); border-radius: 4px; color: var(--muted); cursor: pointer; font-size: 0.6rem; padding: 3px 8px; font-family: inherit; transition: all 100ms; }
   .take-row-seq:hover { color: var(--teal); border-color: var(--teal); }
+  .take-row-play { background: none; border: 1px solid var(--divider); border-radius: 4px; color: var(--muted); cursor: pointer; font-size: 0.6rem; padding: 3px 8px; font-family: inherit; transition: all 100ms; }
+  .take-row-play:hover { color: var(--green); border-color: var(--green); }
+  .take-row-play.active { color: var(--green); border-color: var(--green); }
   .take-row-del { background: none; border: none; color: var(--faint); cursor: pointer; font-size: 0.72rem; padding: 2px 4px; transition: color 120ms; }
   .take-row-del:hover { color: var(--pink); }
 
@@ -553,6 +556,7 @@
       </div>
       <div class="rec-section">
         <div class="rec-section-label">Saved takes</div>
+        <div style="font-size:0.62rem;color:var(--muted);margin-bottom:8px;">▶ loops on pads &nbsp;·&nbsp; → Seq loads into step grid</div>
         <div id="takes-list"></div>
       </div>
     </div>
@@ -844,6 +848,54 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
       nextBeatTime += stepDuration();
       currentStep = (currentStep + 1) % STEPS;
     }
+    tickLiveLoop(ctx.currentTime);
+  }
+
+  /* ── LIVE LOOP ────────────────────────────────────────────── */
+  let liveLoop = null; // { take, loopStart, scheduledThrough }
+  let liveLoopTimer = null;
+
+  function startLiveLoop(take, name) {
+    if (!ctx) initAudio();
+    ctx.resume();
+    stopLiveLoop();
+    liveLoop = {
+      take, _name: name || '',
+      loopStart: ctx.currentTime + 0.05,
+      scheduledThrough: ctx.currentTime,
+    };
+    if (!liveLoopTimer) liveLoopTimer = setInterval(() => tickLiveLoop(ctx.currentTime), TICK_MS);
+    renderTakesList();
+  }
+
+  function stopLiveLoop() {
+    liveLoop = null;
+    clearInterval(liveLoopTimer); liveLoopTimer = null;
+    renderTakesList();
+  }
+
+  function tickLiveLoop(now) {
+    if (!liveLoop) return;
+    const { take } = liveLoop;
+    const loopDur = take.bars * 4 * beatDuration();
+    const horizon = now + LOOKAHEAD;
+    take.events.forEach(ev => {
+      const beatSec = ev.beat * beatDuration();
+      const firstCycle = Math.max(0, Math.floor((liveLoop.scheduledThrough - liveLoop.loopStart) / loopDur));
+      const lastCycle  = Math.ceil((horizon - liveLoop.loopStart) / loopDur);
+      for (let c = firstCycle; c < lastCycle; c++) {
+        const t = liveLoop.loopStart + c * loopDur + beatSec;
+        if (t >= liveLoop.scheduledThrough && t < horizon) {
+          voice(ev.id, t);
+          const pad = document.querySelector(`.pad[data-track-id="${ev.id}"]`);
+          if (pad) {
+            const delay = Math.max(0, (t - ctx.currentTime) * 1000);
+            setTimeout(() => { pad.classList.add('hit'); setTimeout(() => pad.classList.remove('hit'), 80); }, delay);
+          }
+        }
+      }
+    });
+    liveLoop.scheduledThrough = horizon;
   }
 
   function startTransport() {
@@ -1424,15 +1476,32 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     names.forEach(name => {
       const row = document.createElement('div'); row.className = 'take-row';
       const nameEl = document.createElement('span'); nameEl.className = 'take-row-name'; nameEl.textContent = name;
+
+      const isLooping = liveLoop && liveLoop.take === loadPattern(REC_ID, name);
+      const playBtn = document.createElement('button');
+      playBtn.className = 'take-row-play' + (liveLoop?._name === name ? ' active' : '');
+      playBtn.textContent = (liveLoop?._name === name) ? '◼' : '▶';
+      playBtn.title = 'Loop on pads';
+      playBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (liveLoop && liveLoop._name === name) { stopLiveLoop(); return; }
+        const take = loadPattern(REC_ID, name);
+        if (take) { startLiveLoop(take, name); closeRecSheet(); }
+      });
+
       const seqBtn = document.createElement('button'); seqBtn.className = 'take-row-seq'; seqBtn.textContent = '→ Seq';
+      seqBtn.title = 'Load into step sequencer';
       seqBtn.addEventListener('click', e => {
         e.stopPropagation();
         const take = loadPattern(REC_ID, name);
         if (take) { applyTake(take); closeRecSheet(); }
       });
+
       const del = document.createElement('button'); del.className = 'take-row-del'; del.textContent = '✕';
       del.addEventListener('click', e => { e.stopPropagation(); deletePattern(REC_ID, name); renderTakesList(); });
-      row.appendChild(nameEl); row.appendChild(seqBtn); row.appendChild(del); list.appendChild(row);
+
+      row.appendChild(nameEl); row.appendChild(playBtn); row.appendChild(seqBtn); row.appendChild(del);
+      list.appendChild(row);
     });
   }
 
@@ -1975,6 +2044,9 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     const saved = decodeState(location.hash.slice(1));
     if (saved) applyState(saved);
   }
+
+  // Restore last view mode
+  setMode(localStorage.getItem('beatlab:drums:mode') || 'seq');
 
 })();
 </script>
