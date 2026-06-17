@@ -437,19 +437,19 @@
     background: var(--surface); border-left: 1px solid var(--divider);
     flex-direction: column; overflow-y: auto; z-index: 50;
   }
-  #rp-pads, #rp-seq { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  #rp-pads, #rp-seq { padding: 20px 16px; display: flex; flex-direction: column; gap: 18px; }
   .rp-header {
-    font-size: 0.62rem; font-weight: 600; letter-spacing: 0.14em;
-    text-transform: uppercase; color: var(--muted);
-    padding-bottom: 10px; border-bottom: 1px solid var(--divider); flex-shrink: 0;
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--text);
+    padding-bottom: 12px; border-bottom: 1px solid var(--divider); flex-shrink: 0;
   }
-  .rp-section-lbl { font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .rp-section-lbl { font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: -6px; }
   #rp-rec-btn {
     width: 100%; font-family: inherit; font-size: 0.78rem; font-weight: 600;
     letter-spacing: 0.1em; text-transform: uppercase;
     color: var(--pink); background: rgba(255,107,157,0.1);
     border: 1px solid rgba(255,107,157,0.35); border-radius: 10px;
-    padding: 12px; cursor: pointer; transition: background 120ms;
+    padding: 14px; cursor: pointer; transition: background 120ms;
   }
   #rp-rec-btn:hover { background: rgba(255,107,157,0.2); }
   #rp-rec-btn.recording { background: var(--pink); color: #fff; border-color: var(--pink); animation: pulse-rec 500ms ease-in-out infinite; }
