@@ -47,16 +47,20 @@ Three buses are shared across all banks (reverb, delay, chorus). Each bank contr
 - Mute per bank — speaker icon in panel header (crossed-out = muted)
 - FX per bank — opens a side panel (desktop) or bottom sheet (mobile) with vertically-stacked sliders
   - Vol, Filter, LFO Rate, Reverb / Delay, Distortion, Chorus
-- **Save / load patterns** — Patterns ▾ popover: name + Save, click to load, ✕ to delete; backed by `core/storage.js` / localStorage
-- BPM enterable as a number — slider + editable number input, bidirectional sync
+- **Save / load patterns** — Patterns ▾ dropdown (body-level, no clipping): name + Save, click to load, ✕ to delete; backed by `core/storage.js` / localStorage
+- **BPM in Timing dropdown** — Timing ▾ button opens a dropdown with slider + editable number input, bidirectional sync; matches Drums layout
+- **Master volume slider** — Vol slider in topbar, reads and writes shared `beatlab:settings:volume` key; changes in Multibank carry to Drums/Synth on next load
+- **Crackle-free stop** — `ctx.suspend()` on transport stop silences the shared delay feedback loop and chorus LFO; `ctx.resume()` on start brings them back
 - Shared reverb/delay/chorus buses — eliminates per-bank oscillator and feedback-loop proliferation; audio stays clean with many banks open
 - FilterLFO is lazily created only when LFO Rate is dialled above zero
 - Delay bus time updates live when BPM changes
 - Fullscreen button in topbar (Fullscreen API, expand/collapse icon)
+- Topbar scrolls horizontally on mobile so all controls stay reachable
 - Mobile: step button contrast boosted at `(pointer: coarse)`
 - Mobile: portrait rotate overlay — CSS media query + JS `maxTouchPoints` fallback
 - Spacebar play/stop
 - Lookahead scheduler (25ms tick, 100ms lookahead) — timing locked to audio clock, not JS
+- Shared app nav — BeatLab logo + app name in topbar via `core/topnav.js`; app name hidden on mobile
 
 ---
 
