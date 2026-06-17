@@ -885,12 +885,30 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     };
     if (!liveLoopTimer) liveLoopTimer = setInterval(() => tickLiveLoop(ctx.currentTime), TICK_MS);
     renderTakesList();
+    updatePadsTakesBtn();
+  }
+
+  function updatePadsTakesBtn() {
+    const btn = document.getElementById('pads-takes-btn');
+    const names = listPatterns(REC_ID);
+    if (liveLoop) {
+      btn.style.display = '';
+      btn.textContent = '◼ Stop';
+      btn.style.color = 'var(--pink)';
+      btn.style.background = 'rgba(255,107,157,0.08)';
+      btn.style.borderColor = 'rgba(255,107,157,0.25)';
+    } else {
+      btn.style.color = ''; btn.style.background = ''; btn.style.borderColor = '';
+      btn.style.display = names.length ? '' : 'none';
+      btn.textContent = `▶ Takes (${names.length})`;
+    }
   }
 
   function stopLiveLoop() {
     liveLoop = null;
     clearInterval(liveLoopTimer); liveLoopTimer = null;
     renderTakesList();
+    updatePadsTakesBtn();
   }
 
   function tickLiveLoop(now) {
@@ -1758,9 +1776,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     list.innerHTML = '';
     const names = listPatterns(REC_ID);
     section.style.display = names.length ? '' : 'none';
-    const padsTakesBtn = document.getElementById('pads-takes-btn');
-    padsTakesBtn.style.display = names.length ? '' : 'none';
-    padsTakesBtn.textContent = `▶ Takes (${names.length})`;
+    updatePadsTakesBtn();
     names.forEach(name => {
       const row = document.createElement('div'); row.className = 'take-row';
       const nameEl = document.createElement('span'); nameEl.className = 'take-row-name'; nameEl.textContent = name;
@@ -1928,8 +1944,9 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     });
   })();
 
-  // Pads view "Takes" button — opens Patterns dropdown scrolled to takes section
+  // Pads view "Takes / Stop" button
   document.getElementById('pads-takes-btn').addEventListener('click', () => {
+    if (liveLoop) { stopLiveLoop(); return; }
     const btn = document.getElementById('patterns-btn');
     const menu = document.getElementById('patterns-menu');
     closeAllDrops();
@@ -1938,7 +1955,6 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     menu.style.left = rect.left + 'px';
     menu.classList.add('open');
     btn.classList.add('open');
-    // Scroll to the takes section
     setTimeout(() => {
       const section = document.getElementById('takes-nav-section');
       if (section) section.scrollIntoView({ block: 'nearest' });
@@ -2138,7 +2154,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
   // Restore last kit and view mode
   const savedKit = localStorage.getItem('beatlab:drums:kit');
   if (savedKit && KITS[savedKit]) { currentKit = savedKit; syncKitUI(); }
-  renderTakesNav();
+  renderTakesNav(); updatePadsTakesBtn();
   setMode(localStorage.getItem('beatlab:drums:mode') || 'seq');
 
 })();
