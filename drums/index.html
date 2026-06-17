@@ -25,12 +25,12 @@
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; }
-  html, body { background: var(--bg); color: var(--text); font-family: 'Space Grotesk', system-ui, sans-serif; -webkit-font-smoothing: antialiased; height: 100%; overflow: hidden; }
+  html, body { background: var(--bg); color: var(--text); font-family: 'Space Grotesk', system-ui, sans-serif; -webkit-font-smoothing: antialiased; height: 100%; overflow: hidden; -webkit-overflow-scrolling: touch; }
 
   /* ── TOP BAR ──────────────────────────────────────────────── */
   #topbar {
     position: fixed; top: 0; left: 0; right: 0; height: var(--topbar-h);
-    background: rgba(8,12,16,0.92); backdrop-filter: blur(16px);
+    background: rgba(8,12,16,0.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--divider);
     display: flex; align-items: center; gap: 8px; padding: 0 12px;
     z-index: 100; overflow-x: auto; overflow-y: hidden;
@@ -674,17 +674,21 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
 
   function initAudio() {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
+    ctx.resume(); // iOS requires resume() in the same gesture frame as creation
     masterGain = ctx.createGain();
     masterGain.gain.value = parseFloat(document.getElementById('vol-slider').value);
     compressor = ctx.createDynamicsCompressor();
     compressor.threshold.value = -18; compressor.ratio.value = 4;
     masterGain.connect(compressor); compressor.connect(ctx.destination);
     reverbConvolver = ctx.createConvolver();
-    reverbConvolver.buffer = makeImpulse(ctx, 2.2, 2.5);
     reverbReturn = ctx.createGain(); reverbReturn.gain.value = 0.75;
     reverbConvolver.connect(reverbReturn); reverbReturn.connect(masterGain);
-    pinkBuf  = makePinkNoise(ctx, 2);
-    whiteBuf = makeWhiteNoise(ctx, 2);
+    // Defer heavy buffer generation so initAudio() returns fast inside the gesture handler
+    setTimeout(() => {
+      reverbConvolver.buffer = makeImpulse(ctx, 2.2, 2.5);
+      pinkBuf  = makePinkNoise(ctx, 2);
+      whiteBuf = makeWhiteNoise(ctx, 2);
+    }, 0);
   }
 
   function reverbSend(g, amt) {
@@ -711,6 +715,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     bg.gain.setValueAtTime(1.0, time); bg.gain.exponentialRampToValueAtTime(0.001, time + p.bodyDecay);
     body.connect(bg); bg.connect(masterGain);
     body.start(time); body.stop(time + p.bodyDecay + 0.03);
+    if (!pinkBuf) return;
     const ns = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), ng = ctx.createGain();
     ns.buffer = pinkBuf; hp.type = 'highpass'; hp.frequency.value = p.noiseHp;
     ng.gain.setValueAtTime(p.noiseGain, time); ng.gain.exponentialRampToValueAtTime(0.001, time + p.noiseDecay);
@@ -718,6 +723,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     ns.start(time); ns.stop(time + p.noiseDecay + 0.02);
   }
   function voiceClap(time, p) {
+    if (!pinkBuf) return;
     [0, 0.008, 0.018].forEach(offset => {
       const ns = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
       ns.buffer = pinkBuf; hp.type = 'highpass'; hp.frequency.value = p.hp;
@@ -727,6 +733,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     });
   }
   function voiceHihat(time, p) {
+    if (!whiteBuf) return;
     const ns = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
     ns.buffer = whiteBuf; hp.type = 'highpass'; hp.frequency.value = p.hp;
     g.gain.setValueAtTime(p.gain, time); g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
@@ -734,6 +741,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     ns.start(time); ns.stop(time + p.decay + 0.02);
   }
   function voiceOpenhat(time, p) {
+    if (!whiteBuf) return;
     const ns = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
     ns.buffer = whiteBuf; hp.type = 'highpass'; hp.frequency.value = p.hp;
     g.gain.setValueAtTime(p.gain, time); g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
@@ -741,6 +749,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     ns.start(time); ns.stop(time + p.decay + 0.03);
   }
   function voiceCrash(time, p) {
+    if (!whiteBuf) return;
     const ns = ctx.createBufferSource(); ns.buffer = whiteBuf;
     const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = p.hp;
     const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = p.bp; bp.Q.value = 0.5;
@@ -1796,12 +1805,18 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
 
   /* ── AUDIO UNLOCK ─────────────────────────────────────────── */
   const banner = document.getElementById('audio-banner');
-  ['pointerdown','keydown'].forEach(evt =>
-    document.addEventListener(evt, () => {
-      if (!ctx) initAudio();
-      ctx.resume().then(() => { if (ctx.state === 'running') banner.classList.add('hidden'); });
-    }, { passive: true })
+  function unlockAudio() {
+    if (!ctx) initAudio();
+    ctx.resume().then(() => { if (ctx.state === 'running') banner.classList.add('hidden'); });
+  }
+  // touchstart needed on iOS Safari — pointerdown alone is not always sufficient
+  ['pointerdown', 'touchstart', 'keydown'].forEach(evt =>
+    document.addEventListener(evt, unlockAudio, { once: false, passive: true })
   );
+  // iOS suspends AudioContext on phone calls, screen lock, or tab switch — re-resume on return
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && ctx) ctx.resume();
+  });
 
   /* ── SHARE ────────────────────────────────────────────────── */
   // ── SHARE ENCODING ────────────────────────────────────────────
