@@ -35,10 +35,6 @@
 
 ---
 
-## Next Steps
+## Backlog
 
-- **Swing** — offset odd 16th notes by a percentage; single `swingAmount` param in `scheduleStep()`
-- **Per-step velocity** — a second row per track (or hold-to-set) lets steps play at different volumes
-- **Take playback in Pads** — replay a saved take through the pads view so hits animate as they play
-- **Overdub** — record additional taps on top of an existing take without clearing it
-- **WAV export** — render the current pattern to a downloadable file via `OfflineAudioContext`
+See [`docs/BACKLOG.md`](../docs/BACKLOG.md) for prioritised next steps.

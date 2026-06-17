@@ -4,55 +4,52 @@ A suite of browser-based music tools. No build step, no dependencies — open an
 
 ## Apps
 
-| App | What it is | Status | How to open |
-|---|---|---|---|
-| [multibank](multibank/) | 16-step drum/synth sequencer | Working | `cd multibank && docker compose up -d` → [localhost:8768](http://localhost:8768) |
-| [synth](synth/) | Polyphonic keyboard synth with arp, LFO, effects | In progress | `cd synth && docker compose up -d` → [localhost:8769](http://localhost:8769) |
-| [torman](torman/) | Canvas gesture → bass synth — based on [thunder-clapper/torman](https://thunder-clapper.github.io/torman/) | Local only | `cd torman && docker compose up -d` → [localhost:8766](http://localhost:8766) |
-| [nectar](nectar/) | Guitar learning suite — scales, chords, tab | Early | `cd nectar && docker compose up -d` → [localhost:8767](http://localhost:8767) |
+| App | What it is | Status |
+|---|---|---|
+| [Drums](drums/) | 12-track TR-style drum machine with pads, kits, polymeter, Euclidean fills | Working |
+| [Multibank](multibank/) | Multi-voice step sequencer with per-channel sound shaping | Working |
+| [Nectar](nectar/) | Guitar theory suite — scales, chords, chord identifier | Early |
+| [Synth](synth/) | Polyphonic keyboard synth with arp, LFO, ADSR, XY pad | In progress |
 
-**Start with multibank** if you want to make a beat immediately. Start with **nectar** if you want to explore guitar theory.
+Live at **[daithi-walker.github.io/beatlab](https://daithi-walker.github.io/beatlab)**
+
+## Documentation
+
+| Doc | What it covers |
+|---|---|
+| [`CHANGELOG.md`](CHANGELOG.md) | Version history |
+| [`CLAUDE.md`](CLAUDE.md) | Agent instructions — read before making changes |
+| [`docs/BACKLOG.md`](docs/BACKLOG.md) | Prioritised feature backlog for all apps |
+| [`docs/share-encoding.md`](docs/share-encoding.md) | Drums share-link binary encoding spec |
+| [`docs/adr-*.md`](docs/) | Architecture Decision Records |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Signal chain, shared patterns, design tokens |
+| [`drums/features.md`](drums/features.md) | Drums feature reference |
+| [`nectar/FEATURES.md`](nectar/FEATURES.md) | Nectar feature reference |
+| [`nectar/ROADMAP.md`](nectar/ROADMAP.md) | Nectar detailed options (sound, tab viewer, theory chat) |
+
+## Running locally
+
+Each app has its own nginx container:
+
+```bash
+cd drums    && docker compose up -d   # http://localhost:8770
+cd multibank && docker compose up -d  # http://localhost:8768
+cd synth    && docker compose up -d   # http://localhost:8769
+cd nectar   && docker compose up -d   # http://localhost:8767
+```
+
+Edit any file and refresh — no restart needed.
 
 ## Architecture
 
-All four apps share the same audio philosophy — one signal chain, different triggers:
+All apps share the same audio philosophy — one signal chain, different triggers:
 
 ```
 trigger → oscillator/noise → ADSR → filter → effects → speakers
 ```
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the shared patterns, design tokens, and conventions.  
-See [docs/](docs/) for Architecture Decision Records (ADRs).
-
-## Running locally
-
-All apps now require a local server to support ES module imports from `core/audio.js`. Each app has its own nginx container:
-
-```bash
-cd multibank && docker compose up -d   # http://localhost:8768
-cd synth     && docker compose up -d   # http://localhost:8769
-cd torman    && docker compose up -d   # http://localhost:8766
-cd nectar    && docker compose up -d   # http://localhost:8767
-```
-
-Edit any file and refresh — no restart needed.
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for shared patterns and conventions.
 
 ## Hosting
 
-The repo deploys to GitHub Pages on push to `main` via `.github/workflows/pages.yml`. To activate it: **Settings → Pages → Source → GitHub Actions**.
-
----
-
-## Roadmap (platform-level)
-
-Features that span all apps, not specific to one instrument.
-
-### Share & collaboration
-- **Shareable links** — encode a beat/pattern into a URL (base64 or short ID backed by a simple store) so a user can send a link and the recipient opens it already loaded. No account needed.
-- **Beat/pattern library** — curated database of example beats, songs, and patterns users can browse, preview, and load as a starting point. Community-submitted over time.
-
-### Export
-- **WAV export** — render the current pattern to a downloadable WAV via `OfflineAudioContext`. Already planned at the app level (Drums); should be a shared primitive.
-- **MP3 / AAC export** — encode the rendered audio buffer client-side (WebCodecs API or a small WASM encoder). MP3 for broad compatibility, AAC for Apple ecosystem.
-- **MIDI export** — export step patterns as a `.mid` file so the beat can be loaded into a DAW (Ableton, Logic, GarageBand) for further production. The mixing-specific format TJ is thinking of — MIDI preserves note timing and velocity without baking in the synth sound.
-- **Stem export** — render each track independently so the recipient can mix levels or swap sounds in their DAW.
+Deploys to GitHub Pages on push to `main` via `.github/workflows/pages.yml`.
