@@ -1616,7 +1616,12 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     names.forEach(name => {
       const row = document.createElement('div'); row.className = 'pattern-row';
       const nameEl = document.createElement('span'); nameEl.className = 'pattern-row-name'; nameEl.textContent = name;
-      nameEl.addEventListener('click', () => { applyState(loadPattern(APP_ID, name)); closeAllDrops(); });
+      nameEl.addEventListener('click', () => {
+        applyState(loadPattern(APP_ID, name));
+        // Pre-fill the name input so user can save back over it easily
+        document.getElementById('patterns-name-input').value = name;
+        updateSaveBtn();
+      });
       const del = document.createElement('button'); del.className = 'pattern-row-del'; del.textContent = '✕';
       del.addEventListener('click', e => { e.stopPropagation(); deletePattern(APP_ID, name); renderPatternList(); });
       row.appendChild(nameEl); row.appendChild(del); list.appendChild(row);
@@ -1767,11 +1772,21 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     if (!e.target.closest('.tb-drop') && !e.target.closest('.tb-drop-menu')) closeAllDrops();
   });
 
+  function updateSaveBtn() {
+    const name = document.getElementById('patterns-name-input').value.trim();
+    const exists = name && listPatterns(APP_ID).includes(name);
+    document.getElementById('patterns-save-btn').textContent = exists ? 'Update' : 'Save';
+  }
+
   document.getElementById('patterns-save-btn').addEventListener('click', () => {
     const input = document.getElementById('patterns-name-input');
     const name = input.value.trim(); if (!name) { input.focus(); return; }
-    savePattern(APP_ID, name, captureState()); input.value = ''; renderPatternList();
+    savePattern(APP_ID, name, captureState());
+    input.value = '';
+    document.getElementById('patterns-save-btn').textContent = 'Save';
+    renderPatternList();
   });
+  document.getElementById('patterns-name-input').addEventListener('input', updateSaveBtn);
   document.getElementById('patterns-name-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('patterns-save-btn').click();
     if (e.key === 'Escape') closeAllDrops();
