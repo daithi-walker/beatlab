@@ -305,6 +305,8 @@
   }
   .pad-name { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pad-color, var(--teal)); position: relative; z-index: 1; }
   .pad-sub  { font-size: 0.52rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); position: relative; z-index: 1; }
+  .pad-key  { display: none; position: absolute; top: 6px; right: 8px; font-size: 0.58rem; font-weight: 700; color: var(--faint); letter-spacing: 0; z-index: 1; }
+  @media (pointer: fine) { .pad-key { display: block; } }
 
   /* ── RECORDING SHEET ──────────────────────────────────────── */
   #rec-sheet-backdrop {
@@ -685,19 +687,20 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
 
   /* ── TRACKS ───────────────────────────────────────────────── */
   const TRACKS = [
-    { id:'kick',    name:'Kick',     sub:'drum',   section:'Drums', color:'var(--teal)'   },
-    { id:'snare',   name:'Snare',    sub:'drum',   section:'Drums', color:'var(--teal)'   },
-    { id:'clap',    name:'Clap',     sub:'drum',   section:'Drums', color:'var(--teal)'   },
-    { id:'hihat',   name:'Hi-Hat',   sub:'cymbal', section:'Drums', color:'var(--green)'  },
-    { id:'openhat', name:'Open Hat', sub:'cymbal', section:'Drums', color:'var(--green)'  },
-    { id:'crash',   name:'Crash',    sub:'cymbal', section:'Drums', color:'var(--green)'  },
-    { id:'tomhi',   name:'Tom Hi',   sub:'tom',    section:'Drums', color:'var(--amber)'  },
-    { id:'tomlo',   name:'Tom Lo',   sub:'tom',    section:'Drums', color:'var(--amber)'  },
-    { id:'rim',     name:'Rim',      sub:'perc',   section:'Perc',  color:'var(--purple)' },
-    { id:'shaker',  name:'Shaker',   sub:'perc',   section:'Perc',  color:'var(--purple)' },
-    { id:'cowbell', name:'Cowbell',  sub:'perc',   section:'Perc',  color:'var(--purple)' },
-    { id:'clave',   name:'Clave',    sub:'perc',   section:'Perc',  color:'var(--pink)'   },
+    { id:'kick',    name:'Kick',     sub:'drum',   section:'Drums', color:'var(--teal)',   key:'Q' },
+    { id:'snare',   name:'Snare',    sub:'drum',   section:'Drums', color:'var(--teal)',   key:'W' },
+    { id:'clap',    name:'Clap',     sub:'drum',   section:'Drums', color:'var(--teal)',   key:'E' },
+    { id:'hihat',   name:'Hi-Hat',   sub:'cymbal', section:'Drums', color:'var(--green)',  key:'R' },
+    { id:'openhat', name:'Open Hat', sub:'cymbal', section:'Drums', color:'var(--green)',  key:'A' },
+    { id:'crash',   name:'Crash',    sub:'cymbal', section:'Drums', color:'var(--green)',  key:'S' },
+    { id:'tomhi',   name:'Tom Hi',   sub:'tom',    section:'Drums', color:'var(--amber)',  key:'D' },
+    { id:'tomlo',   name:'Tom Lo',   sub:'tom',    section:'Drums', color:'var(--amber)',  key:'F' },
+    { id:'rim',     name:'Rim',      sub:'perc',   section:'Perc',  color:'var(--purple)', key:'Z' },
+    { id:'shaker',  name:'Shaker',   sub:'perc',   section:'Perc',  color:'var(--purple)', key:'X' },
+    { id:'cowbell', name:'Cowbell',  sub:'perc',   section:'Perc',  color:'var(--purple)', key:'C' },
+    { id:'clave',   name:'Clave',    sub:'perc',   section:'Perc',  color:'var(--pink)',   key:'V' },
   ];
+  const KEY_TO_TRACK = Object.fromEntries(TRACKS.map(t => [t.key, t.id]));
 
   let dirty = false; // true if unsaved changes exist since last load/save/reset
 
@@ -1393,7 +1396,8 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
       pad.style.setProperty('--pad-color', track.color);
       const name = document.createElement('span'); name.className = 'pad-name'; name.textContent = track.name;
       const sub  = document.createElement('span'); sub.className  = 'pad-sub';  sub.textContent  = track.sub;
-      pad.appendChild(name); pad.appendChild(sub);
+      const hint = document.createElement('span'); hint.className = 'pad-key';  hint.textContent = track.key;
+      pad.appendChild(name); pad.appendChild(sub); pad.appendChild(hint);
       grid.appendChild(pad);
     });
 
@@ -2287,12 +2291,13 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
   /* ── PLAY / KEYBOARD ──────────────────────────────────────── */
   document.getElementById('play-btn').addEventListener('click', toggleTransport);
   document.addEventListener('keydown', e => {
-    if (e.code === 'Space' && !['INPUT','BUTTON','SELECT','TEXTAREA'].includes(e.target.tagName)) {
-      e.preventDefault(); toggleTransport();
-    }
-    if (e.key === 'Escape') {
-      stopLiveLoop();
-      closeAllDrops();
+    if (['INPUT','BUTTON','SELECT','TEXTAREA'].includes(e.target.tagName)) return;
+    if (e.code === 'Space') { e.preventDefault(); toggleTransport(); return; }
+    if (e.key === 'Escape') { stopLiveLoop(); closeAllDrops(); return; }
+    const trackId = KEY_TO_TRACK[e.key.toUpperCase()];
+    if (trackId && !e.repeat) {
+      const padEl = document.querySelector(`#pad-grid .pad[data-track-id="${trackId}"]`);
+      if (padEl) firePad(trackId, padEl);
     }
   });
 
