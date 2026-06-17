@@ -34,7 +34,9 @@
 - **Master volume** — slider in topbar, defaults to 50%
 - **Lookahead scheduler** — 25ms tick, 100ms lookahead; timing locked to audio clock
 - Spacebar play/stop
-- Mobile: touch-action:none on pad grid and step rows; portrait rotate overlay suppressed in Pads mode
+- **iOS Safari compatibility** — audio context created and resumed in the same gesture frame; heavy buffer generation (reverb impulse, pink/white noise) deferred to avoid blocking; `touchstart` unlock alongside `pointerdown`; auto-resume on visibility change (screen lock, tab switch, phone calls); null-guards on noise voices during startup
+- **Shared app nav** — BeatLab logo button in topbar opens app switcher dropdown (Drums, Multibank, Synth, Nectar) via `core/topnav.js`; consistent across all apps
+- Mobile: touch-action:none on pad grid and step rows; portrait rotate overlay suppressed in Pads mode; `-webkit-backdrop-filter` for topbar blur on iOS
 
 ---
 
