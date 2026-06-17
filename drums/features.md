@@ -3,40 +3,48 @@
 ## Done
 
 - **12-track TR-style sequencer** — Kick, Snare, Clap, Hi-Hat, Open Hat, Crash, Tom Hi, Tom Lo, Rim, Shaker, Cowbell, Clave
-- **16 or 32 steps** — toggle in topbar, preserves patterns
+- **16 or 32 steps** — toggle in Timing dropdown, preserves patterns
 - **Pure synthesis** — all voices synthesised via Web Audio API (no samples): sine/triangle oscillators for tonal drums, filtered noise for cymbals/claps
 - **4 kits** — 808, Acoustic, Lo-Fi, Electronic; kits reparameterise all 12 voices simultaneously
-- **Pads view** — Sequencer / Pads tab toggle in topbar; 3×4 grid of large tappable pads, one per instrument
+- **Pads view** — Sequencer / Pads toggle in topbar; 3×4 grid of large tappable pads, one per instrument
 - **Swipe across pads** — dragging a finger across the grid fires each pad it crosses
-- **Save / load patterns** — Patterns ▾ popover, backed by `core/storage.js` / localStorage
+- **Save / load patterns** — Patterns ▾ dropdown in topbar, backed by `core/storage.js` / localStorage
 - **Mute per track** — speaker icon per row in sequencer
-- **Mute All / Unmute All** — single button in topbar to silence all tracks instantly; turns pink when active
-- **Pad recording with metronome** — tap ⏺ Rec in topbar (pads mode) to open a recording sheet
-  - Sheet closes immediately on start so pads are visible and tappable during count-in
-  - Floating pill over pad grid shows countdown (4 3 2 1) then ● REC
-  - Loop length: 1 / 2 / 4 bars
-  - **Snap to grid** — snaps each hit to nearest 16th note (with description)
-  - **Free timing** — records exactly when you tap (with description)
-  - Takes saved as beat-relative events in `core/storage.js` under `beatlab:drums:rec:<name>`
-  - **→ Seq** button loads a take into the step sequencer grid and switches to Sequencer view
-  - No-hits feedback: if nothing was recorded, sheet reopens with an amber hint
-- **Cross-track drag** in sequencer — dragging in any direction (horizontal, vertical, diagonal) paints or erases steps across all tracks; single container listener with setPointerCapture
-- **Time signature** — free number input (1–32 beats/bar) in topbar; changes step count live, rebuilds grid
-- **Per-track step length (polymeter)** — each track has its own loop length independent of the global bar length. Set it per-track via a small input in the track label. Tracks drift in and out of phase automatically as they loop at different lengths.
-- **Step probability** — right-click (or long-press on mobile) an active step to cycle its fire chance: 100% → 75% → 50% → 25%. Displayed as a darkening overlay + percentage label on the step button.
-- **Euclidean rhythm generator** — per-track "E" button opens a popover: dial in hits and total steps, click Fill. Spaces hits as evenly as possible (Bjorklund algorithm). Always starts on beat 1. Grey zone past `trackLen` shows the repeating pattern (read-only mirror). Classic patterns: E(3,8) = son clave, E(5,8) = bossa nova, E(7,12) = cascara.
-- **Kit dropdown** — "Kit" button in topbar with active kit highlighted; visible in both Sequencer and Pads modes
-- **Patterns dropdown** — beside Timing in topbar; contains built-in presets and user-saved patterns
+- **Mute All / Unmute All** — single button to silence all tracks; turns pink when active
+- **Pad recording with metronome**
+  - ⏺ Rec button above pad grid (always visible in pads view, desktop and mobile)
+  - Countdown pill sits between Rec button and pad grid (not over any pad)
+  - Metronome count-in (1 bar), then records while metronome continues
+  - Loop length: 1 / 2 / 4 / 8 bars
+  - **Free timing** (default) — records exactly when you tap
+  - **Snap to grid** — snaps each hit to nearest 16th note
+  - After recording: sheet reopens with pending take row showing ▶ (loop on pads) and → Seq immediately — no save required to hear it
+  - Backdrop tap does not dismiss sheet while a pending unsaved take exists — prevents accidental loss
+  - ✕ explicitly discards the pending take
+  - Takes saved as beat-relative events under `beatlab:drums:rec:<name>`; BPM-agnostic so playback is correct at any tempo
+  - No-hits feedback: amber hint if nothing was tapped during recording
+- **Live take looping** — saved takes can be looped directly on the pads without converting to the step grid; BPM-aware (stretches/compresses live with tempo changes); animates pads in sync; runs independently alongside the step sequencer
+- **Takes in Patterns dropdown** — saved takes appear in a "Takes" section of the Patterns menu so they're accessible without opening the Rec sheet
+- **→ Seq** — loads a take into the step sequencer grid (converts beat-relative events to step indices) and switches to Sequencer view
+- **Cross-track drag** in sequencer — paint or erase steps across all tracks in any direction; single container listener with setPointerCapture
+- **Time signature** — 1–32 beats/bar; changes step count live, rebuilds grid
+- **Per-track step length (polymeter)** — each track loops independently; tracks drift in and out of phase automatically
+- **Step probability** — right-click (or long-press) an active step to cycle fire chance: 100% → 75% → 50% → 25%
+- **Euclidean rhythm generator** — per-track "E" button; Bjorklund algorithm; grey zone past `trackLen` shows repeating pattern (read-only). Classic patterns: E(3,8) = son clave, E(5,8) = bossa nova, E(7,12) = cascara
+- **Kit dropdown** — active kit highlighted; visible in Sequencer and Pads modes; selection persists across page refresh
+- **Patterns dropdown** — built-in presets + user-saved patterns + saved takes
   - **Built-in presets**: Four on the Floor, Polyrhythm 3/5/7, Clave Groove
-  - Polyrhythm preset uses per-track loop lengths (12/20/28 steps) to demonstrate independent phase drift
-- **Reset** — single button restores all steps, mutes, per-track lengths, time signature (4/4), and BPM (120) to defaults
-- **BPM** — slider + editable number input, bidirectional sync
-- **Master volume** — slider in topbar, defaults to 50%
-- **Lookahead scheduler** — 25ms tick, 100ms lookahead; timing locked to audio clock
-- Spacebar play/stop
-- **iOS Safari compatibility** — audio context created and resumed in the same gesture frame; heavy buffer generation (reverb impulse, pink/white noise) deferred to avoid blocking; `touchstart` unlock alongside `pointerdown`; auto-resume on visibility change (screen lock, tab switch, phone calls); null-guards on noise voices during startup
-- **Shared app nav** — BeatLab logo button in topbar opens app switcher dropdown (Drums, Multibank, Synth, Nectar) via `core/topnav.js`; consistent across all apps
-- Mobile: touch-action:none on pad grid and step rows; portrait rotate overlay suppressed in Pads mode; `-webkit-backdrop-filter` for topbar blur on iOS
+  - Polyrhythm preset uses per-track loop lengths to demonstrate independent phase drift
+  - Dirty-state tracking: warns before loading over unsaved changes
+- **BPM** — slider + number input in Timing dropdown; bidirectional sync
+- **Master volume** — slider, defaults to 50%; persists across refresh and is shared across all BeatLab apps via `beatlab:settings:volume`
+- **Reset** — restores steps, mutes, per-track lengths, time signature, and BPM to defaults
+- **Lookahead scheduler** — 25ms tick, 100ms lookahead; audio-clock locked
+- **View mode persistence** — last view (Sequencer / Pads) restored on page refresh
+- **Spacebar** play/stop
+- **iOS Safari compatibility** — audio context created and resumed in gesture frame; heavy buffers deferred; `touchstart` unlock; auto-resume on visibility change; null-guards on startup
+- **Shared app nav** — BeatLab logo + app name in topbar via `core/topnav.js`; app name hidden on mobile; consistent across all apps
+- Mobile: touch-action:none on pad grid and step rows; `-webkit-backdrop-filter` for topbar blur on iOS
 
 ---
 
