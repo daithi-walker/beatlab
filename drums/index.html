@@ -1316,12 +1316,12 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     }
     startLiveLoop(pendingTake, '__pending__');
     btn.textContent = '◼'; btn.classList.add('active');
-    closeRecSheet();
+    closeRecSheet(true);
   });
   document.getElementById('pending-seq-btn').addEventListener('click', () => {
     if (!pendingTake) { return; }
     applyTake(pendingTake);
-    closeRecSheet();
+    closeRecSheet(true);
   });
 
   function openRecSheet() {
@@ -1330,8 +1330,11 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     showSetupState();
   }
 
-  function closeRecSheet() {
+  function closeRecSheet(force = false) {
     if (recActive) stopRecording();
+    // Don't dismiss on backdrop tap if there's an unsaved pending take
+    if (!force && pendingTake) return;
+    pendingTake = null;
     recSheet.classList.remove('open');
     recBackdrop.classList.remove('open');
   }
@@ -1352,8 +1355,8 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     document.getElementById('takes-name-input').focus();
   }
 
-  recBackdrop.addEventListener('click', closeRecSheet);
-  document.getElementById('rec-sheet-close').addEventListener('click', closeRecSheet);
+  recBackdrop.addEventListener('click', () => closeRecSheet(false));
+  document.getElementById('rec-sheet-close').addEventListener('click', () => closeRecSheet(true));
   recTrigger.addEventListener('click', () => {
     if (recActive) { stopRecording(); return; }
     openRecSheet();
@@ -1508,7 +1511,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
         e.stopPropagation();
         if (liveLoop && liveLoop._name === name) { stopLiveLoop(); return; }
         const take = loadPattern(REC_ID, name);
-        if (take) { startLiveLoop(take, name); closeRecSheet(); }
+        if (take) { startLiveLoop(take, name); closeRecSheet(true); }
       });
 
       const seqBtn = document.createElement('button'); seqBtn.className = 'take-row-seq'; seqBtn.textContent = '→ Seq';
@@ -1516,7 +1519,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
       seqBtn.addEventListener('click', e => {
         e.stopPropagation();
         const take = loadPattern(REC_ID, name);
-        if (take) { applyTake(take); closeRecSheet(); }
+        if (take) { applyTake(take); closeRecSheet(true); }
       });
 
       const del = document.createElement('button'); del.className = 'take-row-del'; del.textContent = '✕';
@@ -1534,6 +1537,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     savePattern(REC_ID, name, pendingTake);
     input.value = ''; pendingTake = null;
     renderTakesList();
+    renderTakesNav();
     showSetupState();
   });
 
@@ -1733,6 +1737,34 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     });
   }
 
+  function renderTakesNav() {
+    const section = document.getElementById('takes-nav-section');
+    const list = document.getElementById('takes-nav-list');
+    list.innerHTML = '';
+    const names = listPatterns(REC_ID);
+    section.style.display = names.length ? '' : 'none';
+    names.forEach(name => {
+      const row = document.createElement('div'); row.className = 'take-row';
+      const nameEl = document.createElement('span'); nameEl.className = 'take-row-name'; nameEl.textContent = name;
+      const playBtn = document.createElement('button');
+      playBtn.className = 'take-row-play' + (liveLoop?._name === name ? ' active' : '');
+      playBtn.textContent = (liveLoop?._name === name) ? '◼' : '▶';
+      playBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (liveLoop && liveLoop._name === name) { stopLiveLoop(); closeAllDrops(); return; }
+        const take = loadPattern(REC_ID, name);
+        if (take) { startLiveLoop(take, name); closeAllDrops(); }
+      });
+      const seqBtn = document.createElement('button'); seqBtn.className = 'take-row-seq'; seqBtn.textContent = '→ Seq';
+      seqBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const take = loadPattern(REC_ID, name);
+        if (take) { applyTake(take); closeAllDrops(); }
+      });
+      row.appendChild(nameEl); row.appendChild(playBtn); row.appendChild(seqBtn); list.appendChild(row);
+    });
+  }
+
   function closePatterns() { document.getElementById('patterns-menu').classList.remove('open'); }
 
   /* ── BUILT-IN PRESETS ─────────────────────────────────────── */
@@ -1869,6 +1901,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
       if (!wasOpen) {
         renderPresets();
         renderPatternList();
+        renderTakesNav();
         const rect = btn.getBoundingClientRect();
         menu.style.left = rect.left + 'px';
         menu.classList.add('open');
@@ -2178,6 +2211,11 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
   <div id="patterns-save-row">
     <input id="patterns-name-input" type="text" placeholder="name and save…" spellcheck="false">
     <button id="patterns-save-btn">Save</button>
+  </div>
+  <div id="takes-nav-section" style="display:none;">
+    <div class="tb-drop-divider"></div>
+    <div class="tb-drop-section-lbl">Takes</div>
+    <div id="takes-nav-list"></div>
   </div>
 </div>
 </body>
