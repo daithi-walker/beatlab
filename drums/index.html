@@ -1485,7 +1485,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     document.getElementById('patterns-divider').style.display = isSeq ? '' : 'none';
     document.getElementById('kit-drop').style.display = '';
     document.getElementById('bpm-group').style.display = isSeq ? '' : 'none';
-    recTrigger.style.display = isSeq ? 'none' : '';
+    recTrigger.style.display = isSeq ? 'none' : 'flex';
     document.getElementById('seq-view').classList.toggle('hidden', !isSeq);
     document.getElementById('beat-row').classList.toggle('hidden', !isSeq);
     document.getElementById('pads-view').classList.toggle('active', !isSeq);
