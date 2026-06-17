@@ -593,6 +593,8 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     { id:'clave',   name:'Clave',    sub:'perc',   section:'Perc',  color:'var(--pink)'   },
   ];
 
+  let dirty = false; // true if unsaved changes exist since last load/save/reset
+
   const state = {};
   // steps: array of {on: bool, prob: 100|75|50|25}
   // trackLen: how many steps this track loops over (0 = follow global STEPS)
@@ -1015,6 +1017,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
       muteBtn.classList.toggle('muted', ts.muted);
       muteBtn.querySelector('.mx').style.display = ts.muted ? '' : 'none';
       muteBtn.querySelector('.vw').style.display = ts.muted ? 'none' : '';
+      dirty = true;
     });
     top.appendChild(nameEl); top.appendChild(muteBtn); label.appendChild(top);
 
@@ -1030,6 +1033,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
       const v = Math.max(1, Math.min(32, parseInt(lenInput.value, 10) || STEPS));
       lenInput.value = v;
       ts.trackLen = v === STEPS ? 0 : v;
+      dirty = true;
       // Redraw beyond markers
       row.querySelectorAll('.step').forEach(btn => {
         const s = parseInt(btn.dataset.step, 10);
@@ -1061,6 +1065,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
       // Update step length to match
       ts.trackLen = st === STEPS ? 0 : st;
       lenInput.value = st;
+      dirty = true;
       // Rebuild the step buttons visually
       rebuildStepButtons(row, track);
       pop.classList.remove('open');
@@ -1129,6 +1134,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     cell.on = on;
     if (on) { cell.prob = 100; delete btn.dataset.prob; }
     btn.classList.toggle('on', on);
+    dirty = true;
   }
 
   function cycleProbability(ts, btn, step) {
@@ -1143,6 +1149,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
       btn.dataset.prob = next;
     }
     cell.prob = next;
+    dirty = true;
   }
 
   /* ── BEAT ROW ─────────────────────────────────────────────── */
@@ -1178,6 +1185,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
       btn.addEventListener('click', () => {
         currentKit = kit;
         syncKitUI();
+        dirty = true;
         closeAllDrops();
       });
       menu.appendChild(btn);
@@ -1517,7 +1525,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   }
 
   const timeSigInput = document.getElementById('timesig-input');
-  timeSigInput.addEventListener('change', e => applyTimeSig(parseInt(e.target.value, 10)));
+  timeSigInput.addEventListener('change', e => { applyTimeSig(parseInt(e.target.value, 10)); dirty = true; });
   timeSigInput.addEventListener('keydown', e => { if (e.key === 'Enter') { applyTimeSig(parseInt(timeSigInput.value, 10)); timeSigInput.blur(); } });
 
   /* ── CLEAR ────────────────────────────────────────────────── */
@@ -1539,6 +1547,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     allMuted = false;
     muteAllBtn.textContent = 'Mute All';
     muteAllBtn.style.color = muteAllBtn.style.borderColor = muteAllBtn.style.background = '';
+    dirty = false;
   });
 
   /* ── MUTE ALL ─────────────────────────────────────────────── */
@@ -1546,6 +1555,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   let allMuted = false;
   muteAllBtn.addEventListener('click', () => {
     allMuted = !allMuted;
+    dirty = true;
     TRACKS.forEach(t => { state[t.id].muted = allMuted; });
     document.querySelectorAll('.track-mute').forEach(btn => {
       btn.classList.toggle('muted', allMuted);
@@ -1603,6 +1613,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     muteAllBtn.textContent = 'Mute All';
     muteAllBtn.style.color = muteAllBtn.style.borderColor = muteAllBtn.style.background = '';
     buildGrid(); rebuildBeatRow();
+    dirty = false;
   }
 
   function renderPatternList() {
@@ -1617,10 +1628,11 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
       const row = document.createElement('div'); row.className = 'pattern-row';
       const nameEl = document.createElement('span'); nameEl.className = 'pattern-row-name'; nameEl.textContent = name;
       nameEl.addEventListener('click', () => {
+        if (dirty && !confirm(`Load "${name}"? Unsaved changes will be lost.`)) return;
         applyState(loadPattern(APP_ID, name));
-        // Pre-fill the name input so user can save back over it easily
         document.getElementById('patterns-name-input').value = name;
         updateSaveBtn();
+        closeAllDrops();
       });
       const del = document.createElement('button'); del.className = 'pattern-row-del'; del.textContent = '✕';
       del.addEventListener('click', e => { e.stopPropagation(); deletePattern(APP_ID, name); renderPatternList(); });
@@ -1715,7 +1727,11 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     PRESETS.forEach(p => {
       const row = document.createElement('div'); row.className = 'pattern-row';
       const nameEl = document.createElement('span'); nameEl.className = 'pattern-row-name'; nameEl.textContent = p.name;
-      nameEl.addEventListener('click', () => { applyState(p.state); closeAllDrops(); });
+      nameEl.addEventListener('click', () => {
+        if (dirty && !confirm(`Load "${p.name}"? Unsaved changes will be lost.`)) return;
+        applyState(p.state);
+        closeAllDrops();
+      });
       row.appendChild(nameEl);
       list.appendChild(row);
     });
@@ -1784,6 +1800,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     savePattern(APP_ID, name, captureState());
     input.value = '';
     document.getElementById('patterns-save-btn').textContent = 'Save';
+    dirty = false;
     renderPatternList();
   });
   document.getElementById('patterns-name-input').addEventListener('input', updateSaveBtn);
@@ -1806,8 +1823,8 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     bpm = v; bpmSlider.value = v; bpmInput.value = v;
   }
 
-  bpmSlider.addEventListener('input',  e => setBpm(parseInt(e.target.value, 10)));
-  bpmInput.addEventListener('change',  e => setBpm(parseInt(e.target.value, 10)));
+  bpmSlider.addEventListener('input',  e => { setBpm(parseInt(e.target.value, 10)); dirty = true; });
+  bpmInput.addEventListener('change',  e => { setBpm(parseInt(e.target.value, 10)); dirty = true; });
   bpmInput.addEventListener('keydown', e => { if (e.key === 'Enter') bpmInput.blur(); });
 
   /* ── PLAY / KEYBOARD ──────────────────────────────────────── */
