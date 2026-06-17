@@ -966,6 +966,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     if (!liveLoopTimer) liveLoopTimer = setInterval(() => tickLiveLoop(ctx.currentTime), TICK_MS);
     renderTakesList();
     updatePadsTakesBtn();
+    renderRpTakesList();
   }
 
   function updatePadsTakesBtn() {
@@ -1516,6 +1517,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
   function startCountIn() {
     if (!ctx) initAudio();
     ctx.resume();
+    stopLiveLoop();
 
     // Close sheet so pads are visible and tappable
     recSheet.classList.remove('open');
