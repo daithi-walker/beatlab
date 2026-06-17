@@ -323,7 +323,6 @@
 <body>
 
 <header id="topbar">
-  <div class="logo">Multibank</div>
   <button class="topbar-btn" id="play-btn">▶ Play</button>
 
   <div class="divider-v"></div>
@@ -385,7 +384,7 @@
 
 <script type="module">
 import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNoise, distCurve as makeDistortionCurve } from '../core/audio.js';
-import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/storage.js';
+import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVolume } from '../core/storage.js';
 import { initTopnav } from '../core/topnav.js';
 initTopnav({ current: 'multibank', root: '../', label: 'Multibank' });
 
@@ -459,7 +458,7 @@ initTopnav({ current: 'multibank', root: '../', label: 'Multibank' });
     ctx = new (window.AudioContext || window.webkitAudioContext)();
 
     masterGain = ctx.createGain();
-    masterGain.gain.value = 0.85;
+    masterGain.gain.value = getVolume(0.5);
 
     compressor = ctx.createDynamicsCompressor();
     compressor.threshold.value = -18;

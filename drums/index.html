@@ -561,7 +561,7 @@
 
 <script type="module">
 import { makeImpulse, makePinkNoise, makeWhiteNoise } from '../core/audio.js';
-import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/storage.js';
+import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVolume } from '../core/storage.js';
 
 (() => {
   'use strict';
@@ -680,7 +680,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     ctx.resume(); // iOS requires resume() in the same gesture frame as creation
     masterGain = ctx.createGain();
-    masterGain.gain.value = parseFloat(document.getElementById('vol-slider').value);
+    masterGain.gain.value = getVolume(0.5);
     compressor = ctx.createDynamicsCompressor();
     compressor.threshold.value = -18; compressor.ratio.value = 4;
     masterGain.connect(compressor); compressor.connect(ctx.destination);
@@ -1811,8 +1811,12 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   });
 
   /* ── VOLUME & BPM ─────────────────────────────────────────── */
-  document.getElementById('vol-slider').addEventListener('input', e => {
-    if (masterGain) masterGain.gain.setTargetAtTime(parseFloat(e.target.value), ctx.currentTime, 0.02);
+  const volSlider = document.getElementById('vol-slider');
+  volSlider.value = getVolume(0.5);
+  volSlider.addEventListener('input', e => {
+    const v = parseFloat(e.target.value);
+    if (masterGain) masterGain.gain.setTargetAtTime(v, ctx.currentTime, 0.02);
+    setVolume(v);
   });
 
   const bpmSlider = document.getElementById('bpm-slider');

@@ -271,7 +271,6 @@ body {
 
 <!-- ── TOPBAR ── -->
 <div class="topbar">
-  <h1>SYNTH</h1>
   <div class="vdiv"></div>
   <div class="ctrl">
     <span class="lbl">OCT</span>
@@ -464,6 +463,7 @@ A S D F G H J K L ;</pre>
 <script type="module">
 import { CHROMATIC, noteToFreq, makeImpulse, distCurve } from '../core/audio.js';
 import { initTopnav } from '../core/topnav.js';
+import { getVolume, setVolume } from '../core/storage.js';
 initTopnav({ current: 'synth', root: '../', label: 'Synth' });
 
 // ── constants ──────────────────────────────────────────
@@ -538,7 +538,7 @@ function initAudio(){
   if(ctx)return;
   ctx=new AudioContext();
 
-  masterGain=ctx.createGain(); masterGain.gain.value=DEFAULTS.volume;
+  masterGain=ctx.createGain(); masterGain.gain.value=getVolume(DEFAULTS.volume);
   masterGain.connect(ctx.destination);
 
   analyser=ctx.createAnalyser(); analyser.fftSize=2048;
@@ -1146,7 +1146,8 @@ document.getElementById('fx-rv').addEventListener('input',e=>{fx.rv=+e.target.va
 document.getElementById('fx-dl').addEventListener('input',e=>{fx.dl=+e.target.value;if(delaySend)delaySend.gain.value=fx.dl;document.getElementById('fx-dl-v').textContent=fmtPct(fx.dl);});
 document.getElementById('fx-ds').addEventListener('input',e=>{fx.ds=+e.target.value;if(distNode)distNode.curve=distCurve(fx.ds);document.getElementById('fx-ds-v').textContent=fmtPct(fx.ds);});
 document.getElementById('fx-ch').addEventListener('input',e=>{fx.ch=+e.target.value;if(chorusSend)chorusSend.gain.value=fx.ch;document.getElementById('fx-ch-v').textContent=fmtPct(fx.ch);});
-document.getElementById('master-vol').addEventListener('input',e=>{if(masterGain)masterGain.gain.value=+e.target.value;});
+{ const s=document.getElementById('master-vol'); s.value=getVolume(0.5); if(masterGain)masterGain.gain.value=+s.value; }
+document.getElementById('master-vol').addEventListener('input',e=>{const v=+e.target.value;if(masterGain)masterGain.gain.value=v;setVolume(v);});
 document.querySelectorAll('.wave-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
     wave=btn.dataset.wave;

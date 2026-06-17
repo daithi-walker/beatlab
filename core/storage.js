@@ -30,3 +30,13 @@ export function listPatterns(appId) {
 export function deletePattern(appId, name) {
   localStorage.removeItem(key(appId, name));
 }
+
+// Shared master volume across all BeatLab apps (0–1).
+const VOL_KEY = 'beatlab:settings:volume';
+export function getVolume(fallback = 0.5) {
+  const v = parseFloat(localStorage.getItem(VOL_KEY));
+  return isNaN(v) ? fallback : Math.max(0, Math.min(1, v));
+}
+export function setVolume(v) {
+  localStorage.setItem(VOL_KEY, String(v));
+}
