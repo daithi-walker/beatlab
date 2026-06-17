@@ -1469,12 +1469,13 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
       syncKitUI();
     }
     buildGrid(); rebuildBeatRow();
-    setMode('seq');
+    setMode(localStorage.getItem('beatlab:drums:mode') || 'seq');
   }
 
   /* ── MODE SWITCH ──────────────────────────────────────────── */
   function setMode(m) {
     mode = m;
+    localStorage.setItem('beatlab:drums:mode', m);
     const isSeq = m === 'seq';
     const label = isSeq ? 'Sequencer' : 'Pads';
     document.getElementById('mode-seq-btn').classList.toggle('active', isSeq);
