@@ -1239,6 +1239,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
       btn.textContent = kit;
       btn.addEventListener('click', () => {
         currentKit = kit;
+        localStorage.setItem('beatlab:drums:kit', kit);
         syncKitUI();
         dirty = true;
         closeAllDrops();
@@ -2045,7 +2046,9 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     if (saved) applyState(saved);
   }
 
-  // Restore last view mode
+  // Restore last kit and view mode
+  const savedKit = localStorage.getItem('beatlab:drums:kit');
+  if (savedKit && KITS[savedKit]) { currentKit = savedKit; syncKitUI(); }
   setMode(localStorage.getItem('beatlab:drums:mode') || 'seq');
 
 })();
