@@ -547,9 +547,14 @@
     <!-- Save state (shown after recording stops) -->
     <div id="rec-save-state">
       <div class="rec-section">
-        <div class="rec-section-label">Save take</div>
-        <div class="rec-save-row">
-          <input id="takes-name-input" type="text" placeholder="name this take…" spellcheck="false">
+        <div class="rec-section-label">New take</div>
+        <div class="take-row" id="pending-take-row">
+          <span class="take-row-name" style="color:var(--muted);font-style:italic;">unsaved</span>
+          <button id="pending-play-btn" class="take-row-play" title="Loop on pads">▶</button>
+          <button id="pending-seq-btn" class="take-row-seq" title="Load into step sequencer">→ Seq</button>
+        </div>
+        <div class="rec-save-row" style="margin-top:10px;">
+          <input id="takes-name-input" type="text" placeholder="name and save…" spellcheck="false">
           <button id="takes-save-btn">Save</button>
         </div>
       </div>
@@ -1301,6 +1306,24 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
   const recTrigger   = document.getElementById('pads-rec-trigger');
   const countdownPill = document.getElementById('rec-countdown-pill');
 
+  document.getElementById('pending-play-btn').addEventListener('click', () => {
+    if (!pendingTake) return;
+    const btn = document.getElementById('pending-play-btn');
+    if (liveLoop && liveLoop._name === '__pending__') {
+      stopLiveLoop();
+      btn.textContent = '▶'; btn.classList.remove('active');
+      return;
+    }
+    startLiveLoop(pendingTake, '__pending__');
+    btn.textContent = '◼'; btn.classList.add('active');
+    closeRecSheet();
+  });
+  document.getElementById('pending-seq-btn').addEventListener('click', () => {
+    if (!pendingTake) { return; }
+    applyTake(pendingTake);
+    closeRecSheet();
+  });
+
   function openRecSheet() {
     recSheet.classList.add('open');
     recBackdrop.classList.add('open');
@@ -1323,6 +1346,8 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     document.getElementById('rec-sheet-title').textContent = 'Take recorded';
     recSetup.style.display = 'none';
     recSaveState.classList.add('visible');
+    const ppb = document.getElementById('pending-play-btn');
+    ppb.textContent = '▶'; ppb.classList.remove('active');
     renderTakesList();
     document.getElementById('takes-name-input').focus();
   }
