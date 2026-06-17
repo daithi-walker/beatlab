@@ -2290,6 +2290,10 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     if (e.code === 'Space' && !['INPUT','BUTTON','SELECT','TEXTAREA'].includes(e.target.tagName)) {
       e.preventDefault(); toggleTransport();
     }
+    if (e.key === 'Escape') {
+      stopLiveLoop();
+      closeAllDrops();
+    }
   });
 
   /* ── AUDIO UNLOCK ─────────────────────────────────────────── */
