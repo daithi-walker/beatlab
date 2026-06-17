@@ -125,6 +125,13 @@
   #pads-rec-trigger:hover { background: rgba(255,107,157,0.18); }
   #pads-rec-trigger.recording { background: var(--pink); color: #fff; border-color: var(--pink); animation: pulse-rec 500ms ease-in-out infinite; }
   @keyframes pulse-rec { 0%,100% { opacity:1; box-shadow: 0 0 10px var(--pink); } 50% { opacity:0.7; box-shadow: none; } }
+  #pads-takes-btn {
+    font-family: inherit; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--teal); background: rgba(0,229,204,0.08); border: 1px solid rgba(0,229,204,0.2);
+    border-radius: 6px; padding: 6px 14px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    transition: background 120ms;
+  }
+  #pads-takes-btn:hover { background: rgba(0,229,204,0.16); }
 
   /* mode-tab removed — replaced by view dropdown */
 
@@ -503,6 +510,7 @@
   <div id="pads-top-row">
     <button id="pads-rec-trigger">⏺ Rec</button>
     <div id="rec-countdown-pill"></div>
+    <button id="pads-takes-btn" style="display:none;"></button>
   </div>
   <div id="pad-grid"></div>
 </div>
@@ -1750,6 +1758,9 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     list.innerHTML = '';
     const names = listPatterns(REC_ID);
     section.style.display = names.length ? '' : 'none';
+    const padsTakesBtn = document.getElementById('pads-takes-btn');
+    padsTakesBtn.style.display = names.length ? '' : 'none';
+    padsTakesBtn.textContent = `▶ Takes (${names.length})`;
     names.forEach(name => {
       const row = document.createElement('div'); row.className = 'take-row';
       const nameEl = document.createElement('span'); nameEl.className = 'take-row-name'; nameEl.textContent = name;
@@ -1916,6 +1927,23 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
       }
     });
   })();
+
+  // Pads view "Takes" button — opens Patterns dropdown scrolled to takes section
+  document.getElementById('pads-takes-btn').addEventListener('click', () => {
+    const btn = document.getElementById('patterns-btn');
+    const menu = document.getElementById('patterns-menu');
+    closeAllDrops();
+    renderPresets(); renderPatternList(); renderTakesNav();
+    const rect = btn.getBoundingClientRect();
+    menu.style.left = rect.left + 'px';
+    menu.classList.add('open');
+    btn.classList.add('open');
+    // Scroll to the takes section
+    setTimeout(() => {
+      const section = document.getElementById('takes-nav-section');
+      if (section) section.scrollIntoView({ block: 'nearest' });
+    }, 50);
+  });
 
   document.addEventListener('pointerdown', e => {
     if (!e.target.closest('.tb-drop') && !e.target.closest('.tb-drop-menu')) closeAllDrops();
@@ -2110,6 +2138,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
   // Restore last kit and view mode
   const savedKit = localStorage.getItem('beatlab:drums:kit');
   if (savedKit && KITS[savedKit]) { currentKit = savedKit; syncKitUI(); }
+  renderTakesNav();
   setMode(localStorage.getItem('beatlab:drums:mode') || 'seq');
 
 })();
