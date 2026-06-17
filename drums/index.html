@@ -124,12 +124,19 @@
   /* mode-tab removed — replaced by view dropdown */
 
   /* ── PATTERNS ─────────────────────────────────────────────── */
-  .pattern-row { display: flex; align-items: center; gap: 6px; padding: 7px 10px; cursor: pointer; transition: background 100ms; }
+  .tb-drop-section-lbl { padding: 6px 14px 3px; font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  #patterns-list { max-height: 160px; overflow-y: auto; }
+  .pattern-row { display: flex; align-items: center; gap: 6px; padding: 7px 14px; cursor: pointer; transition: background 100ms; }
   .pattern-row:hover { background: rgba(0,229,204,0.08); }
   .pattern-row-name { flex: 1; font-size: 0.72rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pattern-row-del { background: none; border: none; color: var(--faint); cursor: pointer; font-size: 0.72rem; padding: 2px 4px; transition: color 120ms; }
   .pattern-row-del:hover { color: var(--pink); }
-  #patterns-list-empty { padding: 8px 10px; font-size: 0.68rem; color: var(--muted); }
+  #patterns-list-empty { padding: 8px 14px; font-size: 0.68rem; color: var(--muted); }
+  #patterns-save-row { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid var(--divider); }
+  #patterns-name-input { flex: 1; background: var(--surface-2); border: 1px solid var(--divider); border-radius: 4px; color: var(--text); font-size: 0.72rem; padding: 4px 8px; font-family: inherit; outline: none; }
+  #patterns-name-input:focus { border-color: var(--teal); }
+  #patterns-save-btn { background: rgba(0,229,204,0.12); border: 1px solid rgba(0,229,204,0.3); border-radius: 4px; color: var(--teal); cursor: pointer; font-size: 0.68rem; letter-spacing: 0.06em; padding: 4px 10px; font-family: inherit; transition: background 120ms; }
+  #patterns-save-btn:hover { background: rgba(0,229,204,0.22); }
 
   /* ── SEQUENCER VIEW ───────────────────────────────────────── */
   #seq-view {
@@ -441,6 +448,16 @@
     </button>
   </div>
 
+  <div class="divider-v" id="patterns-divider"></div>
+
+  <!-- Patterns dropdown — sequencer only, beside Timing -->
+  <div class="tb-drop" id="patterns-drop">
+    <button class="tb-drop-btn" id="patterns-btn">
+      Patterns
+      <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+
   <div class="divider-v"></div>
 
   <!-- hidden kit-selector kept for JS compat -->
@@ -453,19 +470,13 @@
     <button class="topbar-btn" id="clear-btn">Reset</button>
     <div class="divider-v"></div>
     <button class="topbar-btn" id="share-btn">Share</button>
-    <div class="tb-drop" id="patterns-drop">
-      <button class="tb-drop-btn" id="patterns-btn">
-        Patterns
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-      </button>
-    </div>
   </div>
 
   <div id="right-controls">
     <button id="pads-rec-trigger">⏺ Rec</button>
     <div class="ctrl-group">
       <span class="ctrl-label">Vol</span>
-      <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.85">
+      <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.5">
     </div>
     <div class="ctrl-group" id="bpm-group">
       <span class="ctrl-label">BPM</span>
@@ -1453,6 +1464,8 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     if (viewTxt) viewTxt.textContent = label;
     document.getElementById('seq-controls').style.display = isSeq ? 'contents' : 'none';
     document.getElementById('timing-drop').style.display = isSeq ? '' : 'none';
+    document.getElementById('patterns-drop').style.display = isSeq ? '' : 'none';
+    document.getElementById('patterns-divider').style.display = isSeq ? '' : 'none';
     document.getElementById('kit-drop').style.display = '';
     document.getElementById('bpm-group').style.display = isSeq ? '' : 'none';
     recTrigger.style.display = isSeq ? 'none' : '';
@@ -1630,11 +1643,11 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     {
       name: 'Polyrhythm 3/5/7',
       state: {
-        bpm: 110, beatsPerBar: 4, steps: 16, kit: '808',
+        bpm: 110, beatsPerBar: 4, steps: 28, kit: '808',
         tracks: {
-          kick:    { muted:false, trackLen:12, steps: eucPre(3,12) },  // 3-cycle
-          snare:   { muted:false, trackLen:20, steps: eucPre(5,20) },  // 5-cycle
-          hihat:   { muted:false, trackLen:28, steps: eucPre(7,28) },  // 7-cycle
+          kick:    { muted:false, trackLen:12, steps: eucPre(3,12) },  // loops every 12 steps
+          snare:   { muted:false, trackLen:20, steps: eucPre(5,20) },  // loops every 20 steps
+          hihat:   { muted:false, trackLen:28, steps: eucPre(7,28) },  // loops every 28 steps
           clap:    { muted:false, trackLen:0,  steps: blank() },
           openhat: { muted:false, trackLen:0,  steps: blank() },
           crash:   { muted:false, trackLen:0,  steps: blank() },
@@ -1722,7 +1735,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   wireDropdown('kit-drop-btn', 'kit-menu');
   wireDropdown('timing-drop-btn', 'timing-menu');
 
-  // Patterns dropdown — body-level like all others
+  // Patterns — same wireDropdown pattern, but render content on open
   (function() {
     const btn = document.getElementById('patterns-btn');
     const menu = document.getElementById('patterns-menu');
@@ -2002,15 +2015,15 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     <input type="number" class="ctrl-value" id="timesig-input" min="1" max="32" value="4" style="width:3ch;">
   </div>
 </div>
-<div class="tb-drop-menu" id="patterns-menu" style="min-width:220px;">
-  <div style="padding:6px 10px 4px;font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);">Presets</div>
+<div class="tb-drop-menu" id="patterns-menu">
+  <div class="tb-drop-section-lbl">Presets</div>
   <div id="presets-list"></div>
   <div class="tb-drop-divider"></div>
-  <div style="padding:6px 10px 4px;font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);">Saved</div>
-  <div id="patterns-list" style="max-height:160px;overflow-y:auto;"></div>
-  <div id="patterns-save-row" style="display:flex;gap:6px;padding:8px 10px;border-top:1px solid var(--divider);">
-    <input id="patterns-name-input" type="text" placeholder="name and save…" spellcheck="false" style="flex:1;background:var(--surface-2);border:1px solid var(--divider);border-radius:4px;color:var(--text);font-size:0.72rem;padding:4px 8px;font-family:inherit;outline:none;">
-    <button id="patterns-save-btn" style="background:rgba(0,229,204,0.12);border:1px solid rgba(0,229,204,0.3);border-radius:4px;color:var(--teal);cursor:pointer;font-size:0.68rem;letter-spacing:0.06em;padding:4px 10px;font-family:inherit;">Save</button>
+  <div class="tb-drop-section-lbl">Saved</div>
+  <div id="patterns-list"></div>
+  <div id="patterns-save-row">
+    <input id="patterns-name-input" type="text" placeholder="name and save…" spellcheck="false">
+    <button id="patterns-save-btn">Save</button>
   </div>
 </div>
 </body>
