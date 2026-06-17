@@ -39,6 +39,12 @@ Items within each section are roughly priority-ordered (top = do soonest).
 
 ## Drums — Rhythm & Playback
 
+- **Per-track phase offset** — a small number input per track (like the track
+  length input) that shifts when that track's loop starts relative to beat 1.
+  In Tidal/Strudel this is `rotL`/`rotR`. Allows polyrhythm presets where loops
+  drift from different starting points rather than all hitting simultaneously on
+  the downbeat. Simple to implement: initialise `trackPos` to the offset value
+  instead of 0 when playback starts.
 - **Swing** — offset even 16th notes by a percentage (0–100%). Single
   `swingAmount` param in `scheduleStep()`. Makes patterns feel human and loose.
 - **Per-step velocity** — each step fires at a set volume (ghost notes, accents).
