@@ -254,10 +254,13 @@
   #pads-view {
     display: none; position: fixed; top: var(--topbar-h); left: 0; right: 0; bottom: 0;
     flex-direction: column; align-items: center; justify-content: center;
-    gap: 14px; padding: 16px;
+    gap: 10px; padding: 12px 16px;
     overflow: hidden;
   }
   #pads-view.active { display: flex; }
+  #pads-top-row {
+    display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+  }
 
 
   #pad-grid {
@@ -266,8 +269,9 @@
     grid-template-rows: repeat(4, 1fr);
     gap: 12px;
     /* Size to whichever axis is the limiting one, preserving 3:4 aspect ratio */
-    width:  min(calc((100vh - var(--topbar-h) - 80px) * 3 / 4), calc(100vw - 32px), 600px);
-    height: min(calc(100vh - var(--topbar-h) - 80px), calc((100vw - 32px) * 4 / 3), 800px);
+    /* 58px = top-row (36px button) + gaps + padding */
+    width:  min(calc((100vh - var(--topbar-h) - 58px) * 3 / 4), calc(100vw - 32px), 600px);
+    height: min(calc(100vh - var(--topbar-h) - 58px), calc((100vw - 32px) * 4 / 3), 800px);
     touch-action: none;
     position: relative;
   }
@@ -496,8 +500,10 @@
 
 <!-- Pads view -->
 <div id="pads-view" style="position:relative;">
-  <button id="pads-rec-trigger">⏺ Rec</button>
-  <div id="rec-countdown-pill"></div>
+  <div id="pads-top-row">
+    <button id="pads-rec-trigger">⏺ Rec</button>
+    <div id="rec-countdown-pill"></div>
+  </div>
   <div id="pad-grid"></div>
 </div>
 
