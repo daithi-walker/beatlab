@@ -109,3 +109,19 @@ Three buses are shared across all banks (reverb, delay, chorus). Each bank contr
   Surprisingly straightforward since the scheduler already queues events in clock time.
 
 - **MIDI clock out** — emit MIDI beat-clock so hardware synths can sync to the browser BPM.
+
+- **Per-step parameter locks (p-locks)** — inspired by Elektron workflow: hold a step to open a per-step
+  override for filter, reverb, distortion, or pitch. The step plays its own sound colour rather than the
+  panel default. Requires storing a small overrides object per step alongside the boolean on/off flag.
+
+---
+
+## BeatLab System Backlog (future, cross-app)
+
+- **Live audio looper** — record mic / instrument input into a loop slot, set loop length, layer and
+  mute loops independently. A separate app rather than a rename of Multibank.
+
+- **Unified transport + arrangement view** — shared play clock across apps (Drums, Multibank, Synth),
+  timeline lanes for each pattern, drag to rearrange, export to WAV via OfflineAudioContext.
+  This would be the browser DAW layer: most comparable to Amped Studio / Soundtrap for web, or
+  the modular vision of Tone.js. Added to long-term backlog.
