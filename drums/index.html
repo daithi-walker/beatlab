@@ -1591,6 +1591,26 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   /* ── INIT ─────────────────────────────────────────────────── */
   buildGrid(); rebuildBeatRow(); buildKitSelector(); buildPads(); initSeqDrag();
 
+  // Preload a waltz pattern in 3/4 at 160 BPM
+  (function loadWaltz() {
+    applyTimeSig(3);        // 3 beats per bar → 12 steps
+    setBpm(160);
+
+    // Classic waltz: STRONG beat 1 (kick + crash), light beats 2 & 3 (hi-hat)
+    // Steps:  0  1  2  3  | 4  5  6  7  | 8  9  10 11
+    // Beat:   1            | 2           | 3
+    const hits = {
+      kick:    [0],
+      crash:   [0],
+      hihat:   [4, 8],
+      rim:     [6],         // light "and" of beat 2 — gives it the lilt
+    };
+    Object.entries(hits).forEach(([id, steps]) => {
+      steps.forEach(s => { state[id].steps[s].on = true; });
+    });
+    buildGrid();
+  })();
+
 })();
 </script>
 
