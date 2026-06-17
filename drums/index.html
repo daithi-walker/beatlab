@@ -364,15 +364,14 @@
 
   /* Floating count-in pill — overlays the pads without blocking them */
   #rec-countdown-pill {
-    display: none; position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-    z-index: 50; pointer-events: none;
+    visibility: hidden; pointer-events: none;
     background: rgba(8,12,16,0.88); backdrop-filter: blur(12px);
     border: 1px solid var(--amber); border-radius: 999px;
     padding: 6px 18px; white-space: nowrap;
     font-size: 0.8rem; font-weight: 700; letter-spacing: 0.06em; color: var(--amber);
     animation: pill-pulse 500ms ease-in-out infinite;
   }
-  #rec-countdown-pill.visible { display: block; }
+  #rec-countdown-pill.visible { visibility: visible; }
   @keyframes pill-pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
   #rec-countdown-pill.go { color: var(--pink); border-color: var(--pink); animation: none; }
 
@@ -497,9 +496,8 @@
 <!-- Pads view -->
 <div id="pads-view" style="position:relative;">
   <button id="pads-rec-trigger">⏺ Rec</button>
-  <div id="pad-grid" style="position:relative;">
-    <div id="rec-countdown-pill"></div>
-  </div>
+  <div id="rec-countdown-pill"></div>
+  <div id="pad-grid"></div>
 </div>
 
 <div id="beat-row"></div>
@@ -1264,10 +1262,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
 
   function buildPads() {
     const grid = document.getElementById('pad-grid');
-    // Preserve the countdown pill before clearing
-    const pill = document.getElementById('rec-countdown-pill');
     grid.innerHTML = '';
-    if (pill) grid.appendChild(pill);
     TRACKS.forEach(track => {
       const pad = document.createElement('div');
       pad.className = 'pad';
