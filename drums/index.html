@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Drums — BeatLab</title>
+<link rel="icon" type="image/png" href="../icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -74,15 +75,13 @@
 
   /* App logo button */
   #app-logo-btn {
-    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
-    background: rgba(0,229,204,0.12); border: 1px solid rgba(0,229,204,0.25);
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; transition: background 120ms; padding: 0;
-    font-size: 0.6rem; font-weight: 700; letter-spacing: 0.04em; color: var(--teal);
-    font-family: inherit;
+    width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0;
+    background: none; border: none; padding: 0; cursor: pointer;
+    overflow: hidden; opacity: 0.85; transition: opacity 120ms;
   }
-  #app-logo-btn:hover { background: rgba(0,229,204,0.22); }
-  #app-logo-btn.open { background: rgba(0,229,204,0.22); }
+  #app-logo-btn:hover { opacity: 1; }
+  #app-logo-btn.open  { opacity: 1; }
+  #app-logo-btn img   { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 6px; }
 
   .tb-drop-menu {
     display: none; position: fixed; top: var(--topbar-h); left: auto;
@@ -428,7 +427,7 @@
 
   <!-- BeatLab nav dropdown -->
   <div class="tb-drop" id="app-nav-drop">
-    <button id="app-logo-btn" title="BeatLab apps">BL</button>
+    <button id="app-logo-btn" title="BeatLab apps"><img src="../icon.png" alt="BeatLab"></button>
   </div>
 
   <div class="divider-v"></div>
