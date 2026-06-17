@@ -24,11 +24,14 @@
 - **Time signature** — free number input (1–32 beats/bar) in topbar; changes step count live, rebuilds grid
 - **Per-track step length (polymeter)** — each track has its own loop length independent of the global bar length. Set it per-track via a small input in the track label. Tracks drift in and out of phase automatically as they loop at different lengths.
 - **Step probability** — right-click (or long-press on mobile) an active step to cycle its fire chance: 100% → 75% → 50% → 25%. Displayed as a darkening overlay + percentage label on the step button.
-- **Euclidean rhythm generator** — per-track "E" button opens a popover: dial in hits and total steps, click Fill. Spaces hits as evenly as possible using Bresenham's line algorithm. Always starts on beat 1. Classic patterns: E(3,8) = son clave, E(5,8) = bossa nova, E(7,12) = cascara.
-- **Kit selector in topbar** — 4 kits (808, Acoustic, Lo-Fi, Electronic) always visible in both Sequencer and Pads modes
+- **Euclidean rhythm generator** — per-track "E" button opens a popover: dial in hits and total steps, click Fill. Spaces hits as evenly as possible (Bjorklund algorithm). Always starts on beat 1. Grey zone past `trackLen` shows the repeating pattern (read-only mirror). Classic patterns: E(3,8) = son clave, E(5,8) = bossa nova, E(7,12) = cascara.
+- **Kit dropdown** — "Kit" button in topbar with active kit highlighted; visible in both Sequencer and Pads modes
+- **Patterns dropdown** — beside Timing in topbar; contains built-in presets and user-saved patterns
+  - **Built-in presets**: Four on the Floor, Polyrhythm 3/5/7, Clave Groove
+  - Polyrhythm preset uses per-track loop lengths (12/20/28 steps) to demonstrate independent phase drift
 - **Reset** — single button restores all steps, mutes, per-track lengths, time signature (4/4), and BPM (120) to defaults
 - **BPM** — slider + editable number input, bidirectional sync
-- **Master volume** — slider in topbar
+- **Master volume** — slider in topbar, defaults to 50%
 - **Lookahead scheduler** — 25ms tick, 100ms lookahead; timing locked to audio clock
 - Spacebar play/stop
 - Mobile: touch-action:none on pad grid and step rows; portrait rotate overlay suppressed in Pads mode
