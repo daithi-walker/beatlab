@@ -1648,7 +1648,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   wireDropdown('timing-drop-btn', 'timing-menu');
 
   document.addEventListener('pointerdown', e => {
-    if (!e.target.closest('.tb-drop') && !e.target.closest('#app-nav-drop') && !e.target.closest('.patterns-group')) closeAllDrops();
+    if (!e.target.closest('.tb-drop') && !e.target.closest('.tb-drop-menu') && !e.target.closest('.patterns-group')) closeAllDrops();
   });
 
   document.getElementById('patterns-btn').addEventListener('click', e => {
@@ -1895,6 +1895,8 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
 </script>
 <!-- Dropdown menus live at body level to escape topbar overflow clipping -->
 <div class="tb-drop-menu" id="app-nav-menu">
+  <a class="tb-drop-item" href="../index.html" style="color:var(--muted);font-size:0.65rem;letter-spacing:0.1em;">BeatLab Home</a>
+  <div class="tb-drop-divider"></div>
   <a class="tb-drop-item active" href="index.html"><span class="dot" style="background:var(--green)"></span>Drums</a>
   <a class="tb-drop-item" href="../multibank/index.html"><span class="dot" style="background:var(--teal)"></span>Multibank</a>
   <a class="tb-drop-item" href="../synth/index.html"><span class="dot" style="background:var(--amber)"></span>Synth</a>
