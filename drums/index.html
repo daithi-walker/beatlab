@@ -429,12 +429,6 @@
   <!-- BeatLab nav dropdown -->
   <div class="tb-drop" id="app-nav-drop">
     <button id="app-logo-btn" title="BeatLab apps">BL</button>
-    <div class="tb-drop-menu" id="app-nav-menu">
-      <a class="tb-drop-item active" href="index.html"><span class="dot" style="background:var(--green)"></span>Drums</a>
-      <a class="tb-drop-item" href="../multibank/index.html"><span class="dot" style="background:var(--teal)"></span>Multibank</a>
-      <a class="tb-drop-item" href="../synth/index.html"><span class="dot" style="background:var(--amber)"></span>Synth</a>
-      <a class="tb-drop-item" href="../nectar/index.html"><span class="dot" style="background:var(--purple)"></span>Nectar</a>
-    </div>
   </div>
 
   <div class="divider-v"></div>
@@ -445,10 +439,6 @@
       Sequencer
       <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     </button>
-    <div class="tb-drop-menu" id="view-menu">
-      <button class="tb-drop-item active" id="mode-seq-btn">Sequencer</button>
-      <button class="tb-drop-item" id="mode-pads-btn">Pads</button>
-    </div>
   </div>
 
   <div class="divider-v"></div>
@@ -459,7 +449,6 @@
       808
       <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     </button>
-    <div class="tb-drop-menu" id="kit-menu"></div>
   </div>
 
   <div class="divider-v"></div>
@@ -470,16 +459,6 @@
       Timing
       <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     </button>
-    <div class="tb-drop-menu" id="timing-menu">
-      <div class="timing-row">
-        <span class="timing-lbl">Steps</span>
-        <button class="tb-drop-item" id="steps-btn" style="flex:1;padding:4px 8px;">16</button>
-      </div>
-      <div class="timing-row">
-        <span class="timing-lbl">Beats/bar</span>
-        <input type="number" class="ctrl-value" id="timesig-input" min="1" max="32" value="4" style="width:3ch;">
-      </div>
-    </div>
   </div>
 
   <div class="divider-v"></div>
@@ -1827,5 +1806,27 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   window.addEventListener('resize', checkOrientation);
 })();
 </script>
+<!-- Dropdown menus live at body level to escape topbar overflow clipping -->
+<div class="tb-drop-menu" id="app-nav-menu">
+  <a class="tb-drop-item active" href="index.html"><span class="dot" style="background:var(--green)"></span>Drums</a>
+  <a class="tb-drop-item" href="../multibank/index.html"><span class="dot" style="background:var(--teal)"></span>Multibank</a>
+  <a class="tb-drop-item" href="../synth/index.html"><span class="dot" style="background:var(--amber)"></span>Synth</a>
+  <a class="tb-drop-item" href="../nectar/index.html"><span class="dot" style="background:var(--purple)"></span>Nectar</a>
+</div>
+<div class="tb-drop-menu" id="view-menu">
+  <button class="tb-drop-item active" id="mode-seq-btn">Sequencer</button>
+  <button class="tb-drop-item" id="mode-pads-btn">Pads</button>
+</div>
+<div class="tb-drop-menu" id="kit-menu"></div>
+<div class="tb-drop-menu" id="timing-menu">
+  <div class="timing-row">
+    <span class="timing-lbl">Steps</span>
+    <button class="tb-drop-item" id="steps-btn" style="flex:1;padding:4px 8px;">16</button>
+  </div>
+  <div class="timing-row">
+    <span class="timing-lbl">Beats/bar</span>
+    <input type="number" class="ctrl-value" id="timesig-input" min="1" max="32" value="4" style="width:3ch;">
+  </div>
+</div>
 </body>
 </html>
