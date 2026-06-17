@@ -20,7 +20,7 @@
     --purple:    #b06fff;
     --pink:      #ff6b9d;
     --topbar-h:  52px;
-    --label-w:   80px;
+    --label-w:   88px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; }
@@ -119,17 +119,86 @@
   .beat-num { text-align: center; font-size: 0.5rem; letter-spacing: 0.06em; color: var(--faint); font-variant-numeric: tabular-nums; }
   .beat-num.quarter { color: var(--muted); font-weight: 600; }
   .track { display: flex; align-items: center; }
-  .track-label { width: var(--label-w); flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
+  .track-label { width: var(--label-w); flex-shrink: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding-right: 4px; }
+  .track-label-top { display: flex; align-items: center; gap: 4px; }
   .track-name { font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .track-mute { background: none; border: none; cursor: pointer; color: var(--faint); padding: 3px; transition: color 120ms; flex-shrink: 0; }
+  .track-mute { background: none; border: none; cursor: pointer; color: var(--faint); padding: 2px; transition: color 120ms; flex-shrink: 0; }
   .track-mute:hover { color: var(--teal); }
   .track-mute.muted { color: var(--pink); opacity: 0.7; }
+
+  /* Per-track controls row */
+  .track-meta { display: flex; align-items: center; gap: 4px; }
+  .track-len-input {
+    font-family: inherit; font-size: 0.52rem; color: var(--muted);
+    background: none; border: none; border-bottom: 1px solid var(--faint);
+    width: 2.4ch; text-align: center; padding: 0; outline: none;
+    -moz-appearance: textfield; cursor: pointer;
+  }
+  .track-len-input:focus { border-bottom-color: var(--teal); color: var(--teal); }
+  .track-len-input::-webkit-inner-spin-button,
+  .track-len-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .track-len-label { font-size: 0.48rem; letter-spacing: 0.06em; color: var(--faint); }
+  .track-euclid-btn {
+    font-family: inherit; font-size: 0.48rem; letter-spacing: 0.04em;
+    color: var(--faint); background: none; border: none; cursor: pointer;
+    padding: 1px 3px; border-radius: 3px; transition: color 120ms, background 120ms;
+  }
+  .track-euclid-btn:hover { color: var(--amber); background: rgba(245,166,35,0.1); }
+
+  /* Euclidean popover */
+  .euclid-pop {
+    display: none; position: absolute; z-index: 400;
+    background: var(--surface); border: 1px solid var(--divider);
+    border-radius: 8px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    flex-direction: column; gap: 8px; min-width: 140px;
+  }
+  .euclid-pop.open { display: flex; }
+  .euclid-pop-title { font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .euclid-row { display: flex; align-items: center; gap: 6px; }
+  .euclid-num {
+    font-family: inherit; font-size: 0.72rem; color: var(--text);
+    background: var(--surface-2); border: 1px solid var(--divider);
+    border-radius: 4px; width: 3.2ch; text-align: center; padding: 4px;
+    outline: none; -moz-appearance: textfield;
+  }
+  .euclid-num:focus { border-color: var(--amber); }
+  .euclid-num::-webkit-inner-spin-button,
+  .euclid-num::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .euclid-sep { font-size: 0.7rem; color: var(--muted); }
+  .euclid-fill-btn {
+    font-family: inherit; font-size: 0.65rem; letter-spacing: 0.06em;
+    color: var(--amber); background: rgba(245,166,35,0.1);
+    border: 1px solid rgba(245,166,35,0.3); border-radius: 5px;
+    padding: 5px 10px; cursor: pointer; transition: background 120ms; width: 100%;
+  }
+  .euclid-fill-btn:hover { background: rgba(245,166,35,0.2); }
+
+  /* Steps */
   .steps-row { display: grid; flex: 1; gap: 2px; touch-action: none; }
-  .step { height: 34px; border-radius: 4px; cursor: pointer; border: 1px solid var(--divider); background: var(--surface-2); transition: background 80ms, border-color 80ms; }
+  .step {
+    height: 34px; border-radius: 4px; cursor: pointer;
+    border: 1px solid var(--divider); background: var(--surface-2);
+    transition: background 80ms, border-color 80ms;
+    position: relative; overflow: hidden;
+  }
   .step:hover { border-color: color-mix(in srgb, var(--accent, var(--teal)) 50%, transparent); }
   .step.on { background: var(--accent, var(--teal)); border-color: var(--accent, var(--teal)); box-shadow: 0 0 8px color-mix(in srgb, var(--accent, var(--teal)) 50%, transparent); }
+  /* probability fill — semi-transparent overlay that dims when prob < 100 */
+  .step.on::after { content: ''; position: absolute; inset: 0; background: var(--bg); opacity: 0; transition: opacity 80ms; border-radius: inherit; }
+  .step.on[data-prob="75"]::after { opacity: 0.25; }
+  .step.on[data-prob="50"]::after { opacity: 0.50; }
+  .step.on[data-prob="25"]::after { opacity: 0.68; }
+  /* prob label */
+  .step.on[data-prob]:not([data-prob="100"])::before {
+    content: attr(data-prob) '%';
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 0.44rem; letter-spacing: 0.04em; color: rgba(255,255,255,0.9);
+    pointer-events: none; z-index: 1;
+  }
   .step.current { border-color: #fff; }
   .step.on.current { background: #fff; border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,0.5); }
+  /* loop-length marker — dim steps beyond a track's own length */
+  .step.beyond { opacity: 0.25; }
   .step-gap { width: 4px; height: 34px; }
   @media (pointer: coarse) { .step { height: 40px; border-radius: 6px; background: #1a2830; } }
   .section-label { font-size: 0.52rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); padding: 8px 0 2px var(--label-w); }
@@ -476,7 +545,17 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   ];
 
   const state = {};
-  TRACKS.forEach(t => { state[t.id] = { steps: Array(32).fill(false), muted: false }; });
+  // steps: array of {on: bool, prob: 100|75|50|25}
+  // trackLen: how many steps this track loops over (0 = follow global STEPS)
+  // trackPos: per-track playhead
+  TRACKS.forEach(t => {
+    state[t.id] = {
+      steps: Array(32).fill(null).map(() => ({ on: false, prob: 100 })),
+      muted: false,
+      trackLen: 0,
+      trackPos: 0,
+    };
+  });
 
   /* ── KITS ─────────────────────────────────────────────────── */
   const KITS = {
@@ -682,13 +761,18 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   /* ── SCHEDULER ────────────────────────────────────────────── */
   let playing = false, currentStep = 0, nextBeatTime = 0, tickTimer = null;
 
-  function scheduleStep(step, time) {
+  function scheduleStep(globalStep, time) {
     TRACKS.forEach(t => {
-      if (!state[t.id].steps[step] || state[t.id].muted) return;
-      voice(t.id, time);
+      const ts = state[t.id];
+      if (ts.muted) return;
+      const len = ts.trackLen || STEPS;
+      const s = ts.trackPos % len;
+      const cell = ts.steps[s];
+      if (cell && cell.on && Math.random() * 100 < cell.prob) voice(t.id, time);
+      ts.trackPos = (s + 1) % len;
     });
     const msUntil = Math.max(0, (time - ctx.currentTime) * 1000);
-    setTimeout(() => updatePlayhead(step), msUntil);
+    setTimeout(() => updatePlayhead(globalStep), msUntil);
   }
 
   function tick() {
@@ -703,6 +787,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     if (!ctx) initAudio();
     ctx.resume();
     playing = true; currentStep = 0; nextBeatTime = ctx.currentTime + 0.05;
+    TRACKS.forEach(t => { state[t.id].trackPos = 0; });
     tickTimer = setInterval(tick, TICK_MS);
     document.getElementById('play-btn').textContent = '◼ Stop';
     document.getElementById('play-btn').classList.add('playing');
@@ -772,18 +857,53 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
 
   // Global drag state — shared across all rows so vertical drag works
   let seqDragIntent = null;
+  let holdTimer = null;
   function initSeqDrag() {
     const view = document.getElementById('seq-view');
+
+    // Close euclidean popovers when clicking outside
+    view.addEventListener('pointerdown', e => {
+      if (openEuclidPop && !e.target.closest('.euclid-pop') && !e.target.closest('.track-euclid-btn')) {
+        openEuclidPop.classList.remove('open');
+        openEuclidPop = null;
+      }
+    }, { capture: true });
+    document.addEventListener('pointerdown', e => {
+      if (openEuclidPop && !e.target.closest('.euclid-pop') && !e.target.closest('.track-euclid-btn')) {
+        openEuclidPop.classList.remove('open');
+        openEuclidPop = null;
+      }
+    }, { capture: true });
+
     view.addEventListener('pointerdown', e => {
       const btn = e.target.closest('.step'); if (!btn) return;
       e.preventDefault();
       const ts = state[btn.dataset.trackId]; if (!ts) return;
       const s = parseInt(btn.dataset.step, 10);
-      seqDragIntent = ts.steps[s] ? 'off' : 'on';
+      const cell = ts.steps[s];
+      // Right-click or long-press on an active step cycles probability
+      if (e.button === 2 || e.pointerType === 'touch') {
+        if (cell.on) {
+          holdTimer = setTimeout(() => {
+            holdTimer = null;
+            cycleProbability(ts, btn, s);
+            seqDragIntent = null; // prevent drag after long press
+          }, 400);
+        }
+      }
+      seqDragIntent = cell.on ? 'off' : 'on';
       applyStep(ts, btn, s, seqDragIntent);
       view.setPointerCapture(e.pointerId);
     });
+    view.addEventListener('contextmenu', e => {
+      const btn = e.target.closest('.step'); if (!btn) return;
+      e.preventDefault();
+      const ts = state[btn.dataset.trackId]; if (!ts) return;
+      cycleProbability(ts, btn, parseInt(btn.dataset.step, 10));
+      seqDragIntent = null;
+    });
     view.addEventListener('pointermove', e => {
+      if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
       if (seqDragIntent === null) return;
       e.preventDefault();
       const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('.step');
@@ -791,15 +911,43 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
       const ts = state[target.dataset.trackId]; if (!ts) return;
       applyStep(ts, target, parseInt(target.dataset.step, 10), seqDragIntent);
     }, { passive: false });
-    view.addEventListener('pointerup',     () => { seqDragIntent = null; });
-    view.addEventListener('pointercancel', () => { seqDragIntent = null; });
+    view.addEventListener('pointerup', () => {
+      if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+      seqDragIntent = null;
+    });
+    view.addEventListener('pointercancel', () => {
+      if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+      seqDragIntent = null;
+    });
   }
+
+  /* ── Euclidean (Bjorklund) ────────────────────────────────── */
+  function euclidean(hits, steps) {
+    if (hits <= 0) return Array(steps).fill(false);
+    hits = Math.min(hits, steps);
+    let pattern = Array.from({ length: steps }, (_, i) => i < hits);
+    let groups = [pattern.filter(Boolean).map(() => [true]), pattern.filter(b => !b).map(() => [false])];
+    while (groups[1].length > 1) {
+      const [longer, shorter] = groups[0].length >= groups[1].length ? [groups[0], groups[1]] : [groups[1], groups[0]];
+      const merged = shorter.map((s, i) => longer[i].concat(s));
+      const remainder = longer.slice(shorter.length);
+      groups = remainder.length ? [merged, remainder] : [merged, []];
+      if (!groups[1].length) break;
+    }
+    return groups.flat().map(g => g[0]);
+  }
+
+  let openEuclidPop = null;
 
   function buildTrackRow(track) {
     const ts = state[track.id];
     const row = document.createElement('div');
-    row.className = 'track'; row.dataset.trackId = track.id;
+    row.className = 'track'; row.dataset.trackId = track.id; row.style.position = 'relative';
+
+    /* ── Label column ─────────────────────────────────────── */
     const label = document.createElement('div'); label.className = 'track-label';
+
+    const top = document.createElement('div'); top.className = 'track-label-top';
     const nameEl = document.createElement('span'); nameEl.className = 'track-name';
     nameEl.textContent = track.name; nameEl.style.color = track.color;
     const muteBtn = document.createElement('button');
@@ -815,27 +963,132 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
       muteBtn.querySelector('.mx').style.display = ts.muted ? '' : 'none';
       muteBtn.querySelector('.vw').style.display = ts.muted ? 'none' : '';
     });
-    label.appendChild(nameEl); label.appendChild(muteBtn); row.appendChild(label);
+    top.appendChild(nameEl); top.appendChild(muteBtn); label.appendChild(top);
+
+    /* Per-track length + Euclidean button */
+    const meta = document.createElement('div'); meta.className = 'track-meta';
+
+    const lenInput = document.createElement('input');
+    lenInput.type = 'number'; lenInput.className = 'track-len-input';
+    lenInput.min = 1; lenInput.max = 32;
+    lenInput.value = ts.trackLen || STEPS;
+    lenInput.title = 'Loop length for this track';
+    lenInput.addEventListener('change', () => {
+      const v = Math.max(1, Math.min(32, parseInt(lenInput.value, 10) || STEPS));
+      lenInput.value = v;
+      ts.trackLen = v === STEPS ? 0 : v;
+      // Redraw beyond markers
+      row.querySelectorAll('.step').forEach(btn => {
+        const s = parseInt(btn.dataset.step, 10);
+        btn.classList.toggle('beyond', s >= (ts.trackLen || STEPS));
+      });
+    });
+    lenInput.addEventListener('keydown', e => { if (e.key === 'Enter') lenInput.blur(); });
+
+    const lenLbl = document.createElement('span'); lenLbl.className = 'track-len-label'; lenLbl.textContent = 'steps';
+
+    const eucBtn = document.createElement('button'); eucBtn.className = 'track-euclid-btn'; eucBtn.textContent = 'E';
+    eucBtn.title = 'Euclidean fill';
+
+    /* Euclidean popover */
+    const pop = document.createElement('div'); pop.className = 'euclid-pop';
+    const popTitle = document.createElement('div'); popTitle.className = 'euclid-pop-title'; popTitle.textContent = 'Euclidean fill';
+    const eucRow = document.createElement('div'); eucRow.className = 'euclid-row';
+    const hitsIn = document.createElement('input'); hitsIn.type = 'number'; hitsIn.className = 'euclid-num'; hitsIn.min = 0; hitsIn.max = 32; hitsIn.value = 4; hitsIn.placeholder = 'hits';
+    const sep = document.createElement('span'); sep.className = 'euclid-sep'; sep.textContent = 'in';
+    const stepsIn = document.createElement('input'); stepsIn.type = 'number'; stepsIn.className = 'euclid-num'; stepsIn.min = 1; stepsIn.max = 32; stepsIn.value = ts.trackLen || STEPS; stepsIn.placeholder = 'steps';
+    eucRow.appendChild(hitsIn); eucRow.appendChild(sep); eucRow.appendChild(stepsIn);
+    const fillBtn = document.createElement('button'); fillBtn.className = 'euclid-fill-btn'; fillBtn.textContent = 'Fill';
+    fillBtn.addEventListener('click', () => {
+      const h = Math.max(0, Math.min(32, parseInt(hitsIn.value, 10) || 0));
+      const st = Math.max(1, Math.min(32, parseInt(stepsIn.value, 10) || STEPS));
+      const pattern = euclidean(h, st);
+      // Apply to track state
+      ts.steps.forEach((c, i) => { c.on = i < st ? pattern[i] : false; });
+      // Update step length to match
+      ts.trackLen = st === STEPS ? 0 : st;
+      lenInput.value = st;
+      // Rebuild the step buttons visually
+      rebuildStepButtons(row, track);
+      pop.classList.remove('open');
+      openEuclidPop = null;
+    });
+    pop.appendChild(popTitle); pop.appendChild(eucRow); pop.appendChild(fillBtn);
+    row.appendChild(pop);
+
+    eucBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      if (openEuclidPop && openEuclidPop !== pop) openEuclidPop.classList.remove('open');
+      pop.classList.toggle('open');
+      openEuclidPop = pop.classList.contains('open') ? pop : null;
+      if (pop.classList.contains('open')) {
+        stepsIn.value = ts.trackLen || STEPS;
+        // Position below the button
+        const rect = eucBtn.getBoundingClientRect();
+        const rowRect = row.getBoundingClientRect();
+        pop.style.top = (rect.bottom - rowRect.top + 4) + 'px';
+        pop.style.left = '0px';
+      }
+    });
+
+    meta.appendChild(lenInput); meta.appendChild(lenLbl); meta.appendChild(eucBtn);
+    label.appendChild(meta); row.appendChild(label);
+
+    /* ── Step grid ────────────────────────────────────────── */
     const grid = document.createElement('div');
     grid.className = 'steps-row';
     grid.style.gridTemplateColumns = gridColsStyle();
     grid.style.setProperty('--accent', track.color);
-    for (let s = 0; s < STEPS; s++) {
-      if (s > 0 && s % STEPS_PER_BEAT === 0) { const gap = document.createElement('div'); gap.className = 'step-gap'; grid.appendChild(gap); }
-      const btn = document.createElement('div');
-      btn.className = 'step' + (ts.steps[s] ? ' on' : '');
-      btn.dataset.trackId = track.id; btn.dataset.step = s;
-      grid.appendChild(btn);
-    }
+    grid.dataset.trackStepsGrid = track.id;
+    buildStepButtons(grid, track, ts);
     row.appendChild(grid);
     return row;
   }
 
+  function buildStepButtons(grid, track, ts) {
+    grid.innerHTML = '';
+    const len = ts.trackLen || STEPS;
+    for (let s = 0; s < STEPS; s++) {
+      if (s > 0 && s % STEPS_PER_BEAT === 0) { const gap = document.createElement('div'); gap.className = 'step-gap'; grid.appendChild(gap); }
+      const cell = ts.steps[s] || { on: false, prob: 100 };
+      const btn = document.createElement('div');
+      btn.className = 'step' + (cell.on ? ' on' : '') + (s >= len ? ' beyond' : '');
+      btn.dataset.trackId = track.id; btn.dataset.step = s;
+      if (cell.on && cell.prob < 100) btn.dataset.prob = cell.prob;
+      grid.appendChild(btn);
+    }
+  }
+
+  function rebuildStepButtons(row, track) {
+    const ts = state[track.id];
+    const grid = row.querySelector('[data-track-steps-grid]');
+    if (grid) buildStepButtons(grid, track, ts);
+    // also update len input
+    const li = row.querySelector('.track-len-input');
+    if (li) li.value = ts.trackLen || STEPS;
+  }
+
   function applyStep(ts, btn, step, intent) {
     const on = intent === 'on';
-    if (ts.steps[step] === on) return;
-    ts.steps[step] = on;
+    const cell = ts.steps[step];
+    if (cell.on === on) return;
+    cell.on = on;
+    if (on) { cell.prob = 100; delete btn.dataset.prob; }
     btn.classList.toggle('on', on);
+  }
+
+  function cycleProbability(ts, btn, step) {
+    const cell = ts.steps[step];
+    if (!cell.on) return;
+    const cycle = [100, 75, 50, 25];
+    const idx = cycle.indexOf(cell.prob);
+    const next = cycle[(idx + 1) % cycle.length];
+    if (next === 100) {
+      delete btn.dataset.prob;
+    } else {
+      btn.dataset.prob = next;
+    }
+    cell.prob = next;
   }
 
   /* ── BEAT ROW ─────────────────────────────────────────────── */
@@ -1123,7 +1376,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   /* ── LOAD TAKE INTO SEQUENCER ─────────────────────────────── */
   function applyTake(take) {
     if (playing) stopTransport();
-    TRACKS.forEach(t => { state[t.id].steps.fill(false); });
+    TRACKS.forEach(t => { state[t.id].steps.forEach(c => { c.on = false; c.prob = 100; }); state[t.id].trackLen = 0; state[t.id].trackPos = 0; });
     const targetSteps = take.bars * BEATS_PER_BAR * STEPS_PER_BEAT;
     if (targetSteps !== STEPS) {
       STEPS = targetSteps;
@@ -1131,7 +1384,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     }
     take.events.forEach(ev => {
       const step = Math.round(ev.beat * STEPS_PER_BEAT) % STEPS;
-      if (state[ev.id]) state[ev.id].steps[step] = true;
+      if (state[ev.id]) state[ev.id].steps[step].on = true;
     });
     if (take.kit && KITS[take.kit]) {
       currentKit = take.kit;
@@ -1193,8 +1446,8 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
 
   /* ── CLEAR ────────────────────────────────────────────────── */
   document.getElementById('clear-btn').addEventListener('click', () => {
-    TRACKS.forEach(t => { state[t.id].steps.fill(false); });
-    document.querySelectorAll('.step.on').forEach(el => el.classList.remove('on'));
+    TRACKS.forEach(t => { state[t.id].steps.forEach(c => { c.on = false; c.prob = 100; }); });
+    document.querySelectorAll('.step.on').forEach(el => { el.classList.remove('on'); delete el.dataset.prob; });
   });
 
   /* ── MUTE ALL ─────────────────────────────────────────────── */
@@ -1217,7 +1470,14 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   /* ── PATTERNS ─────────────────────────────────────────────── */
   function captureState() {
     const out = { bpm, steps: STEPS, beatsPerBar: BEATS_PER_BAR, kit: currentKit, tracks: {} };
-    TRACKS.forEach(t => { out.tracks[t.id] = { steps: [...state[t.id].steps], muted: state[t.id].muted }; });
+    TRACKS.forEach(t => {
+      const ts = state[t.id];
+      out.tracks[t.id] = {
+        steps: ts.steps.map(c => ({ on: c.on, prob: c.prob })),
+        muted: ts.muted,
+        trackLen: ts.trackLen,
+      };
+    });
     return out;
   }
 
@@ -1236,9 +1496,16 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     TRACKS.forEach(t => {
       if (saved.tracks?.[t.id]) {
         const pd = saved.tracks[t.id];
-        state[t.id].steps = pd.steps.slice(0, 32);
-        while (state[t.id].steps.length < 32) state[t.id].steps.push(false);
-        state[t.id].muted = pd.muted || false;
+        // Support old boolean format and new object format
+        state[t.id].steps = Array(32).fill(null).map((_, i) => {
+          const raw = pd.steps[i];
+          if (!raw) return { on: false, prob: 100 };
+          if (typeof raw === 'boolean') return { on: raw, prob: 100 };
+          return { on: raw.on || false, prob: raw.prob || 100 };
+        });
+        state[t.id].muted   = pd.muted || false;
+        state[t.id].trackLen = pd.trackLen || 0;
+        state[t.id].trackPos = 0;
       }
     });
     allMuted = false;
