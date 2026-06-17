@@ -39,7 +39,7 @@
     color: var(--teal); background: rgba(0,229,204,0.08);
     border: 1px solid rgba(0,229,204,0.2); border-radius: 6px;
     padding: 6px 12px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
-    transition: background 120ms, border-color 120ms;
+    transition: background 120ms, border-color 120ms, color 120ms;
   }
   .topbar-btn:hover   { background: rgba(0,229,204,0.16); }
   .topbar-btn.playing { background: rgba(0,229,204,0.18); border-color: var(--teal); }
@@ -142,7 +142,8 @@
   /* ── PADS VIEW ────────────────────────────────────────────── */
   #pads-view {
     display: none; position: fixed; top: var(--topbar-h); left: 0; right: 0; bottom: 0;
-    flex-direction: column; align-items: center; gap: 12px; padding: 14px 12px 12px;
+    flex-direction: column; align-items: center; gap: 10px; padding: 12px 12px 10px;
+    overflow: hidden;
   }
   #pads-view.active { display: flex; }
 
@@ -156,6 +157,67 @@
   .kit-btn:hover { color: var(--text); border-color: var(--muted); }
   .kit-btn.active { color: var(--teal); border-color: var(--teal); background: rgba(0,229,204,0.1); }
 
+  /* Recording toolbar */
+  #rec-toolbar {
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; justify-content: center;
+  }
+  .rec-chip {
+    font-family: inherit; font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted); background: none; border: 1px solid var(--divider); border-radius: 4px;
+    padding: 4px 10px; cursor: pointer; transition: all 120ms;
+  }
+  .rec-chip.active { color: var(--teal); border-color: var(--teal); background: rgba(0,229,204,0.1); }
+  .rec-chip:hover:not(.active) { color: var(--text); border-color: var(--muted); }
+  #quantize-toggle { font-family: inherit; font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: none; border: 1px solid var(--divider); border-radius: 4px; padding: 4px 10px; cursor: pointer; transition: all 120ms; }
+  #quantize-toggle.on { color: var(--teal); border-color: var(--teal); background: rgba(0,229,204,0.1); }
+  #rec-btn {
+    font-family: inherit; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--pink); background: rgba(255,107,157,0.08); border: 1px solid rgba(255,107,157,0.3);
+    border-radius: 6px; padding: 6px 16px; cursor: pointer; transition: all 120ms;
+  }
+  #rec-btn:hover { background: rgba(255,107,157,0.18); }
+  #rec-btn.counting { animation: pulse-amber 600ms ease-in-out infinite; }
+  #rec-btn.recording { color: #fff; background: var(--pink); border-color: var(--pink); animation: pulse-red 500ms ease-in-out infinite; }
+  @keyframes pulse-amber { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+  @keyframes pulse-red   { 0%,100% { opacity:1; box-shadow: 0 0 12px var(--pink); } 50% { opacity:0.7; box-shadow: none; } }
+
+  /* Takes popover */
+  .takes-group { position: relative; }
+  #takes-btn {
+    font-family: inherit; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--purple); background: rgba(176,111,255,0.08); border: 1px solid rgba(176,111,255,0.25);
+    border-radius: 6px; padding: 6px 12px; cursor: pointer; transition: all 120ms; white-space: nowrap;
+  }
+  #takes-btn:hover { background: rgba(176,111,255,0.18); }
+  #takes-popover {
+    display: none; position: absolute; top: calc(100% + 6px); right: 0;
+    min-width: 220px; background: var(--surface); border: 1px solid var(--divider);
+    border-radius: 8px; z-index: 300; box-shadow: 0 8px 24px rgba(0,0,0,0.5); overflow: hidden;
+  }
+  #takes-popover.open { display: flex; flex-direction: column; }
+  #takes-list { max-height: 200px; overflow-y: auto; }
+  .take-row { display: flex; align-items: center; gap: 6px; padding: 7px 10px; }
+  .take-row-name { flex: 1; font-size: 0.72rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+  .take-row-name:hover { color: var(--teal); }
+  .take-row-seq { background: none; border: 1px solid var(--divider); border-radius: 3px; color: var(--muted); cursor: pointer; font-size: 0.6rem; padding: 2px 6px; font-family: inherit; white-space: nowrap; transition: all 100ms; }
+  .take-row-seq:hover { color: var(--teal); border-color: var(--teal); }
+  .take-row-del { background: none; border: none; color: var(--faint); cursor: pointer; font-size: 0.72rem; padding: 2px 4px; transition: color 120ms; }
+  .take-row-del:hover { color: var(--pink); }
+  #takes-list-empty { padding: 12px 10px; font-size: 0.68rem; color: var(--muted); }
+  #takes-save-row { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid var(--divider); }
+  #takes-name-input {
+    flex: 1; background: var(--surface-2); border: 1px solid var(--divider); border-radius: 4px;
+    color: var(--text); font-size: 0.72rem; padding: 4px 8px; font-family: inherit; outline: none;
+  }
+  #takes-name-input:focus { border-color: var(--purple); }
+  #takes-save-btn {
+    background: rgba(176,111,255,0.12); border: 1px solid rgba(176,111,255,0.3);
+    border-radius: 4px; color: var(--purple); cursor: pointer; font-size: 0.68rem;
+    letter-spacing: 0.06em; padding: 4px 10px; font-family: inherit; transition: background 120ms;
+  }
+  #takes-save-btn:hover { background: rgba(176,111,255,0.22); }
+  #takes-save-row.hidden { display: none; }
+
   /* Pad grid */
   #pad-grid {
     display: grid;
@@ -164,7 +226,9 @@
     gap: 10px;
     width: 100%; max-width: 560px;
     flex: 1;
+    touch-action: none;
   }
+  #pad-grid.recording { outline: 2px solid var(--pink); outline-offset: 4px; border-radius: 6px; }
 
   .pad {
     border-radius: 14px;
@@ -198,6 +262,17 @@
     font-size: 0.52rem; letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--muted); position: relative; z-index: 1;
   }
+
+  /* Count-in overlay */
+  #countdown-overlay {
+    display: none; position: absolute; inset: 0; z-index: 50;
+    background: rgba(8,12,16,0.85); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center; flex-direction: column; gap: 8px;
+    pointer-events: none;
+  }
+  #countdown-overlay.visible { display: flex; }
+  #countdown-num { font-size: clamp(3rem, 15vw, 6rem); font-weight: 700; color: var(--amber); line-height: 1; }
+  #countdown-label { font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
 
   /* ── AUDIO BANNER ─────────────────────────────────────────── */
   #audio-banner {
@@ -263,7 +338,31 @@
 <!-- Pads view -->
 <div id="pads-view">
   <div id="kit-selector"></div>
-  <div id="pad-grid"></div>
+
+  <div id="rec-toolbar">
+    <button class="rec-chip active" data-bars="1">1 bar</button>
+    <button class="rec-chip" data-bars="2">2 bars</button>
+    <button class="rec-chip" data-bars="4">4 bars</button>
+    <button id="quantize-toggle" class="on">Quantize</button>
+    <button id="rec-btn">● Record</button>
+    <div class="takes-group">
+      <button id="takes-btn">Takes ▾</button>
+      <div id="takes-popover">
+        <div id="takes-list"></div>
+        <div id="takes-save-row" class="hidden">
+          <input id="takes-name-input" type="text" placeholder="take name" spellcheck="false">
+          <button id="takes-save-btn">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="pad-grid" style="position:relative;">
+    <div id="countdown-overlay">
+      <div id="countdown-num">4</div>
+      <div id="countdown-label">count in</div>
+    </div>
+  </div>
 </div>
 
 <div id="beat-row"></div>
@@ -277,13 +376,15 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   'use strict';
 
   const APP_ID    = 'drums';
+  const REC_ID    = 'drums:rec';
   const LOOKAHEAD = 0.1;
   const TICK_MS   = 25;
 
   let STEPS = 16;
   let bpm   = 120;
-  let mode  = 'seq'; // 'seq' | 'pads'
+  let mode  = 'seq';
   function stepDuration() { return 60 / bpm / 4; }
+  function beatDuration()  { return 60 / bpm; }
 
   /* ── TRACK DEFINITIONS ────────────────────────────────────── */
   const TRACKS = [
@@ -305,8 +406,6 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   TRACKS.forEach(t => { state[t.id] = { steps: Array(32).fill(false), muted: false }; });
 
   /* ── KIT DEFINITIONS ──────────────────────────────────────── */
-  // Each kit maps instrument id → synthesis parameters.
-  // Voice functions read from KITS[currentKit][id].
   const KITS = {
     '808': {
       kick:    { startFreq:150, endFreq:40,  decay:0.45, gain:1.8  },
@@ -393,7 +492,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     g.connect(s); s.connect(reverbConvolver);
   }
 
-  /* ── PARAMETERISED VOICES ─────────────────────────────────── */
+  /* ── VOICES ───────────────────────────────────────────────── */
   function voiceKick(time, p) {
     const osc = ctx.createOscillator(), g = ctx.createGain();
     osc.type = 'sine';
@@ -597,20 +696,13 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
 
     const header = document.createElement('div');
     header.id = 'beat-header';
-    header.style.display = 'flex';
-    header.style.alignItems = 'center';
-    header.style.marginBottom = '4px';
-    const spacer = document.createElement('div');
-    spacer.className = 'label-spacer';
+    header.style.cssText = 'display:flex;align-items:center;margin-bottom:4px;';
+    const spacer = document.createElement('div'); spacer.className = 'label-spacer';
     header.appendChild(spacer);
     const nums = document.createElement('div');
     nums.style.cssText = `display:grid;flex:1;grid-template-columns:${gridColsStyle()};gap:2px;`;
     for (let i = 0; i < STEPS; i++) {
-      if (i > 0 && i % 4 === 0) {
-        const gap = document.createElement('div');
-        gap.style.width = '4px';
-        nums.appendChild(gap);
-      }
+      if (i > 0 && i % 4 === 0) { const gap = document.createElement('div'); gap.style.width='4px'; nums.appendChild(gap); }
       const n = document.createElement('div');
       n.className = 'beat-num' + (i % 4 === 0 ? ' quarter' : '');
       n.textContent = i % 4 === 0 ? String(Math.floor(i / 4) + 1) : '·';
@@ -623,10 +715,8 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     TRACKS.forEach(track => {
       if (track.section !== lastSection) {
         const lbl = document.createElement('div');
-        lbl.className = 'section-label';
-        lbl.textContent = track.section;
-        view.appendChild(lbl);
-        lastSection = track.section;
+        lbl.className = 'section-label'; lbl.textContent = track.section;
+        view.appendChild(lbl); lastSection = track.section;
       }
       view.appendChild(buildTrackRow(track));
     });
@@ -637,13 +727,9 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     const row = document.createElement('div');
     row.className = 'track'; row.dataset.trackId = track.id;
 
-    const label = document.createElement('div');
-    label.className = 'track-label';
-
-    const nameEl = document.createElement('span');
-    nameEl.className = 'track-name';
-    nameEl.textContent = track.name;
-    nameEl.style.color = track.color;
+    const label = document.createElement('div'); label.className = 'track-label';
+    const nameEl = document.createElement('span'); nameEl.className = 'track-name';
+    nameEl.textContent = track.name; nameEl.style.color = track.color;
 
     const muteBtn = document.createElement('button');
     muteBtn.className = 'track-mute' + (ts.muted ? ' muted' : '');
@@ -668,9 +754,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     grid.style.setProperty('--accent', track.color);
 
     for (let s = 0; s < STEPS; s++) {
-      if (s > 0 && s % 4 === 0) {
-        const gap = document.createElement('div'); gap.className = 'step-gap'; grid.appendChild(gap);
-      }
+      if (s > 0 && s % 4 === 0) { const gap = document.createElement('div'); gap.className = 'step-gap'; grid.appendChild(gap); }
       const btn = document.createElement('div');
       btn.className = 'step' + (ts.steps[s] ? ' on' : '');
       btn.dataset.trackId = track.id; btn.dataset.step = s;
@@ -734,40 +818,300 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     });
   }
 
+  /* firePad — extracted so swipe and tap share one path */
+  function firePad(id, padEl) {
+    if (!ctx) initAudio();
+    ctx.resume();
+    voice(id, ctx.currentTime + 0.01);
+    if (recActive) {
+      const beat = (ctx.currentTime - recStartTime) / beatDuration();
+      recEvents.push({ id, beat });
+    }
+    padEl.classList.add('hit');
+    setTimeout(() => padEl.classList.remove('hit'), 80);
+  }
+
   function buildPads() {
     const grid = document.getElementById('pad-grid');
+    // Keep countdown overlay, rebuild pads only
+    const overlay = document.getElementById('countdown-overlay');
     grid.innerHTML = '';
+    grid.appendChild(overlay);
+
+    const padEls = {};
     TRACKS.forEach(track => {
       const pad = document.createElement('div');
       pad.className = 'pad';
       pad.dataset.trackId = track.id;
       pad.style.setProperty('--pad-color', track.color);
 
-      const name = document.createElement('span');
-      name.className = 'pad-name';
-      name.textContent = track.name;
-
-      const sub = document.createElement('span');
-      sub.className = 'pad-sub';
-      sub.textContent = track.sub;
-
-      pad.appendChild(name);
-      pad.appendChild(sub);
-
-      // Pointer events — support multi-touch (each finger fires its own pad)
-      pad.addEventListener('pointerdown', e => {
-        e.preventDefault();
-        if (!ctx) initAudio();
-        ctx.resume();
-        voice(track.id, ctx.currentTime + 0.01);
-        pad.classList.add('hit');
-      });
-      pad.addEventListener('pointerup',     () => { setTimeout(() => pad.classList.remove('hit'), 80); });
-      pad.addEventListener('pointercancel', () => { pad.classList.remove('hit'); });
-      pad.addEventListener('pointerleave',  () => { pad.classList.remove('hit'); });
-
+      const name = document.createElement('span'); name.className = 'pad-name'; name.textContent = track.name;
+      const sub  = document.createElement('span'); sub.className  = 'pad-sub';  sub.textContent  = track.sub;
+      pad.appendChild(name); pad.appendChild(sub);
       grid.appendChild(pad);
+      padEls[track.id] = pad;
     });
+
+    // Swipe support — delegate all pointer events to the grid container
+    let swipeActive = false;
+    let lastSwipedId = null;
+
+    grid.addEventListener('pointerdown', e => {
+      const pad = e.target.closest('.pad');
+      if (!pad) return;
+      e.preventDefault();
+      swipeActive = true;
+      lastSwipedId = pad.dataset.trackId;
+      firePad(pad.dataset.trackId, pad);
+    });
+
+    grid.addEventListener('pointermove', e => {
+      if (!swipeActive) return;
+      e.preventDefault();
+      const el = document.elementFromPoint(e.clientX, e.clientY)?.closest('.pad');
+      if (!el || el.dataset.trackId === lastSwipedId) return;
+      lastSwipedId = el.dataset.trackId;
+      firePad(el.dataset.trackId, el);
+    }, { passive: false });
+
+    grid.addEventListener('pointerup',     () => { swipeActive = false; lastSwipedId = null; });
+    grid.addEventListener('pointercancel', () => { swipeActive = false; lastSwipedId = null; });
+  }
+
+  /* ── METRONOME CLICK ──────────────────────────────────────── */
+  function scheduleClick(time, isDownbeat) {
+    if (!ctx) return;
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.frequency.value = isDownbeat ? 1000 : 800;
+    g.gain.setValueAtTime(0.35, time);
+    g.gain.exponentialRampToValueAtTime(0.001, time + 0.03);
+    osc.connect(g); g.connect(masterGain);
+    osc.start(time); osc.stop(time + 0.04);
+  }
+
+  /* ── RECORDING ────────────────────────────────────────────── */
+  let recBars     = 1;
+  let recQuantize = true;
+  let recActive   = false;
+  let recStartTime = 0;
+  let recEvents   = [];
+  let pendingTake = null;
+  let recTimer    = null;
+
+  const countdownOverlay = document.getElementById('countdown-overlay');
+  const countdownNum     = document.getElementById('countdown-num');
+  const recBtn           = document.getElementById('rec-btn');
+
+  // Bar length selector chips
+  document.querySelectorAll('.rec-chip[data-bars]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      recBars = parseInt(chip.dataset.bars, 10);
+      document.querySelectorAll('.rec-chip[data-bars]').forEach(c => c.classList.toggle('active', c === chip));
+    });
+  });
+
+  // Quantize toggle
+  const quantizeToggle = document.getElementById('quantize-toggle');
+  quantizeToggle.addEventListener('click', () => {
+    recQuantize = !recQuantize;
+    quantizeToggle.classList.toggle('on', recQuantize);
+    quantizeToggle.textContent = recQuantize ? 'Quantize' : 'Free';
+  });
+
+  function startCountIn() {
+    if (!ctx) initAudio();
+    ctx.resume();
+    if (recActive) { stopRecording(); return; }
+
+    recBtn.classList.add('counting');
+    recBtn.textContent = '… counting';
+
+    // Schedule 4 count-in clicks (1 bar) then start recording
+    const now = ctx.currentTime + 0.1;
+    for (let i = 0; i < 4; i++) {
+      scheduleClick(now + i * beatDuration(), i === 0);
+    }
+
+    // Update countdown display in real-time
+    let countdownVal = 4;
+    countdownNum.textContent = countdownVal;
+    countdownOverlay.classList.add('visible');
+
+    const countInterval = setInterval(() => {
+      countdownVal--;
+      if (countdownVal <= 0) {
+        clearInterval(countInterval);
+        countdownOverlay.classList.remove('visible');
+        beginRecording(now + 4 * beatDuration());
+      } else {
+        countdownNum.textContent = countdownVal;
+      }
+    }, beatDuration() * 1000);
+  }
+
+  function beginRecording(startTime) {
+    recStartTime = startTime;
+    recEvents    = [];
+    recActive    = true;
+    pendingTake  = null;
+
+    recBtn.classList.remove('counting');
+    recBtn.classList.add('recording');
+    recBtn.textContent = '◼ Stop';
+    document.getElementById('pad-grid').classList.add('recording');
+
+    // Schedule metronome clicks through the recording window
+    const totalBeats = recBars * 4;
+    const now = ctx.currentTime;
+    for (let i = 0; i <= totalBeats; i++) {
+      scheduleClick(startTime + i * beatDuration(), i % 4 === 0);
+    }
+
+    // Auto-stop after the loop length
+    const msDuration = recBars * 4 * beatDuration() * 1000;
+    recTimer = setTimeout(() => stopRecording(), msDuration + (startTime - ctx.currentTime) * 1000);
+  }
+
+  function stopRecording() {
+    if (!recActive && !recBtn.classList.contains('counting')) return;
+    clearTimeout(recTimer);
+    recActive = false;
+    recBtn.classList.remove('recording', 'counting');
+    recBtn.textContent = '● Record';
+    document.getElementById('pad-grid').classList.remove('recording');
+    countdownOverlay.classList.remove('visible');
+
+    if (!recEvents.length) return;
+
+    // Quantize if enabled: snap beat to nearest 16th (0.25 quarter notes)
+    let events = recEvents.map(ev => {
+      let beat = ev.beat;
+      if (recQuantize) beat = Math.round(beat * 4) / 4;
+      // Clamp to loop window
+      beat = Math.max(0, Math.min(beat, recBars * 4 - 0.001));
+      return { id: ev.id, beat };
+    });
+
+    // Deduplicate same id+beat
+    const seen = new Set();
+    events = events.filter(ev => {
+      const k = ev.id + ':' + ev.beat;
+      if (seen.has(k)) return false;
+      seen.add(k); return true;
+    });
+
+    pendingTake = { version: 1, bpm, bars: recBars, kit: currentKit, quantized: recQuantize, events };
+    showTakeSaveRow();
+  }
+
+  recBtn.addEventListener('click', () => {
+    if (recActive || recBtn.classList.contains('counting')) {
+      stopRecording();
+    } else {
+      startCountIn();
+    }
+  });
+
+  /* ── TAKES UI ─────────────────────────────────────────────── */
+  function showTakeSaveRow() {
+    const row = document.getElementById('takes-save-row');
+    row.classList.remove('hidden');
+    const pop = document.getElementById('takes-popover');
+    renderTakesList();
+    pop.classList.add('open');
+    document.getElementById('takes-name-input').focus();
+  }
+
+  function renderTakesList() {
+    const list = document.getElementById('takes-list');
+    list.innerHTML = '';
+    const names = listPatterns(REC_ID);
+    if (!names.length) {
+      const em = document.createElement('div'); em.id = 'takes-list-empty';
+      em.textContent = 'No saved takes yet.'; list.appendChild(em); return;
+    }
+    names.forEach(name => {
+      const row = document.createElement('div'); row.className = 'take-row';
+
+      const nameEl = document.createElement('span'); nameEl.className = 'take-row-name'; nameEl.textContent = name;
+      nameEl.title = 'Play this take in pads (preview)';
+
+      const seqBtn = document.createElement('button'); seqBtn.className = 'take-row-seq'; seqBtn.textContent = '→ Seq';
+      seqBtn.title = 'Load into sequencer';
+      seqBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const take = loadPattern(REC_ID, name);
+        if (take) { applyTake(take); closeTakes(); }
+      });
+
+      const del = document.createElement('button'); del.className = 'take-row-del'; del.textContent = '✕';
+      del.addEventListener('click', e => {
+        e.stopPropagation();
+        deletePattern(REC_ID, name);
+        renderTakesList();
+      });
+
+      row.appendChild(nameEl); row.appendChild(seqBtn); row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+
+  function closeTakes() {
+    document.getElementById('takes-popover').classList.remove('open');
+  }
+
+  document.getElementById('takes-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    const pop = document.getElementById('takes-popover');
+    if (!pop.classList.contains('open')) renderTakesList();
+    pop.classList.toggle('open');
+  });
+
+  document.getElementById('takes-save-btn').addEventListener('click', () => {
+    const input = document.getElementById('takes-name-input');
+    const name = input.value.trim();
+    if (!name || !pendingTake) { input.focus(); return; }
+    savePattern(REC_ID, name, pendingTake);
+    input.value = '';
+    pendingTake = null;
+    document.getElementById('takes-save-row').classList.add('hidden');
+    renderTakesList();
+  });
+
+  document.getElementById('takes-name-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('takes-save-btn').click();
+    if (e.key === 'Escape') closeTakes();
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.takes-group')) closeTakes();
+  });
+
+  /* ── LOAD TAKE INTO SEQUENCER ─────────────────────────────── */
+  function applyTake(take) {
+    if (playing) stopTransport();
+    TRACKS.forEach(t => { state[t.id].steps.fill(false); });
+
+    // Determine step count from take bars (map to nearest supported: 16 or 32)
+    const targetSteps = take.bars <= 1 ? 16 : 32;
+    if (targetSteps !== STEPS) {
+      STEPS = targetSteps;
+      document.getElementById('steps-btn').textContent = STEPS + ' steps';
+    }
+
+    const stepsPerBeat = 4; // 16th-note grid
+    take.events.forEach(ev => {
+      const step = Math.round(ev.beat * stepsPerBeat) % STEPS;
+      if (state[ev.id]) state[ev.id].steps[step] = true;
+    });
+
+    if (take.kit && KITS[take.kit]) {
+      currentKit = take.kit;
+      document.querySelectorAll('.kit-btn').forEach(b => b.classList.toggle('active', b.textContent === currentKit));
+    }
+
+    buildGrid(); rebuildBeatRow();
+    setMode('seq');
   }
 
   /* ── MODE SWITCH ──────────────────────────────────────────── */
@@ -778,19 +1122,17 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     document.getElementById('mode-seq-btn').classList.toggle('active', isSeq);
     document.getElementById('mode-pads-btn').classList.toggle('active', !isSeq);
 
-    // Show/hide sequencer-only controls
-    const seqCtls = document.getElementById('seq-controls');
-    seqCtls.style.display = isSeq ? 'contents' : 'none';
+    document.getElementById('seq-controls').style.display = isSeq ? 'contents' : 'none';
     document.getElementById('bpm-group').style.display = isSeq ? '' : 'none';
 
     document.getElementById('seq-view').classList.toggle('hidden', !isSeq);
     document.getElementById('beat-row').classList.toggle('hidden', !isSeq);
     document.getElementById('pads-view').classList.toggle('active', !isSeq);
 
-    // Suppress portrait-rotate prompt in pads mode (portrait is fine for pads)
     document.body.classList.toggle('pads-mode', !isSeq);
 
     if (!isSeq && playing) stopTransport();
+    if (!isSeq && (recActive || recBtn.classList.contains('counting'))) stopRecording();
   }
 
   document.getElementById('mode-seq-btn').addEventListener('click', () => setMode('seq'));
@@ -813,6 +1155,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     document.querySelectorAll('.step.on').forEach(el => el.classList.remove('on'));
   });
 
+  /* ── MUTE ALL ─────────────────────────────────────────────── */
   const muteAllBtn = document.getElementById('mute-all-btn');
   let allMuted = false;
   muteAllBtn.addEventListener('click', () => {
@@ -824,9 +1167,9 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
       btn.querySelector('.vw').style.display = allMuted ? 'none' : '';
     });
     muteAllBtn.textContent = allMuted ? 'Unmute All' : 'Mute All';
-    muteAllBtn.style.color = allMuted ? 'var(--pink)' : '';
-    muteAllBtn.style.borderColor = allMuted ? 'rgba(255,107,157,0.4)' : '';
-    muteAllBtn.style.background = allMuted ? 'rgba(255,107,157,0.08)' : '';
+    muteAllBtn.style.color        = allMuted ? 'var(--pink)' : '';
+    muteAllBtn.style.borderColor  = allMuted ? 'rgba(255,107,157,0.4)' : '';
+    muteAllBtn.style.background   = allMuted ? 'rgba(255,107,157,0.08)' : '';
   });
 
   /* ── PATTERNS ─────────────────────────────────────────────── */
@@ -951,7 +1294,6 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     background: var(--bg); flex-direction: column; align-items: center; justify-content: center; gap: 16px;
     font-size: 0.85rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase;
   }
-  /* Suppress rotate prompt in pads mode — portrait is fine */
   body.is-touch.is-portrait:not(.pads-mode) #rotate-prompt { display: flex; }
   #rotate-prompt svg { opacity: 0.4; }
 </style>
