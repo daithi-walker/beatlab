@@ -31,6 +31,12 @@
 
 ## Next Steps
 
+- **Per-track step length (polymeter)** — each track loops at its own step count independently of the global. Kick at 16, hi-hat at 12, cowbell at 7 — they drift in and out of phase creating evolving patterns. Each track needs its own `currentStep` counter mod its own length; scheduler already calls per-track so the change is contained.
+
+- **Step probability** — each step gets a 0–100% chance of firing on any given pass through the loop. The most musical form of "randomness" — a ghost snare at 30%, cowbell at 15% — generative without being chaotic. Store a `vel` (0–100) alongside the boolean `on` per step; scheduler rolls `Math.random()` on fire.
+
+- **Euclidean rhythm generator** — distribute N hits as evenly as possible across M steps (Bjorklund algorithm). Automatically generates clave, bossa nova, Afrobeat patterns. "3 hits in 8 steps" = son clave. Add a small popover per track: hits / steps → fill button.
+
 - **Swing** — offset odd 16th notes by a percentage; single `swingAmount` param in `scheduleStep()`
 - **Per-step velocity** — a second row per track (or hold-to-set) lets steps play at different volumes
 - **Take playback in Pads** — replay a saved take through the pads view so hits animate as they play
