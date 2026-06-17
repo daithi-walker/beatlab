@@ -1652,11 +1652,11 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
     {
       name: 'Polyrhythm 3/5/7',
       state: {
-        bpm: 110, beatsPerBar: 4, steps: 28, kit: '808',
+        bpm: 110, beatsPerBar: 4, steps: 16, kit: '808',
         tracks: {
-          kick:    { muted:false, trackLen:12, steps: eucPre(3,12) },  // loops every 12 steps
-          snare:   { muted:false, trackLen:20, steps: eucPre(5,20) },  // loops every 20 steps
-          hihat:   { muted:false, trackLen:28, steps: eucPre(7,28) },  // loops every 28 steps
+          kick:    { muted:false, trackLen:0, steps: eucPre(3,16) },  // 3 hits spread across 16
+          snare:   { muted:false, trackLen:0, steps: eucPre(5,16) },  // 5 hits spread across 16
+          hihat:   { muted:false, trackLen:0, steps: eucPre(7,16) },  // 7 hits spread across 16
           clap:    { muted:false, trackLen:0,  steps: blank() },
           openhat: { muted:false, trackLen:0,  steps: blank() },
           crash:   { muted:false, trackLen:0,  steps: blank() },
