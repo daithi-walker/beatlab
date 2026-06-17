@@ -115,11 +115,11 @@
   /* Kit selector — now a dropdown */
   #kit-selector { display: none; }
 
-  /* Rec trigger in topbar (pads mode only) */
+  /* Rec trigger — lives above the pad grid in pads view */
   #pads-rec-trigger {
-    display: none; font-family: inherit; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
+    font-family: inherit; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--pink); background: rgba(255,107,157,0.08); border: 1px solid rgba(255,107,157,0.25);
-    border-radius: 6px; padding: 6px 12px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    border-radius: 6px; padding: 6px 16px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
     transition: background 120ms;
   }
   #pads-rec-trigger:hover { background: rgba(255,107,157,0.18); }
@@ -480,7 +480,6 @@
   </div>
 
   <div id="right-controls">
-    <button id="pads-rec-trigger">⏺ Rec</button>
     <div class="ctrl-group">
       <span class="ctrl-label">Vol</span>
       <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.5">
@@ -493,6 +492,7 @@
 
 <!-- Pads view -->
 <div id="pads-view" style="position:relative;">
+  <button id="pads-rec-trigger">⏺ Rec</button>
   <div id="pad-grid" style="position:relative;">
     <div id="rec-countdown-pill"></div>
   </div>
@@ -521,17 +521,18 @@
           <button class="bar-chip active" data-bars="1">1 bar</button>
           <button class="bar-chip" data-bars="2">2 bars</button>
           <button class="bar-chip" data-bars="4">4 bars</button>
+          <button class="bar-chip" data-bars="8">8 bars</button>
         </div>
       </div>
 
       <div class="rec-section">
         <div class="rec-section-label">Timing</div>
         <div class="timing-options">
-          <button class="timing-opt active" data-quantize="true">
+          <button class="timing-opt" data-quantize="true">
             <span class="timing-opt-name">Snap to grid</span>
             <span class="timing-opt-desc">Each hit aligns to the nearest 16th note — tight and sequencer-ready</span>
           </button>
-          <button class="timing-opt" data-quantize="false">
+          <button class="timing-opt active" data-quantize="false">
             <span class="timing-opt-name">Free timing</span>
             <span class="timing-opt-desc">Records exactly when you tap — keeps your natural feel and groove</span>
           </button>
@@ -1294,7 +1295,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
   });
 
   /* Timing options */
-  let recQuantize = true;
+  let recQuantize = false;
   document.querySelectorAll('.timing-opt').forEach(opt => {
     opt.addEventListener('click', () => {
       recQuantize = opt.dataset.quantize === 'true';
@@ -1486,7 +1487,6 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     document.getElementById('patterns-drop').style.display = isSeq ? '' : 'none';
     document.getElementById('patterns-divider').style.display = isSeq ? '' : 'none';
     document.getElementById('kit-drop').style.display = '';
-    recTrigger.style.display = isSeq ? 'none' : 'flex';
     document.getElementById('seq-view').classList.toggle('hidden', !isSeq);
     document.getElementById('beat-row').classList.toggle('hidden', !isSeq);
     document.getElementById('pads-view').classList.toggle('active', !isSeq);
