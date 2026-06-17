@@ -1707,14 +1707,102 @@ import { savePattern, loadPattern, listPatterns, deletePattern } from '../core/s
   );
 
   /* ── SHARE ────────────────────────────────────────────────── */
+  // ── SHARE ENCODING ────────────────────────────────────────────
+  // See docs/share-encoding.md for the full specification.
+  //
+  // IMPORTANT: If you change the bit layout, you MUST bump SHARE_VERSION
+  // and add a new decodeVN() function. Never modify an existing decoder —
+  // old shared links must always decode correctly.
+  //
+  // Current layout (v1) — ~150 base64url chars:
+  //   [version: 4][bpm-60: 7][beatsPerBar-1: 5][kitIdx: 2][rsvd: 2][steps-1: 7][rsvd: 5]
+  //   Per track × 12:
+  //     [muted: 1][trackLen: 6][step×32: 2 each] — 00=off 01=100% 10=75% 11=≤50%
+  const SHARE_VERSION = 1;
+  const KIT_NAMES = Object.keys(KITS); // fixed order: 808, Acoustic, Lo-Fi, Electronic
+
   function encodeState() {
-    try { return btoa(unescape(encodeURIComponent(JSON.stringify(captureState())))); }
-    catch { return null; }
+    try {
+      const s = captureState();
+      const bits = [];
+      const push = (val, n) => { for (let i = n-1; i >= 0; i--) bits.push((val >> i) & 1); };
+
+      push(SHARE_VERSION, 4);
+      push(Math.min(127, Math.max(0, s.bpm - 60)), 7);
+      push(Math.min(31,  Math.max(0, (s.beatsPerBar || 4) - 1)), 5);
+      push(Math.max(0,   KIT_NAMES.indexOf(s.kit)), 2);
+      push(0, 2); // reserved
+      push(Math.min(127, Math.max(0, s.steps - 1)), 7);
+      push(0, 5); // reserved — header total = 4+7+5+2+2+7+5 = 32 bits
+
+      TRACKS.forEach(t => {
+        const ts = s.tracks[t.id] || {};
+        push(ts.muted ? 1 : 0, 1);
+        push(Math.min(32, Math.max(0, ts.trackLen || 0)), 6);
+        for (let i = 0; i < 32; i++) {
+          const c = (ts.steps || [])[i] || { on: false, prob: 100 };
+          if (!c.on)          push(0, 2);
+          else if (c.prob >= 100) push(1, 2);
+          else if (c.prob >= 75)  push(2, 2);
+          else                    push(3, 2);
+        }
+      });
+
+      const bytes = [];
+      for (let i = 0; i < bits.length; i += 8) {
+        let byte = 0;
+        for (let j = 0; j < 8; j++) byte = (byte << 1) | (bits[i+j] || 0);
+        bytes.push(byte);
+      }
+      return btoa(String.fromCharCode(...bytes))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    } catch { return null; }
+  }
+
+  function decodeV1(read) {
+    // version already consumed by caller
+    const bpm        = read(7) + 60;
+    const beatsPerBar = read(5) + 1;
+    const kit        = KIT_NAMES[read(2)] || KIT_NAMES[0];
+    read(2); // reserved
+    const steps      = read(7) + 1;
+    read(5); // reserved
+
+    const tracks = {};
+    TRACKS.forEach(t => {
+      const muted   = !!read(1);
+      const trackLen = read(6);
+      const stepArr = [];
+      for (let i = 0; i < 32; i++) {
+        const v = read(2);
+        if      (v === 0) stepArr.push({ on: false, prob: 100 });
+        else if (v === 1) stepArr.push({ on: true,  prob: 100 });
+        else if (v === 2) stepArr.push({ on: true,  prob: 75  });
+        else              stepArr.push({ on: true,  prob: 50  });
+      }
+      tracks[t.id] = { muted, trackLen, steps: stepArr };
+    });
+    return { bpm, beatsPerBar, kit, steps, tracks };
   }
 
   function decodeState(hash) {
-    try { return JSON.parse(decodeURIComponent(escape(atob(hash)))); }
-    catch { return null; }
+    try {
+      const b64 = hash.replace(/-/g, '+').replace(/_/g, '/');
+      const raw = atob(b64);
+      // Legacy: pre-versioning JSON blob
+      if (raw[0] === '{') return JSON.parse(decodeURIComponent(escape(raw)));
+
+      const bytes = Array.from(raw, c => c.charCodeAt(0));
+      const bits = [];
+      bytes.forEach(b => { for (let i = 7; i >= 0; i--) bits.push((b >> i) & 1); });
+      let pos = 0;
+      const read = n => { let v = 0; for (let i = 0; i < n; i++) v = (v << 1) | (bits[pos++] || 0); return v; };
+
+      const version = read(4);
+      if (version === 1) return decodeV1(read);
+      // Future: if (version === 2) return decodeV2(read);
+      return null; // unknown version
+    } catch { return null; }
   }
 
   document.getElementById('share-btn').addEventListener('click', () => {
