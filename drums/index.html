@@ -437,14 +437,15 @@
     background: var(--surface); border-left: 1px solid var(--divider);
     flex-direction: column; overflow-y: auto; z-index: 50;
   }
-  #rp-pads, #rp-seq { padding: 20px 16px; display: flex; flex-direction: column; gap: 8px; }
+  #rp-pads, #rp-seq { padding: 20px 16px; display: flex; flex-direction: column; gap: 20px; }
   .rp-header {
     font-size: 0.65rem; font-weight: 700; letter-spacing: 0.16em;
     text-transform: uppercase; color: var(--text);
-    padding-bottom: 12px; margin-bottom: 8px; border-bottom: 1px solid var(--divider); flex-shrink: 0;
+    padding-bottom: 12px; border-bottom: 1px solid var(--divider); flex-shrink: 0;
   }
-  .rp-section-lbl { font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-top: 12px; }
-  .rp-section-lbl:first-child { margin-top: 0; }
+  .rp-section-lbl { font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  #rp-setup { display: flex; flex-direction: column; gap: 20px; }
+  .rp-field { display: flex; flex-direction: column; gap: 8px; }
   #rp-rec-btn {
     width: 100%; font-family: inherit; font-size: 0.78rem; font-weight: 600;
     letter-spacing: 0.1em; text-transform: uppercase;
@@ -2553,23 +2554,27 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     <div class="rp-header">Record</div>
 
     <div id="rp-setup">
-      <div class="rp-section-lbl">Loop length</div>
-      <div class="bar-chips" id="rp-bar-chips">
-        <button class="bar-chip active" data-bars="1">1 bar</button>
-        <button class="bar-chip" data-bars="2">2 bars</button>
-        <button class="bar-chip" data-bars="4">4 bars</button>
-        <button class="bar-chip" data-bars="8">8 bars</button>
+      <div class="rp-field">
+        <div class="rp-section-lbl">Loop length</div>
+        <div class="bar-chips" id="rp-bar-chips">
+          <button class="bar-chip active" data-bars="1">1 bar</button>
+          <button class="bar-chip" data-bars="2">2 bars</button>
+          <button class="bar-chip" data-bars="4">4 bars</button>
+          <button class="bar-chip" data-bars="8">8 bars</button>
+        </div>
       </div>
-      <div class="rp-section-lbl">Timing</div>
-      <div class="timing-options" id="rp-timing-opts">
-        <button class="timing-opt" data-quantize="true">
-          <span class="timing-opt-name">Snap to grid</span>
-          <span class="timing-opt-desc">Aligns to nearest 16th note</span>
-        </button>
-        <button class="timing-opt active" data-quantize="false">
-          <span class="timing-opt-name">Free timing</span>
-          <span class="timing-opt-desc">Records exactly when you tap</span>
-        </button>
+      <div class="rp-field">
+        <div class="rp-section-lbl">Timing</div>
+        <div class="timing-options" id="rp-timing-opts">
+          <button class="timing-opt" data-quantize="true">
+            <span class="timing-opt-name">Snap to grid</span>
+            <span class="timing-opt-desc">Aligns to nearest 16th note</span>
+          </button>
+          <button class="timing-opt active" data-quantize="false">
+            <span class="timing-opt-name">Free timing</span>
+            <span class="timing-opt-desc">Records exactly when you tap</span>
+          </button>
+        </div>
       </div>
       <button id="rp-rec-btn">⏺ Record</button>
     </div>
