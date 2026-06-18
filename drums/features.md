@@ -53,7 +53,7 @@
 - **Spacebar** play/stop
 - **Keyboard pad triggers** — Q W E R / A S D F / Z X C V map to the 3×4 pad grid; works during recording so takes can be captured from keyboard; key labels shown on each pad on desktop only (`pointer: fine`)
 - **Escape** stops any playing take and closes open dropdowns
-- **iOS Safari compatibility** — pad grid uses non-passive `touchstart` for audio unlock so `ctx.resume()` runs in the synchronous gesture frame; `touchmove` handles swipe; pointer events handle mouse/stylus only; document-level `touchstart` unlock also non-passive; null-guards on all noise-buffer voices
+- **iOS Safari compatibility** — pad grid uses non-passive `touchstart` for audio unlock; `voice()` fires inside `ctx.resume().then()` so audio is never scheduled into a suspended context; `touchmove` handles swipe; pointer events handle mouse/stylus only; document-level `touchstart` unlock non-passive; null-guards on all noise-buffer voices; auto-resume on visibility change
 - **Shared app nav** — BeatLab logo + app name in topbar via `core/topnav.js`; app name hidden on mobile; consistent across all apps
 - Mobile: touch-action:none on pad grid and step rows; `-webkit-backdrop-filter` for topbar blur on iOS
 
