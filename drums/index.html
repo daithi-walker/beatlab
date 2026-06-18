@@ -886,6 +886,7 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     osc.start(time); osc.stop(time + p.decay + 0.01);
   }
   function voiceShaker(time, p) {
+    if (!whiteBuf) return;
     const ns = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
     ns.buffer = whiteBuf; hp.type = 'highpass'; hp.frequency.value = p.hp;
     g.gain.setValueAtTime(p.gain, time); g.gain.exponentialRampToValueAtTime(0.001, time + p.decay);
@@ -1402,22 +1403,48 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     });
 
     let swipeActive = false, lastSwipedId = null;
+
+    // iOS Safari requires AudioContext.resume() in the synchronous touchstart handler.
+    // We use touchstart for audio unlock + initial fire, then pointer events for swipe.
+    grid.addEventListener('touchstart', e => {
+      if (!ctx) initAudio(); else ctx.resume();
+      const pad = e.target.closest('.pad'); if (!pad) return;
+      e.preventDefault();
+      swipeActive = true; lastSwipedId = pad.dataset.trackId;
+      firePad(pad.dataset.trackId, pad);
+    }, { passive: false });
+
+    grid.addEventListener('touchmove', e => {
+      if (!swipeActive) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      const el = document.elementFromPoint(t.clientX, t.clientY)?.closest('.pad');
+      if (!el || el.dataset.trackId === lastSwipedId) return;
+      lastSwipedId = el.dataset.trackId;
+      firePad(el.dataset.trackId, el);
+    }, { passive: false });
+
+    grid.addEventListener('touchend',    () => { swipeActive = false; lastSwipedId = null; });
+    grid.addEventListener('touchcancel', () => { swipeActive = false; lastSwipedId = null; });
+
+    // Pointer events handle mouse / stylus on desktop (touch devices use touch events above)
     grid.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'touch') return; // handled by touchstart
       const pad = e.target.closest('.pad'); if (!pad) return;
       e.preventDefault();
       swipeActive = true; lastSwipedId = pad.dataset.trackId;
       firePad(pad.dataset.trackId, pad);
     });
     grid.addEventListener('pointermove', e => {
-      if (!swipeActive) return;
+      if (e.pointerType === 'touch' || !swipeActive) return;
       e.preventDefault();
       const el = document.elementFromPoint(e.clientX, e.clientY)?.closest('.pad');
       if (!el || el.dataset.trackId === lastSwipedId) return;
       lastSwipedId = el.dataset.trackId;
       firePad(el.dataset.trackId, el);
     }, { passive: false });
-    grid.addEventListener('pointerup',     () => { swipeActive = false; lastSwipedId = null; });
-    grid.addEventListener('pointercancel', () => { swipeActive = false; lastSwipedId = null; });
+    grid.addEventListener('pointerup',     e => { if (e.pointerType !== 'touch') { swipeActive = false; lastSwipedId = null; } });
+    grid.addEventListener('pointercancel', e => { if (e.pointerType !== 'touch') { swipeActive = false; lastSwipedId = null; } });
   }
 
   /* ── RECORDING SHEET ──────────────────────────────────────── */
@@ -2307,10 +2334,10 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     if (!ctx) initAudio();
     ctx.resume().then(() => { if (ctx.state === 'running') banner.classList.add('hidden'); });
   }
-  // touchstart needed on iOS Safari — pointerdown alone is not always sufficient
-  ['pointerdown', 'touchstart', 'keydown'].forEach(evt =>
-    document.addEventListener(evt, unlockAudio, { once: false, passive: true })
-  );
+  // touchstart must be non-passive so ctx.resume() runs in the synchronous gesture stack on iOS
+  document.addEventListener('touchstart', unlockAudio, { passive: false });
+  document.addEventListener('pointerdown', unlockAudio, { passive: true });
+  document.addEventListener('keydown', unlockAudio, { passive: true });
   // iOS suspends AudioContext on phone calls, screen lock, or tab switch — re-resume on return
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && ctx) ctx.resume();
