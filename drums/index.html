@@ -1377,8 +1377,9 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
 
   function firePad(id, padEl) {
     if (!ctx) initAudio();
-    ctx.resume();
-    voice(id, ctx.currentTime + 0.01);
+    ctx.resume().then(() => {
+      voice(id, ctx.currentTime + 0.01);
+    });
     if (recActive) {
       const beat = (ctx.currentTime - recStartTime) / beatDuration();
       recEvents.push({ id, beat });
