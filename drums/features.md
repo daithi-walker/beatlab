@@ -26,6 +26,7 @@
   - Takes saved as beat-relative events under `beatlab:drums:rec:<name>`; BPM-agnostic so playback is correct at any tempo
   - No-hits feedback: amber hint if nothing was tapped during recording
   - Any action (Record, play a take) stops existing playback first
+  - Delete take requires confirmation to prevent accidental loss
 - **Live take looping** — saved takes can be looped directly on the pads without converting to the step grid; BPM-aware (stretches/compresses live with tempo changes); animates pads in sync; runs independently alongside the step sequencer
 - **Takes in Patterns dropdown** — saved takes appear in a "Takes" section of the Patterns menu so they're accessible without opening the Rec sheet
 - **→ Seq** — loads a take into the step sequencer grid (converts beat-relative events to step indices) and switches to Sequencer view
@@ -48,9 +49,11 @@
 - **Master volume** — slider, defaults to 50%; persists across refresh and is shared across all BeatLab apps via `beatlab:settings:volume`
 - **Reset** — restores steps, mutes, per-track lengths, time signature, and BPM to defaults
 - **Lookahead scheduler** — 25ms tick, 100ms lookahead; audio-clock locked
-- **View mode persistence** — last view (Sequencer / Pads) restored on page refresh
+- **View mode persistence** — last view (Sequencer / Pads) restored on page refresh; first visit defaults to Pads on mobile, Sequencer on desktop (`pointer: fine`)
 - **Spacebar** play/stop
-- **iOS Safari compatibility** — audio context created and resumed in gesture frame; heavy buffers deferred; `touchstart` unlock; auto-resume on visibility change; null-guards on startup
+- **Keyboard pad triggers** — Q W E R / A S D F / Z X C V map to the 3×4 pad grid; works during recording so takes can be captured from keyboard; key labels shown on each pad on desktop only (`pointer: fine`)
+- **Escape** stops any playing take and closes open dropdowns
+- **iOS Safari compatibility** — pad grid uses non-passive `touchstart` for audio unlock so `ctx.resume()` runs in the synchronous gesture frame; `touchmove` handles swipe; pointer events handle mouse/stylus only; document-level `touchstart` unlock also non-passive; null-guards on all noise-buffer voices
 - **Shared app nav** — BeatLab logo + app name in topbar via `core/topnav.js`; app name hidden on mobile; consistent across all apps
 - Mobile: touch-action:none on pad grid and step rows; `-webkit-backdrop-filter` for topbar blur on iOS
 
