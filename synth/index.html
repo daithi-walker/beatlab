@@ -148,6 +148,31 @@ body {
 .soon { font-size:10px; color:var(--muted); opacity:.3; letter-spacing:.06em; }
 .feat-soon-note { font-size:8px; color:var(--muted); opacity:.4; line-height:1.5; margin-top:4px; }
 
+/* preset picker + voice lab link */
+.preset-sel {
+  width:100%; background:var(--surface-2); border:1px solid var(--divider); color:var(--text);
+  font-family:inherit; font-size:10px; padding:5px 6px; border-radius:4px; outline:none; cursor:pointer;
+}
+.preset-sel:focus { border-color:var(--teal); }
+.patchbar { display:flex; gap:4px; margin-top:5px; }
+.patchbar input[type=text] {
+  flex:1; min-width:0; background:var(--surface-2); border:1px solid var(--divider); color:var(--text);
+  font-family:inherit; font-size:10px; padding:5px 6px; border-radius:4px; outline:none;
+}
+.patchbar input[type=text]:focus { border-color:var(--teal); }
+.patchbar button {
+  background:var(--surface-2); border:1px solid var(--divider); color:var(--muted);
+  font-family:inherit; font-size:9px; letter-spacing:.06em; padding:5px 7px; border-radius:4px;
+  cursor:pointer; transition:all .12s; flex-shrink:0;
+}
+.patchbar button:hover { border-color:var(--teal); color:var(--teal); }
+#save-patch { color:var(--teal); border-color:rgba(0,229,204,.4); }
+.lab-link {
+  display:block; margin-top:auto; font-size:9px; letter-spacing:.08em; color:var(--muted);
+  text-decoration:none; text-align:center; padding-top:6px; transition:color .12s;
+}
+.lab-link:hover { color:var(--teal); }
+
 /* XY filter pad */
 .xy-labels { display:flex; justify-content:space-between; font-size:8px; color:var(--muted); flex-shrink:0; }
 #xypad {
@@ -408,18 +433,27 @@ body {
     </div>
 
     <div class="panel">
-      <div class="ph">Chord</div>
+      <div class="ph">Oscillator</div>
       <div class="pb">
-        <div class="soon">coming soon</div>
-        <div class="feat-soon-note">Play chords from single keys — major, minor, 7th, sus4</div>
+        <div class="srow"><label>UNI</label><input type="range" id="o-uni" min="1" max="7" step="1" value="1"><span class="v" id="o-uni-v">1</span></div>
+        <div class="srow"><label>DET</label><input type="range" id="o-det" min="0" max="40" step="1" value="12"><span class="v" id="o-det-v">12c</span></div>
+        <div class="srow"><label>SUB</label><input type="range" id="o-sub" min="0" max="1" step="0.01" value="0"><span class="v" id="o-sub-v">0%</span></div>
+        <div class="srow"><label>DRV</label><input type="range" id="o-drv" min="0" max="1" step="0.01" value="0"><span class="v" id="o-drv-v">0%</span></div>
       </div>
     </div>
 
     <div class="panel">
-      <div class="ph">Sequencer</div>
+      <div class="ph">Voice / Preset</div>
       <div class="pb">
-        <div class="soon">coming soon</div>
-        <div class="feat-soon-note">Step sequencer — lock in a melodic pattern and layer over live playing</div>
+        <select class="preset-sel" id="preset-sel" title="Load a factory preset or one of your saved patches"></select>
+        <div class="patchbar">
+          <input type="text" id="patch-name" placeholder="save as…" maxlength="28" autocomplete="off">
+          <button id="save-patch" title="Save the current voice as a patch">SAVE</button>
+          <button id="del-patch" title="Delete the selected saved patch">DEL</button>
+        </div>
+        <div class="srow"><label>CUT</label><input type="range" id="o-cut" min="60" max="8000" step="10" value="8000"><span class="v" id="o-cut-v">8.0k</span></div>
+        <div class="srow"><label>FENV</label><input type="range" id="o-fenv" min="0" max="6000" step="10" value="0"><span class="v" id="o-fenv-v">0</span></div>
+        <a class="lab-link" href="voice-lab.html">◆ Voice Lab ↗</a>
       </div>
     </div>
 
@@ -464,6 +498,8 @@ A S D F G H J K L ;</pre>
 import { CHROMATIC, noteToFreq, makeImpulse, distCurve } from '../core/audio.js';
 import { initTopnav } from '../core/topnav.js';
 import { getVolume, setVolume } from '../core/storage.js';
+import { createVoiceEngine, FACTORY_PRESETS, FACTORY_PRESET_LIST, normPatch,
+         savePatch, loadPatch, listPatches, deletePatch } from '../core/voice.js';
 initTopnav({ current: 'synth', root: '../', label: 'Synth' });
 
 // ── constants ──────────────────────────────────────────
@@ -475,6 +511,9 @@ const KEY_MAP={
 const DEFAULTS={
   wave:'sine', octave:4, volume:0.5,
   adsr:{a:0.01,d:0.15,s:0.7,r:0.4},
+  // Oscillator/character params for the rich voice engine (core/voice.js).
+  // unison=1 + open cutoff + no sub/drive = the classic single-oscillator tone.
+  osc:{unison:1,detune:12,spread:0.4,sub:0,drive:0,cutoff:8000,fenv:0,q:1,filtd:0.2,filts:0.4},
   fx:{rv:0.1,dl:0,ds:0,ch:0},
   xyX:0.5, xyY:0.1,
   maxVoices:8,
@@ -510,13 +549,23 @@ const OCT_RGB=[[255,80,50],[240,140,40],[160,200,60],[0,229,204],[40,150,255],[1
 
 let ctx=null, masterGain, filter, distNode, reverbSend, convolver,
     delaySend, delayNode, chorusSend, chorusDelay, chorusLfo,
-    analyser, lfoNode, lfoGain;
+    analyser, lfoNode, lfoGain, engine, voiceBus;
 
 let octave=DEFAULTS.octave, wave=DEFAULTS.wave;
 let xyX=DEFAULTS.xyX, xyY=DEFAULTS.xyY;
-const adsr={...DEFAULTS.adsr}, fx={...DEFAULTS.fx};
+const adsr={...DEFAULTS.adsr}, fx={...DEFAULTS.fx}, osc={...DEFAULTS.osc};
 
-const voices=new Map();      // vkey → {osc,g,noteName,noteOct}
+// The rich voice's per-note parameters, assembled from the current UI state.
+// The XY pad and Effects sends remain global (applied after the engine).
+function currentPatch(){
+  return normPatch({
+    wave, unison:osc.unison, detune:osc.detune, spread:osc.spread, sub:osc.sub,
+    drive:osc.drive, cutoff:osc.cutoff, fenv:osc.fenv, q:osc.q, level:0.4,
+    amp:{...adsr}, filt:{a:0.005,d:osc.filtd,s:osc.filts}, rev:fx.rv,
+  });
+}
+
+const voices=new Map();      // vkey → {handle,noteName,noteOct}
 const heldNotes=new Map();   // vkey → {name,oct}
 const heldKeys=new Set();
 const latchedVoices=new Map(); // `${name}${oct}` → vkey
@@ -580,6 +629,14 @@ function initAudio(){
   lfoGain.connect(filter.frequency);
   lfoNode.start();
 
+  // Rich voice engine (core/voice.js). Its dry output fans out to the same
+  // master filter (XY pad), master drive and effect sends the old
+  // single-oscillator voices used, so all existing controls still apply.
+  voiceBus=ctx.createGain();
+  voiceBus.connect(distNode); voiceBus.connect(reverbSend);
+  voiceBus.connect(delaySend); voiceBus.connect(chorusSend);
+  engine=createVoiceEngine(ctx, { output: voiceBus });
+
   applyXY();
   startScope();
 }
@@ -593,27 +650,15 @@ function noteOn(vkey,name,oct){
     const oldest=[...voices.keys()][0];
     noteOff(oldest);
   }
-  const now=ctx.currentTime;
-  const osc=ctx.createOscillator(), g=ctx.createGain();
-  osc.type=wave; osc.frequency.value=noteToFreq(name,oct);
-  g.gain.setValueAtTime(0.001,now);
-  g.gain.exponentialRampToValueAtTime(0.45,now+adsr.a);
-  g.gain.exponentialRampToValueAtTime(Math.max(0.001,adsr.s*0.45),now+adsr.a+adsr.d);
-  osc.connect(g);
-  g.connect(distNode); g.connect(reverbSend); g.connect(delaySend); g.connect(chorusSend);
-  osc.start(now);
-  voices.set(vkey,{osc,g,noteName:name,noteOct:oct});
+  const handle=engine.noteOn(noteToFreq(name,oct), currentPatch());
+  voices.set(vkey,{handle,noteName:name,noteOct:oct});
   keyActive(name,oct,true);
   updateVoiceCount();
 }
 
 function noteOff(vkey){
   const v=voices.get(vkey); if(!v)return;
-  const now=ctx.currentTime;
-  v.g.gain.cancelScheduledValues(now);
-  v.g.gain.setValueAtTime(Math.max(0.001,v.g.gain.value),now);
-  v.g.gain.exponentialRampToValueAtTime(0.001,now+adsr.r);
-  v.osc.stop(now+adsr.r+0.05);
+  v.handle.release();
   voices.delete(vkey);
   keyActive(v.noteName,v.noteOct,false);
   updateVoiceCount();
@@ -639,13 +684,8 @@ function handleNoteOn(vkey,name,oct){
     const mv=voices.get('mono');
     if(mv){
       // Retune existing voice + retrigger envelope (no click gap)
-      const now=ctx.currentTime;
-      mv.osc.frequency.cancelScheduledValues(now);
-      mv.osc.frequency.setValueAtTime(freq,now);
-      mv.g.gain.cancelScheduledValues(now);
-      mv.g.gain.setValueAtTime(Math.max(0.001,mv.g.gain.value),now);
-      mv.g.gain.exponentialRampToValueAtTime(0.45,now+adsr.a);
-      mv.g.gain.exponentialRampToValueAtTime(Math.max(0.001,adsr.s*0.45),now+adsr.a+adsr.d);
+      mv.handle.setFreq(freq);
+      mv.handle.retrigger();
       keyActive(mv.noteName,mv.noteOct,false);
       mv.noteName=name; mv.noteOct=oct;
       keyActive(name,oct,true);
@@ -674,9 +714,7 @@ function handleNoteOff(vkey){
     if(monoStack.length>0&&mv){
       // Fall back to previously held note — slide freq, keep envelope in sustain
       const prev=monoStack[monoStack.length-1];
-      const now=ctx.currentTime;
-      mv.osc.frequency.cancelScheduledValues(now);
-      mv.osc.frequency.linearRampToValueAtTime(prev.freq,now+0.02);
+      mv.handle.setFreq(prev.freq,0.02);
       keyActive(mv.noteName,mv.noteOct,false);
       mv.noteName=prev.name; mv.noteOct=prev.oct;
       keyActive(prev.name,prev.oct,true);
@@ -1128,6 +1166,7 @@ function scrollToRange(smooth=true){
 
 const fmtMs=s=>s<1?`${Math.round(s*1000)}ms`:`${s.toFixed(1)}s`;
 const fmtPct=v=>`${Math.round(v*100)}%`;
+const fmtHz=v=>v>=1000?`${(v/1000).toFixed(1)}k`:`${Math.round(v)}`;
 
 function adsrSlider(id,vid,set){
   const fmt=id==='a-s'?fmtPct:fmtMs;
@@ -1148,12 +1187,112 @@ document.getElementById('fx-ds').addEventListener('input',e=>{fx.ds=+e.target.va
 document.getElementById('fx-ch').addEventListener('input',e=>{fx.ch=+e.target.value;if(chorusSend)chorusSend.gain.value=fx.ch;document.getElementById('fx-ch-v').textContent=fmtPct(fx.ch);});
 { const s=document.getElementById('master-vol'); s.value=getVolume(0.5); if(masterGain)masterGain.gain.value=+s.value; }
 document.getElementById('master-vol').addEventListener('input',e=>{const v=+e.target.value;if(masterGain)masterGain.gain.value=v;setVolume(v);});
+// Push a live parameter change to every note that's currently sounding, so a
+// held key responds immediately. Only VOICE_LIVE_PARAMS take effect mid-note;
+// structural knobs (unison/sub) and envelopes (ADSR/fenv) apply on the next note.
+function liveUpdate(changes){ voices.forEach(v=>{ if(v.handle && v.handle.update) v.handle.update(changes); }); }
+
 document.querySelectorAll('.wave-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
     wave=btn.dataset.wave;
     document.querySelectorAll('.wave-btn').forEach(b=>b.classList.toggle('active',b===btn));
+    liveUpdate({wave});
   });
 });
+
+// ── oscillator / character controls (rich voice engine) ─
+function setSlider(id,vid,val,fmt){
+  const s=document.getElementById(id); if(s) s.value=val;
+  const v=document.getElementById(vid); if(v) v.textContent=fmt(val);
+}
+// live=true → the change is audible on held notes; otherwise it applies next note.
+function oscSlider(id,vid,key,fmt,live){
+  document.getElementById(id).addEventListener('input',e=>{
+    const val=+e.target.value;
+    osc[key]=val;
+    document.getElementById(vid).textContent=fmt(val);
+    if(live) liveUpdate({[key]:val});
+  });
+}
+oscSlider('o-uni','o-uni-v','unison',v=>v);            // structural — next note
+oscSlider('o-det','o-det-v','detune',v=>`${v}c`,true);
+oscSlider('o-sub','o-sub-v','sub',fmtPct);             // structural — next note
+oscSlider('o-drv','o-drv-v','drive',fmtPct,true);
+oscSlider('o-cut','o-cut-v','cutoff',fmtHz,true);
+oscSlider('o-fenv','o-fenv-v','fenv',fmtHz);           // filter-env amount — next note
+
+function syncVoiceUI(){
+  setSlider('a-a','a-a-v',adsr.a,fmtMs);
+  setSlider('a-d','a-d-v',adsr.d,fmtMs);
+  setSlider('a-s','a-s-v',adsr.s,fmtPct);
+  setSlider('a-r','a-r-v',adsr.r,fmtMs);
+  setSlider('o-uni','o-uni-v',osc.unison,v=>v);
+  setSlider('o-det','o-det-v',osc.detune,v=>`${v}c`);
+  setSlider('o-sub','o-sub-v',osc.sub,fmtPct);
+  setSlider('o-drv','o-drv-v',osc.drive,fmtPct);
+  setSlider('o-cut','o-cut-v',osc.cutoff,fmtHz);
+  setSlider('o-fenv','o-fenv-v',osc.fenv,fmtHz);
+  setSlider('fx-rv','fx-rv-v',fx.rv,fmtPct);
+  drawADSR();
+}
+
+// Apply a full patch (factory preset or user-saved) to the live controls.
+function applyPatch(p){
+  p=normPatch(p);
+  wave=p.wave;
+  document.querySelectorAll('.wave-btn').forEach(b=>b.classList.toggle('active',b.dataset.wave===wave));
+  Object.assign(adsr,p.amp);
+  osc.unison=p.unison; osc.detune=p.detune; osc.spread=p.spread; osc.sub=p.sub;
+  osc.drive=p.drive; osc.cutoff=p.cutoff; osc.fenv=p.fenv; osc.q=p.q;
+  osc.filtd=p.filt.d; osc.filts=p.filt.s;
+  fx.rv=p.rev; if(reverbSend) reverbSend.gain.value=fx.rv;
+  syncVoiceUI();
+  // held notes take the new preset's timbre live (structural parts wait for next note)
+  liveUpdate({wave:p.wave,detune:p.detune,spread:p.spread,drive:p.drive,q:p.q,cutoff:p.cutoff});
+}
+
+// ── preset picker (factory + your saved patches, shared with the lab) ────
+function refreshPresetPicker(sel){
+  const el=document.getElementById('preset-sel');
+  const fac=FACTORY_PRESET_LIST.map(p=>`<option value="f:${p.id}">${p.label}</option>`).join('');
+  const users=listPatches();
+  const usr=users.length
+    ? `<optgroup label="Your patches">${users.map(n=>`<option value="u:${n.replace(/"/g,'&quot;')}">${n}</option>`).join('')}</optgroup>`
+    : '';
+  el.innerHTML=`<optgroup label="Factory">${fac}</optgroup>`+usr;
+  if(sel!==undefined) el.value=sel;
+}
+const presetSel=document.getElementById('preset-sel');
+// Re-read the shared bank on focus so patches saved in the lab show up here.
+presetSel.addEventListener('focus',()=>refreshPresetPicker(presetSel.value));
+presetSel.addEventListener('change',e=>{
+  unlock();
+  const val=e.target.value;
+  let p=null;
+  if(val.startsWith('f:')) p=FACTORY_PRESETS[val.slice(2)];
+  else if(val.startsWith('u:')) p=loadPatch(val.slice(2));
+  if(p) applyPatch(p);
+});
+// Save the current voice into the shared bank (appears here and in the Voice Lab).
+document.getElementById('save-patch').addEventListener('click',()=>{
+  unlock();
+  const inp=document.getElementById('patch-name');
+  const name=inp.value.trim();
+  if(!name){ inp.focus(); return; }
+  savePatch(name, currentPatch());
+  refreshPresetPicker('u:'+name);
+  inp.value='';
+  const b=document.getElementById('save-patch'), t=b.textContent;
+  b.textContent='✓'; setTimeout(()=>{ b.textContent=t; }, 900);
+});
+// Delete the currently selected saved patch (factory presets can't be deleted).
+document.getElementById('del-patch').addEventListener('click',()=>{
+  const val=presetSel.value;
+  if(!val.startsWith('u:')) return;
+  deletePatch(val.slice(2));
+  refreshPresetPicker('f:init');
+});
+refreshPresetPicker('f:init');
 
 function setOctave(n){
   octave=Math.max(1,Math.min(7,n));
@@ -1187,6 +1326,7 @@ function sv(id,v){document.getElementById(id).value=v;}
 function resetAll(){
   clearLatches();
   wave=DEFAULTS.wave; Object.assign(adsr,DEFAULTS.adsr); Object.assign(fx,DEFAULTS.fx);
+  Object.assign(osc,DEFAULTS.osc);
   xyX=DEFAULTS.xyX; xyY=DEFAULTS.xyY;
   monoMode=false; maxVoices=8;
   arpEnabled=false; arpLatch=false; lfoEnabled=false; lfoDepth=0.3;
@@ -1202,6 +1342,13 @@ function resetAll(){
   sv('a-d',adsr.d); document.getElementById('a-d-v').textContent=fmtMs(adsr.d);
   sv('a-s',adsr.s); document.getElementById('a-s-v').textContent=fmtPct(adsr.s);
   sv('a-r',adsr.r); document.getElementById('a-r-v').textContent=fmtMs(adsr.r);
+  setSlider('o-uni','o-uni-v',osc.unison,v=>v);
+  setSlider('o-det','o-det-v',osc.detune,v=>`${v}c`);
+  setSlider('o-sub','o-sub-v',osc.sub,fmtPct);
+  setSlider('o-drv','o-drv-v',osc.drive,fmtPct);
+  setSlider('o-cut','o-cut-v',osc.cutoff,fmtHz);
+  setSlider('o-fenv','o-fenv-v',osc.fenv,fmtHz);
+  refreshPresetPicker('f:init');
   sv('fx-rv',fx.rv); document.getElementById('fx-rv-v').textContent=fmtPct(fx.rv);
   ['fx-dl','fx-ds','fx-ch'].forEach(id=>{sv(id,0);document.getElementById(id+'-v').textContent='0%';});
   sv('master-vol',DEFAULTS.volume);
