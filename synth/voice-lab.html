@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice Lab — BeatLab</title>
+<link rel="icon" type="image/png" href="../icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+html, body { width:100%; height:100%; }
+:root {
+  --bg:#080c10; --surface:#0e1318; --surface-2:#111820; --divider:#1e2f3a;
+  --text:#d4e8e0; --muted:#6a8f80; --teal:#00e5cc; --amber:#f5a623; --purple:#b06fff; --pink:#ff6b9d;
+}
+body {
+  font-family:'Space Grotesk',sans-serif; background:var(--bg); color:var(--text);
+  min-height:100dvh; user-select:none; -webkit-user-select:none;
+  padding:14px 14px calc(14px + env(safe-area-inset-bottom));
+  display:flex; flex-direction:column; gap:12px; max-width:1500px; margin:0 auto;
+}
+
+/* unlock overlay */
+#unlock {
+  position:fixed; inset:0; background:rgba(8,12,16,.94); display:flex;
+  align-items:center; justify-content:center; z-index:200; text-align:center;
+  font-size:13px; color:var(--muted); letter-spacing:.08em; padding:20px;
+}
+#unlock.hidden { display:none; }
+
+header { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+header h1 { font-size:14px; font-weight:600; letter-spacing:.16em; color:var(--teal); }
+header .tag { font-size:9px; letter-spacing:.14em; color:var(--muted); text-transform:uppercase; }
+header .spike { font-size:9px; color:var(--amber); letter-spacing:.1em; border:1px solid rgba(245,166,35,.3);
+  padding:2px 7px; border-radius:4px; background:rgba(245,166,35,.06); }
+
+.card { background:var(--surface); border:1px solid var(--divider); border-radius:10px; padding:12px 13px; }
+
+/* two-column workspace: sequencer (+scope) beside the tuning options */
+.row2 { display:flex; gap:12px; align-items:flex-start; }
+.row2 > .col { display:flex; flex-direction:column; gap:12px; min-width:0; }
+.col-seq { flex:1 1 58%; }
+.col-opt { flex:1 1 42%; }
+@media (max-width:680px){ .row2 { flex-direction:column; } .row2 > .col { flex:1 1 auto; width:100%; } }
+
+.card h2 { font-size:9px; font-weight:600; letter-spacing:.14em; color:var(--muted);
+  text-transform:uppercase; margin-bottom:10px; }
+.cardhead { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.cardhead h2 { margin-bottom:10px; }
+.headbtns { display:inline-flex; gap:6px; }
+
+/* transport row */
+.transport { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.big-btn {
+  background:var(--surface-2); border:1px solid var(--divider); color:var(--text);
+  font-family:inherit; font-size:13px; font-weight:600; letter-spacing:.06em;
+  padding:10px 18px; border-radius:8px; cursor:pointer; transition:all .12s; min-width:96px;
+}
+.big-btn:hover { border-color:var(--teal); color:var(--teal); }
+.big-btn.playing { border-color:var(--green,#39ff6a); color:#39ff6a; background:rgba(57,255,106,.07); }
+.ab-btn { border-color:var(--pink); color:var(--pink); background:rgba(255,107,157,.06); }
+.ab-btn:hover { border-color:var(--pink); color:var(--pink); background:rgba(255,107,157,.14); }
+.mini { display:flex; align-items:center; gap:6px; }
+.mini label { font-size:9px; color:var(--muted); letter-spacing:.08em; }
+.mini input[type=range] { accent-color:var(--teal); width:96px; }
+.mini .val { font-size:11px; color:var(--teal); min-width:44px; }
+
+/* preset chips */
+.chips { display:flex; gap:6px; flex-wrap:wrap; }
+.chip {
+  background:var(--surface-2); border:1px solid var(--divider); color:var(--muted);
+  font-family:inherit; font-size:11px; letter-spacing:.04em; padding:8px 12px;
+  border-radius:7px; cursor:pointer; transition:all .12s;
+}
+.chip.active { border-color:var(--teal); color:var(--teal); background:rgba(0,229,204,.08); }
+.chip.thin.active { border-color:var(--amber); color:var(--amber); background:rgba(245,166,35,.08); }
+
+/* save bar */
+.savebar { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.savebar input[type=text] {
+  flex:1; min-width:130px; background:var(--surface-2); border:1px solid var(--divider);
+  color:var(--text); font-family:inherit; font-size:12px; letter-spacing:.03em;
+  padding:8px 10px; border-radius:7px; outline:none;
+}
+.savebar input[type=text]:focus { border-color:var(--teal); }
+.savebar select {
+  background:var(--surface-2); border:1px solid var(--divider); color:var(--text);
+  font-family:inherit; font-size:11px; padding:8px 8px; border-radius:7px; outline:none;
+  max-width:160px;
+}
+.save-btn { min-width:70px; border-color:var(--teal); color:var(--teal); background:rgba(0,229,204,.06); }
+.save-btn:hover { background:rgba(0,229,204,.14); }
+
+/* param sliders grid */
+.params { display:grid; grid-template-columns:repeat(auto-fit,minmax(155px,1fr)); gap:9px 16px; align-items:start; }
+.pgroup { grid-column:1/-1; font-size:8px; letter-spacing:.16em; color:var(--muted);
+  text-transform:uppercase; opacity:.65; margin-top:4px; border-top:1px solid var(--divider); padding-top:8px; }
+.pgroup:first-child { margin-top:0; border-top:none; padding-top:0; }
+.prow { display:grid; grid-template-columns:52px 1fr 46px; align-items:center; gap:7px; }
+.prow label { font-size:9px; color:var(--muted); letter-spacing:.06em; }
+.prow input[type=range] { accent-color:var(--teal); width:100%; }
+.prow .v { font-size:10px; color:var(--teal); text-align:right; }
+
+/* keyboard */
+.keys { display:flex; gap:4px; flex-wrap:wrap; }
+.pk {
+  flex:1; min-width:34px; background:var(--surface-2); border:1px solid var(--divider);
+  color:var(--muted); font-family:inherit; font-size:10px; padding:14px 4px;
+  border-radius:6px; cursor:pointer; text-align:center; transition:all .08s; touch-action:none;
+}
+.pk:active, .pk.on { border-color:var(--teal); color:var(--teal); background:rgba(0,229,204,.12); }
+
+/* sequencer */
+.seqctl { display:flex; align-items:center; gap:9px 16px; flex-wrap:wrap; margin-bottom:10px; }
+.seqctl select {
+  background:var(--surface-2); border:1px solid var(--divider); color:var(--text);
+  font-family:inherit; font-size:11px; padding:7px 8px; border-radius:6px; outline:none; cursor:pointer;
+}
+.seqctl select:focus { border-color:var(--teal); }
+.stepbtns { display:inline-flex; gap:4px; }
+.stepbtns button {
+  background:var(--surface-2); border:1px solid var(--divider); color:var(--muted);
+  font-family:inherit; font-size:11px; padding:6px 9px; border-radius:6px; cursor:pointer; transition:all .12s;
+}
+.stepbtns button.active { border-color:var(--teal); color:var(--teal); background:rgba(0,229,204,.08); }
+.octbtn { min-width:30px; padding:6px 0; text-align:center; }
+.gridwrap { overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; }
+.grid { display:grid; gap:2px; }
+.rlabel, .drumlabel { font-size:9px; color:var(--muted); display:flex; align-items:center;
+  justify-content:flex-end; padding-right:6px; letter-spacing:.02em; }
+.drumlabel { color:var(--text); }
+.cell { height:22px; border-radius:3px; background:var(--surface-2); border:1px solid transparent;
+  cursor:pointer; touch-action:none; }
+.cell.beat { box-shadow:inset 2px 0 0 rgba(255,255,255,0.06); }
+.cell.mel.on { background:var(--teal); }
+.cell.drum { height:26px; }
+.cell.drum.kick.on { background:var(--amber); }
+.cell.drum.hat.on { background:var(--purple); }
+.cell.play { outline:1px solid rgba(255,255,255,0.30); outline-offset:-1px; }
+.cell.mel.play:not(.on) { background:#16222c; }
+
+#scope { width:100%; height:80px; display:block; border-radius:6px; background:var(--surface-2); }
+.note { font-size:10px; color:var(--muted); line-height:1.5; }
+.note strong { color:var(--text); font-weight:500; }
+a.back { color:var(--muted); text-decoration:none; font-size:11px; letter-spacing:.06em; }
+a.back:hover { color:var(--teal); }
+</style>
+</head>
+<body>
+
+<div id="unlock">tap anywhere to enable audio</div>
+
+<header>
+  <h1>VOICE LAB</h1>
+  <span class="spike">SPIKE</span>
+  <span class="tag">rich synthesis · no samples</span>
+  <a class="back" href="index.html" style="margin-left:auto;">← Synth</a>
+</header>
+
+<div class="card">
+  <h2>Transport</h2>
+  <div class="transport">
+    <button class="big-btn" id="play">▶ PLAY</button>
+    <button class="big-btn ab-btn" id="ab">A/B → THIN</button>
+    <div class="mini"><label>BPM</label><input type="range" id="bpm" min="80" max="180" step="1" value="120"><span class="val" id="bpm-v">120</span></div>
+    <div class="mini"><label>VOL</label><input type="range" id="vol" min="0" max="1" step="0.01" value="0.6"><span class="val" id="vol-v">60%</span></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Voice preset</h2>
+  <div class="chips" id="presets">
+    <button class="chip thin" data-p="thin">Thin (8-bit)</button>
+    <button class="chip active" data-p="ninBass">NIN Bass</button>
+    <button class="chip" data-p="lead">Industrial Lead</button>
+    <button class="chip" data-p="pad">Supersaw Pad</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Save patch — use it in the Synth</h2>
+  <div class="savebar">
+    <input type="text" id="patch-name" placeholder="name this sound…" maxlength="28" autocomplete="off">
+    <button class="big-btn save-btn" id="save-patch">SAVE</button>
+    <select id="userpatch" title="Your saved patches">
+      <option value="">— your patches —</option>
+    </select>
+    <button class="chip" id="load-patch">LOAD</button>
+    <button class="chip" id="del-patch">DELETE</button>
+  </div>
+  <p class="note" style="margin-top:8px;">
+    Dial the sliders below until it sounds right, name it, and hit <strong>SAVE</strong>.
+    Saved sounds appear in the main <strong>Synth</strong>'s preset picker (they share the same
+    storage), so you can play them across the full keyboard.
+  </p>
+</div>
+
+<div class="row2">
+  <div class="col col-seq">
+    <div class="card">
+      <h2>Sequencer — test the voice with your own pattern</h2>
+      <div class="seqctl">
+        <div class="mini"><label>ROOT</label><select id="seq-root"></select></div>
+        <div class="mini"><label>SCALE</label><select id="seq-scale"></select></div>
+        <div class="mini"><label>OCT</label>
+          <button class="chip octbtn" id="oct-dn">−</button>
+          <span class="val" id="oct-v" style="min-width:16px;text-align:center;">2</span>
+          <button class="chip octbtn" id="oct-up">+</button>
+        </div>
+        <div class="mini"><label>STEPS</label>
+          <span class="stepbtns"><button data-s="8">8</button><button data-s="16" class="active">16</button></span>
+        </div>
+        <div class="mini"><label>GATE</label><input type="range" id="seq-gate" min="0.2" max="1.5" step="0.05" value="0.9"><span class="val" id="gate-v">90%</span></div>
+        <button class="chip" id="seq-rand" title="Randomise notes + drums">🎲 RANDOM</button>
+        <button class="chip" id="seq-clear">CLEAR</button>
+      </div>
+      <div class="gridwrap"><div class="grid" id="grid"></div></div>
+      <p class="note" style="margin-top:8px;">
+        Tap the grid to place notes (one per column, snapped to the scale) and toggle the
+        <strong>KICK</strong>/<strong>HAT</strong> lanes. Hit <strong>PLAY</strong> and tweak the
+        voice sliders while it loops — held steps follow the changes.
+      </p>
+    </div>
+    <div class="card">
+      <h2>Scope</h2>
+      <canvas id="scope"></canvas>
+    </div>
+  </div>
+  <div class="col col-opt">
+    <div class="card">
+      <div class="cardhead">
+        <h2>Tune the voice</h2>
+        <span class="headbtns">
+          <button class="chip" id="rand-voice" title="Randomise the voice — great for finding new sounds">🎲 RANDOM</button>
+          <button class="chip" id="reset-voice" title="Revert sliders to the selected preset">RESET</button>
+        </span>
+      </div>
+      <div class="params" id="params"></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Play a note</h2>
+  <div class="keys" id="keys"></div>
+</div>
+
+<p class="note">
+  <strong>What this proves:</strong> beatlab's "8-bit" problem was a single thin oscillator, not Web Audio itself.
+  Toggle <strong>A/B</strong> while the sequence plays to hear the same notes through a raw single-oscillator voice
+  (Thin) vs a rich supersaw + sub + waveshaper-drive + filter-envelope + convolution-reverb voice — all pure
+  synthesis, no samples. Taste bar: <em>does the bass sound like a real cranked synth, not a beep?</em>
+</p>
+
+<script type="module">
+import { noteToFreq, noteStringToFreq, makeImpulse, makeWhiteNoise, distCurve } from '../core/audio.js';
+import { createVoiceEngine, FACTORY_PRESETS, FACTORY_PRESET_LIST, normPatch, randomPatch,
+         savePatch, loadPatch, listPatches, deletePatch } from '../core/voice.js';
+
+// ── audio graph ─────────────────────────────────────────
+// The voice engine (core/voice.js) owns note synthesis; the lab only wires the
+// bus, reverb, drums and UI around it. Promoting a sound to the main synth means
+// the synth imports the same engine + the same saved patch — nothing to port.
+let ctx=null, master, comp, convolver, analyser, engine, drumRev, noiseBuf=null;
+
+function initAudio(){
+  if(ctx) return;
+  ctx = new AudioContext();
+  ctx.resume();                              // must be in the same gesture on iOS
+
+  master = ctx.createGain(); master.gain.value = +document.getElementById('vol').value;
+  comp = ctx.createDynamicsCompressor();
+  comp.threshold.value=-16; comp.knee.value=10; comp.ratio.value=4;
+  comp.attack.value=0.004; comp.release.value=0.18;
+  comp.connect(master); master.connect(ctx.destination);
+
+  analyser = ctx.createAnalyser(); analyser.fftSize=2048; master.connect(analyser);
+
+  convolver = ctx.createConvolver();
+  const wet = ctx.createGain(); wet.gain.value=0.9;
+  convolver.connect(wet); wet.connect(comp);
+
+  // Voice engine: dry → comp, wet → convolver. Reverb send level = P.rev.
+  engine = createVoiceEngine(ctx, { output: comp, reverb: convolver });
+  engine.setReverbSend(P.rev);
+
+  // Drums get their own small, fixed reverb send (not the voice slider).
+  drumRev = ctx.createGain(); drumRev.gain.value = 0.18; drumRev.connect(convolver);
+
+  // Defer heavy buffer generation so the gesture handler returns fast (iOS).
+  setTimeout(()=>{ if(ctx){ convolver.buffer = makeImpulse(ctx, 2.6, 2.2); } }, 0);
+  setTimeout(()=>{ if(ctx){ noiseBuf = makeWhiteNoise(ctx, 1); } }, 0);
+
+  startScope();
+}
+
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) ctx?.resume(); });
+
+// ── the patch being edited ──────────────────────────────
+// P is a live parameter object; the engine reads a snapshot per note.
+let presetName = 'ninBass';
+let P = normPatch(FACTORY_PRESETS.ninBass);
+let baseline = normPatch(FACTORY_PRESETS.ninBass);   // what RESET reverts P to
+
+// Fire-and-forget a note through the shared engine (riff + key taps).
+function playVoice(freq, when, dur, p){
+  if(!engine) return;
+  engine.trigger(freq, p, dur, when);
+}
+
+// ── drums (industrial, synthesised) ─────────────────────
+function playKick(when){
+  if(!ctx) return;
+  const o=ctx.createOscillator(), g=ctx.createGain();
+  o.frequency.setValueAtTime(150, when);
+  o.frequency.exponentialRampToValueAtTime(45, when+0.11);
+  g.gain.setValueAtTime(1.0, when);
+  g.gain.exponentialRampToValueAtTime(0.0001, when+0.3);
+  o.connect(g); g.connect(comp); o.start(when); o.stop(when+0.32);
+  o.onended=()=>{ try{o.disconnect();}catch(e){} try{g.disconnect();}catch(e){} };
+}
+function playPerc(when, bright){
+  if(!ctx || !noiseBuf) return;
+  const src=ctx.createBufferSource(); src.buffer=noiseBuf; src.loop=true;
+  const bp=ctx.createBiquadFilter(); bp.type='bandpass';
+  bp.frequency.value = bright?4200:1600; bp.Q.value=1.1;
+  const sh=ctx.createWaveShaper(); sh.curve=distCurve(0.5);
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(bright?0.28:0.4, when);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + (bright?0.06:0.14));
+  src.connect(bp); bp.connect(sh); sh.connect(g);
+  g.connect(comp); if(drumRev) g.connect(drumRev);
+  const off = (when*97)%0.4;                 // vary the noise window per hit
+  src.start(when, off); src.stop(when + 0.2);
+  src.onended=()=>{ [src,bp,sh,g].forEach(nd=>{ try{ nd.disconnect(); }catch(e){} }); };
+}
+
+// ── sequencer (your own pattern to audition the voice) ──
+// A scale-constrained melodic lane (one note per column) over an editable
+// kick/hat bed. Seeded with an A-minor industrial groove so the A/B demo still
+// works out of the box; edit freely.
+const NOTE_NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const SCALES={
+  minor:[0,2,3,5,7,8,10], major:[0,2,4,5,7,9,11],
+  dorian:[0,2,3,5,7,9,10], phrygian:[0,1,3,5,7,8,10], pentMinor:[0,3,5,7,10],
+};
+const SCALE_LABELS={minor:'Minor',major:'Major',dorian:'Dorian',phrygian:'Phrygian',pentMinor:'Penta minor'};
+
+let SEQLEN=16, root='A', scaleName='minor', octLo=2, octSpan=2, gate=0.9;
+let mel  = ['A2',null,'A2','A3', 'A2',null,'C3',null, 'A2',null,'A2','G3', 'F3',null,'E3',null];
+let kick = [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,1,0];
+let hat  = [0,0,1,0, 0,0,1,0, 0,0,1,0, 0,1,1,0];
+
+const noteToMidi=(name,oct)=>(oct+1)*12 + NOTE_NAMES.indexOf(name);
+const midiToNote=m=>NOTE_NAMES[((m%12)+12)%12] + (Math.floor(m/12)-1);
+const transposeNote=(n,semis)=>{ const m=n && n.match(/^([A-G]#?)(-?\d+)$/); return m ? midiToNote(noteToMidi(m[1],+m[2])+semis) : n; };
+
+// Every scale note from root@octLo up to root@(octLo+octSpan), low → high.
+function scaleRows(){
+  const set=SCALES[scaleName];
+  const start=noteToMidi(root,octLo), end=noteToMidi(root,octLo+octSpan);
+  const rows=[];
+  for(let m=start;m<=end;m++){ if(set.includes(((m-start)%12+12)%12)) rows.push(midiToNote(m)); }
+  return rows;
+}
+
+const grid=document.getElementById('grid');
+function newCell(col, cls, data){
+  const d=document.createElement('div');
+  d.className='cell '+cls+(col%4===0?' beat':'');
+  d.dataset.col=col; if(data) Object.assign(d.dataset,data);
+  return d;
+}
+function buildGrid(){
+  grid.style.gridTemplateColumns='48px repeat('+SEQLEN+', minmax(20px,1fr))';
+  grid.style.minWidth=(48+SEQLEN*22)+'px';
+  grid.innerHTML='';
+  // melodic rows, high pitch at top
+  scaleRows().slice().reverse().forEach(note=>{
+    const lbl=document.createElement('div'); lbl.className='rlabel'; lbl.textContent=note; grid.appendChild(lbl);
+    for(let c=0;c<SEQLEN;c++){
+      const d=newCell(c,'mel',{note});
+      if(mel[c]===note) d.classList.add('on');
+      d.addEventListener('pointerdown',e=>{
+        e.preventDefault(); unlock();
+        const set = mel[c]!==note;
+        mel[c] = set ? note : null;
+        grid.querySelectorAll('.cell.mel[data-col="'+c+'"]').forEach(x=>x.classList.toggle('on', x.dataset.note===mel[c]));
+        if(set && ctx) playVoice(noteStringToFreq(note), ctx.currentTime+0.01, gate*stepDur(), P);
+      });
+      grid.appendChild(d);
+    }
+  });
+  // drum lanes
+  [['kick','KICK',kick],['hat','HAT',hat]].forEach(([key,label,arr])=>{
+    const lbl=document.createElement('div'); lbl.className='drumlabel'; lbl.textContent=label; grid.appendChild(lbl);
+    for(let c=0;c<SEQLEN;c++){
+      const d=newCell(c,'drum '+key,{drum:key});
+      if(arr[c]) d.classList.add('on');
+      d.addEventListener('pointerdown',e=>{
+        e.preventDefault(); unlock();
+        arr[c]=arr[c]?0:1; d.classList.toggle('on',!!arr[c]);
+        if(arr[c]&&ctx){ key==='kick' ? playKick(ctx.currentTime+0.01) : playPerc(ctx.currentTime+0.01,true); }
+      });
+      grid.appendChild(d);
+    }
+  });
+}
+
+// ── transport / scheduler ───────────────────────────────
+let bpm=120, playing=false, step=0, nextTime=0, timer=null;
+const LOOKAHEAD=0.1, TICK=25;
+const stepDur = ()=> 60/bpm/4;
+
+function highlight(col){
+  grid.querySelectorAll('.cell.play').forEach(c=>c.classList.remove('play'));
+  if(col>=0) grid.querySelectorAll('.cell[data-col="'+col+'"]').forEach(c=>c.classList.add('play'));
+}
+function scheduleStep(i, t){
+  if(kick[i]) playKick(t);
+  if(hat[i])  playPerc(t, i%2===0);
+  const nn = mel[i];
+  if(nn) playVoice(noteStringToFreq(nn), t, gate*stepDur(), P);
+  const delay=Math.max(0,(t-ctx.currentTime)*1000);
+  setTimeout(()=>{ if(playing) highlight(i); }, delay);
+}
+function scheduler(){
+  if(!ctx) return;
+  // Recover from setInterval throttling (backgrounded tab) without firing a
+  // flood of catch-up notes that would swamp the audio thread.
+  if(ctx.currentTime - nextTime > 0.5) nextTime = ctx.currentTime + 0.05;
+  while(nextTime < ctx.currentTime + LOOKAHEAD){
+    scheduleStep(step, nextTime);
+    nextTime += stepDur();
+    step = (step+1) % SEQLEN;
+  }
+}
+function startPlay(){
+  if(!ctx) return;
+  playing=true; step=0; nextTime=ctx.currentTime+0.06;
+  timer=setInterval(scheduler, TICK);
+  const b=document.getElementById('play'); b.textContent='■ STOP'; b.classList.add('playing');
+}
+function stopPlay(){
+  playing=false; clearInterval(timer); timer=null; highlight(-1);
+  const b=document.getElementById('play'); b.textContent='▶ PLAY'; b.classList.remove('playing');
+}
+document.getElementById('play').addEventListener('click',()=>{
+  unlock(); playing ? stopPlay() : startPlay();
+});
+
+// ── sequencer controls ──────────────────────────────────
+(function initSeqControls(){
+  const rootSel=document.getElementById('seq-root');
+  NOTE_NAMES.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; if(n===root)o.selected=true; rootSel.appendChild(o); });
+  const scaleSel=document.getElementById('seq-scale');
+  Object.keys(SCALES).forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=SCALE_LABELS[k]; if(k===scaleName)o.selected=true; scaleSel.appendChild(o); });
+  rootSel.addEventListener('change',e=>{ root=e.target.value; mel=Array(SEQLEN).fill(null); buildGrid(); });
+  scaleSel.addEventListener('change',e=>{ scaleName=e.target.value; mel=Array(SEQLEN).fill(null); buildGrid(); });
+})();
+function shiftOct(d){
+  const no=octLo+d; if(no<0 || no+octSpan>8) return;
+  octLo=no; document.getElementById('oct-v').textContent=octLo;
+  mel = mel.map(n=> n ? transposeNote(n, 12*d) : null);   // whole range shifts, notes stay in range
+  buildGrid();
+}
+document.getElementById('oct-dn').addEventListener('click',()=>shiftOct(-1));
+document.getElementById('oct-up').addEventListener('click',()=>shiftOct(1));
+document.querySelectorAll('.stepbtns button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    const s=+b.dataset.s; if(s===SEQLEN) return;
+    const resize=(arr,fill)=>{ const out=[]; for(let i=0;i<s;i++) out.push(i<arr.length?arr[i]:fill); return out; };
+    mel=resize(mel,null); kick=resize(kick,0); hat=resize(hat,0);
+    SEQLEN=s; if(step>=SEQLEN) step=0;
+    document.querySelectorAll('.stepbtns button').forEach(x=>x.classList.toggle('active',x===b));
+    buildGrid();
+  });
+});
+document.getElementById('seq-gate').addEventListener('input',e=>{
+  gate=+e.target.value; document.getElementById('gate-v').textContent=Math.round(gate*100)+'%';
+});
+// Roll a musical-ish pattern: notes biased to the beat (root on downbeats),
+// a four-on-the-floor-ish kick, and offbeat hats. Uses the current scale/range.
+document.getElementById('seq-rand').addEventListener('click',()=>{
+  unlock();
+  const rows=scaleRows(), rootNote=rows[0], rnd=Math.random;
+  mel=Array(SEQLEN).fill(null); kick=Array(SEQLEN).fill(0); hat=Array(SEQLEN).fill(0);
+  for(let i=0;i<SEQLEN;i++){
+    const down=i%4===0;
+    if(rnd() < (down?0.85:0.45)) mel[i] = (down && rnd()<0.5) ? rootNote : rows[Math.floor(rnd()*rows.length)];
+    kick[i] = down ? (rnd()<0.9?1:0) : (rnd()<0.12?1:0);
+    hat[i]  = (i%2===1) ? (rnd()<0.7?1:0) : (rnd()<0.15?1:0);
+  }
+  kick[0]=1;                                   // always anchor the downbeat
+  buildGrid();
+});
+document.getElementById('seq-clear').addEventListener('click',()=>{
+  mel=Array(SEQLEN).fill(null); kick=Array(SEQLEN).fill(0); hat=Array(SEQLEN).fill(0); buildGrid();
+});
+
+// ── A/B toggle (flip between Thin and last rich preset) ──
+let lastRich = 'ninBass';
+document.getElementById('ab').addEventListener('click',()=>{
+  unlock();
+  const next = presetName==='thin' ? lastRich : 'thin';
+  selectPreset(next);
+});
+
+// ── param spec (every preset knob is tunable, grouped) ──
+const pct=v=>Math.round(v*100)+'%';
+const hz =v=>v>=1000?(v/1000).toFixed(1)+'k':Math.round(v)+'';
+const ms =s=>s<1?Math.round(s*1000)+'ms':(+s).toFixed(2)+'s';
+const one=v=>(+v).toFixed(1);
+const PARAMS=[
+  {g:'Oscillator'},
+  {label:'UNISON',min:1,max:7,step:1,     get:()=>P.unison,set:v=>P.unison=v,fmt:v=>v},
+  {label:'DETUNE',min:0,max:40,step:1,    get:()=>P.detune,set:v=>P.detune=v,fmt:v=>v+'c'},
+  {label:'WIDTH', min:0,max:1,step:0.01,  get:()=>P.spread,set:v=>P.spread=v,fmt:pct},
+  {label:'SUB',   min:0,max:1,step:0.01,  get:()=>P.sub,   set:v=>P.sub=v,   fmt:pct},
+  {label:'DRIVE', min:0,max:1,step:0.01,  get:()=>P.drive, set:v=>P.drive=v, fmt:pct},
+  {g:'Filter'},
+  {label:'CUTOFF',min:60,max:8000,step:10,get:()=>P.cutoff,set:v=>P.cutoff=v,fmt:hz},
+  {label:'F.ENV', min:0,max:6000,step:10, get:()=>P.fenv,  set:v=>P.fenv=v,  fmt:hz},
+  {label:'RESO',  min:0,max:18,step:0.1,  get:()=>P.q,     set:v=>P.q=v,     fmt:one},
+  {g:'Amp envelope'},
+  {label:'ATK',   min:0.001,max:2,step:0.001,get:()=>P.amp.a,set:v=>P.amp.a=v,fmt:ms},
+  {label:'DEC',   min:0.01,max:2,step:0.01,  get:()=>P.amp.d,set:v=>P.amp.d=v,fmt:ms},
+  {label:'SUS',   min:0,max:1,step:0.01,     get:()=>P.amp.s,set:v=>P.amp.s=v,fmt:pct},
+  {label:'REL',   min:0.01,max:3,step:0.01,  get:()=>P.amp.r,set:v=>P.amp.r=v,fmt:ms},
+  {g:'Filter envelope'},
+  {label:'ATK',   min:0.001,max:2,step:0.001,get:()=>P.filt.a,set:v=>P.filt.a=v,fmt:ms},
+  {label:'DEC',   min:0.01,max:2,step:0.01,  get:()=>P.filt.d,set:v=>P.filt.d=v,fmt:ms},
+  {label:'SUS',   min:0,max:1,step:0.01,     get:()=>P.filt.s,set:v=>P.filt.s=v,fmt:pct},
+  {g:'Output'},
+  {label:'LEVEL', min:0,max:1,step:0.01,  get:()=>P.level, set:v=>P.level=v, fmt:pct},
+  {label:'REVERB',min:0,max:1,step:0.01,  get:()=>P.rev,   set:v=>{P.rev=v;if(engine)engine.setReverbSend(v);},fmt:pct},
+  {label:'TAP LEN',min:0.1,max:2,step:0.05,get:()=>P.tapDur,set:v=>P.tapDur=v,fmt:v=>(+v).toFixed(2)+'s'},
+];
+function buildParams(){
+  const wrap=document.getElementById('params'); wrap.innerHTML='';
+  PARAMS.forEach(pm=>{
+    if(pm.g){ const h=document.createElement('div'); h.className='pgroup'; h.textContent=pm.g; wrap.appendChild(h); return; }
+    const row=document.createElement('div'); row.className='prow';
+    row.innerHTML=`<label>${pm.label}</label><input type="range" min="${pm.min}" max="${pm.max}" step="${pm.step}"><span class="v"></span>`;
+    pm._s=row.querySelector('input'); pm._v=row.querySelector('.v');
+    pm._s.addEventListener('input',e=>{ const v=+e.target.value; pm.set(v); pm._v.textContent=pm.fmt(v); });
+    wrap.appendChild(row);
+  });
+}
+function syncSliders(){
+  PARAMS.forEach(pm=>{ if(pm.g)return; const v=pm.get(); pm._s.value=v; pm._v.textContent=pm.fmt(v); });
+}
+function selectPreset(name){
+  presetName=name;
+  if(name!=='thin') lastRich=name;
+  P = normPatch(FACTORY_PRESETS[name]);
+  baseline = normPatch(FACTORY_PRESETS[name]);
+  if(engine) engine.setReverbSend(P.rev);
+  document.querySelectorAll('#presets .chip').forEach(c=>c.classList.toggle('active',c.dataset.p===name));
+  document.getElementById('userpatch').value='';
+  document.getElementById('ab').textContent = name==='thin' ? 'A/B → RICH' : 'A/B → THIN';
+  syncSliders();
+}
+document.querySelectorAll('#presets .chip').forEach(c=>{
+  c.addEventListener('click',()=>{ unlock(); selectPreset(c.dataset.p); });
+});
+
+// ── save / load user patches (shared bank; the synth reads the same) ─────
+function refreshUserPatches(sel){
+  const dd=document.getElementById('userpatch');
+  const names=listPatches();
+  dd.innerHTML='<option value="">— your patches —</option>'
+    + names.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
+  dd.value = sel || '';
+}
+document.getElementById('save-patch').addEventListener('click',()=>{
+  unlock();
+  const inp=document.getElementById('patch-name');
+  const name=inp.value.trim();
+  if(!name){ inp.focus(); return; }
+  savePatch(name, P);
+  refreshUserPatches(name);
+  const b=document.getElementById('save-patch'), t=b.textContent;
+  b.textContent='SAVED ✓'; setTimeout(()=>{ b.textContent=t; }, 900);
+});
+document.getElementById('load-patch').addEventListener('click',()=>{
+  unlock();
+  const name=document.getElementById('userpatch').value;
+  const p=name && loadPatch(name);
+  if(!p) return;
+  P=normPatch(p); baseline=normPatch(p); presetName=null;
+  if(engine) engine.setReverbSend(P.rev);
+  document.querySelectorAll('#presets .chip').forEach(c=>c.classList.remove('active'));
+  document.getElementById('patch-name').value=name;
+  syncSliders();
+});
+// RESET: revert the sliders to the active preset / loaded patch (discard tweaks).
+document.getElementById('reset-voice').addEventListener('click',()=>{
+  unlock();
+  P = normPatch(baseline);
+  if(engine) engine.setReverbSend(P.rev);
+  syncSliders();
+});
+// RANDOM: roll a fresh playable patch, make it the new RESET baseline, and audition it.
+document.getElementById('rand-voice').addEventListener('click',()=>{
+  unlock();
+  P = randomPatch();
+  baseline = normPatch(P);
+  presetName = null;
+  if(engine) engine.setReverbSend(P.rev);
+  document.querySelectorAll('#presets .chip').forEach(c=>c.classList.remove('active'));
+  document.getElementById('userpatch').value='';
+  syncSliders();
+  if(ctx) playVoice(noteStringToFreq('A3'), ctx.currentTime+0.01, P.tapDur, P);   // preview
+});
+document.getElementById('del-patch').addEventListener('click',()=>{
+  const name=document.getElementById('userpatch').value;
+  if(!name) return;
+  deletePatch(name);
+  refreshUserPatches();
+});
+refreshUserPatches();
+
+// ── mini keyboard ───────────────────────────────────────
+const KB=['A2','B2','C3','D3','E3','F3','G3','A3','C4'];
+const kEl=document.getElementById('keys');
+KB.forEach(n=>{
+  const b=document.createElement('button'); b.className='pk'; b.textContent=n; b.dataset.note=n;
+  b.addEventListener('pointerdown',e=>{
+    e.preventDefault(); unlock();
+    if(ctx){ playVoice(noteStringToFreq(n), ctx.currentTime+0.01, P.tapDur, P); }
+    b.classList.add('on'); setTimeout(()=>b.classList.remove('on'), 140);
+  });
+  kEl.appendChild(b);
+});
+
+// ── transport controls ──────────────────────────────────
+document.getElementById('bpm').addEventListener('input',e=>{
+  bpm=+e.target.value; document.getElementById('bpm-v').textContent=bpm;
+});
+document.getElementById('vol').addEventListener('input',e=>{
+  const v=+e.target.value; if(master) master.gain.value=v;
+  document.getElementById('vol-v').textContent=Math.round(v*100)+'%';
+});
+
+// ── scope ───────────────────────────────────────────────
+function startScope(){
+  const cv=document.getElementById('scope'), cx=cv.getContext('2d');
+  const buf=new Float32Array(analyser.fftSize);
+  const resize=()=>{ cv.width=cv.clientWidth*devicePixelRatio; cv.height=cv.clientHeight*devicePixelRatio; };
+  resize(); new ResizeObserver(resize).observe(cv);
+  (function draw(){
+    requestAnimationFrame(draw);
+    analyser.getFloatTimeDomainData(buf);
+    const W=cv.width,H=cv.height;
+    cx.fillStyle='#111820'; cx.fillRect(0,0,W,H);
+    cx.strokeStyle='rgba(0,229,204,0.12)'; cx.lineWidth=1;
+    cx.beginPath(); cx.moveTo(0,H/2); cx.lineTo(W,H/2); cx.stroke();
+    cx.strokeStyle='#00e5cc'; cx.lineWidth=1.5*devicePixelRatio; cx.lineJoin='round';
+    cx.beginPath();
+    buf.forEach((v,i)=>{ const x=i/buf.length*W, y=(0.5-v*0.46)*H; i?cx.lineTo(x,y):cx.moveTo(x,y); });
+    cx.stroke();
+  })();
+}
+
+// ── unlock ──────────────────────────────────────────────
+function unlock(){
+  if(ctx){ ctx.resume(); return; }
+  initAudio();
+  document.getElementById('unlock').classList.add('hidden');
+}
+document.body.addEventListener('touchstart',unlock,{passive:true});
+document.body.addEventListener('pointerdown',unlock,{once:false});
+
+// init UI to default preset
+buildParams();
+buildGrid();
+selectPreset('ninBass');
+document.getElementById('vol-v').textContent='60%';
+</script>
+
+</body>
+</html>
