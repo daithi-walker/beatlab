@@ -12,6 +12,43 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
 
 ## [Unreleased]
 
+### Added — Synth (rich synthesis, no samples)
+- **Shared voice engine** (`core/voice.js`) — a single pure-synthesis voice:
+  unison stack of detuned oscillators + optional sub-octave sine → waveshaper
+  drive → resonant lowpass with its own envelope → amp envelope. This is the
+  thickness a single oscillator lacks; it escapes the old "8-bit" timbre with
+  zero samples. Node teardown on note end prevents the render-load creep that
+  used to make the sound drop out. Both the Synth and the Voice Lab import it.
+- **Synth voice controls** — new Oscillator panel (unison, detune, sub, drive)
+  and per-voice filter (cutoff, filter-envelope amount). The XY pad and effect
+  sends remain global on top. Defaults (unison 1, open filter) preserve the
+  classic single-oscillator tone.
+- **Preset picker + patch bank in the Synth** — the Voice/Preset panel's
+  dropdown loads factory presets (Init, NIN Bass, Industrial Lead, Supersaw Pad)
+  and, under "Your patches", anything you've saved. A Save-as field + SAVE/DEL
+  buttons let you save and remove patches right from the Synth; the bank is
+  shared with the Voice Lab, so patches saved in either show up in both.
+- **Save patches in the Voice Lab** — dial a sound in, name it, save it. Patches
+  persist to shared `localStorage` (`beatlab:voice:<name>`) so they appear in the
+  Synth's preset picker automatically. A "Voice Lab ↗" link in the Synth opens
+  the bench; the lab is intentionally not on the home grid or app-nav.
+- **Live voice controls on held notes** — waveform, detune, drive, cutoff (and
+  resonance/spread) now update a note that's already sounding, so sweeping a
+  slider while holding a key is audible immediately. Structural knobs (unison,
+  sub) and envelopes (ADSR, filter-envelope amount) still apply from the next
+  note, as on hardware synths. `handle.update()` in `core/voice.js`.
+- **Voice Lab randomiser** — a 🎲 RANDOM button rolls a fresh, playable patch
+  (log-uniform frequencies/times, weighted wave/unison picks so results stay
+  musical), auditions it, and makes it the new RESET baseline. `randomPatch()`
+  in `core/voice.js`, so the Synth can adopt it later too.
+- **Voice Lab sequencer** — the fixed demo riff is now an editable, scale-
+  constrained melodic step sequencer with editable kick/hat lanes. Pick root,
+  scale, octave, step count (8/16) and gate length; a playhead tracks the loop.
+  A 🎲 RANDOM button rolls a musical pattern (beat-biased notes, anchored kick,
+  offbeat hats) using the current scale and range.
+  Purpose-built and lightweight (drives the shared engine directly) rather than
+  embedding the Drums app, which is percussion-specific and share-link encoded.
+
 ---
 
 ## [0.4.0] — 2026-06-16

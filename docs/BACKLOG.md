@@ -125,6 +125,36 @@ Tab viewer (`tab.html`) is a proof-of-concept using AlphaTab. See
 
 ---
 
+## Sound realism (Path B — rich synthesis, no samples)
+
+Decision (2026-08-06): the sister prototype `~/git/strudel-ui` (Strudel engine +
+GM soundfonts + samples + Python/SSE server) stays a **standalone rig** — it is
+architecturally opposed to beatlab (server, CDN deps, samples, desktop). The
+"sounds like 80s computer games" problem was a *thin single oscillator*, not Web
+Audio itself. beatlab pursues the durable fix: **rich pure-synthesis voices**,
+keeping single-file / no-samples / mobile intact.
+
+- **[Synth] Voice-quality spike** ✅ — `synth/voice-lab.html`. A/B's the thin
+  single-osc voice against a rich voice (supersaw unison + sub + waveshaper drive
+  + filter envelope + convolution reverb) over a NIN-style riff. Presets: Thin,
+  NIN Bass, Industrial Lead, Supersaw Pad. Proves the timbre bar without samples.
+- **[Synth] Promote rich voice into the main synth** ✅ — engine extracted to
+  `core/voice.js` (shared by lab + synth). `synth/index.html` now plays the
+  unison/sub/drive/filter-env voice via `noteOn`/`release` handles (mono glide +
+  restrike preserved). Added Oscillator + per-voice filter controls and a preset
+  picker (factory + user patches). Voice Lab has Save; patches persist to
+  `beatlab:voice:<name>` and appear in the synth picker.
+- **[Synth] Patch export/import (portability)** — the shared bank is same-origin
+  localStorage only. Add copy/paste-JSON (and maybe a share-link) so patches move
+  between devices/browsers, matching Drums share links.
+- **[Synth] Expose more voice knobs / macro map** — spread, per-voice Q, filter
+  ADSR are engine params but not yet on the synth UI (lab has all of them). Decide
+  which to surface vs keep preset-only.
+- **[Synth] Industrial perc voices** — noise+filter-env metallic hits already
+  sketched in the lab; generalise as a kit for Drums/Multibank.
+
+---
+
 ## Platform & Infrastructure
 
 - **Intro / onboarding** — a first-launch explainer for each app. Requested by
