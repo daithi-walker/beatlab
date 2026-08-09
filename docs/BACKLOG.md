@@ -12,7 +12,8 @@ Items within each section are roughly priority-ordered (top = do soonest).
 
 - **[Platform] WAV export** — render current pattern to a downloadable WAV via
   `OfflineAudioContext`. No dependencies. ~1–2 days. Do this first; it unlocks
-  everything below.
+  everything below. Voice Lab ships loop→WAV (`renderWav`/`audioBufferToWav` in
+  `synth/voice-lab.html`); still to do: wire the same into Drums/Multibank.
 - **[Platform] MIDI export** — export step patterns as a `.mid` file for DAW
   import (Ableton, Logic, GarageBand). Drums use channel 10 + GM note mapping
   (kick=36, snare=38, etc.). BPM-agnostic; preserves timing and velocity.
@@ -144,9 +145,9 @@ keeping single-file / no-samples / mobile intact.
   restrike preserved). Added Oscillator + per-voice filter controls and a preset
   picker (factory + user patches). Voice Lab has Save; patches persist to
   `beatlab:voice:<name>` and appear in the synth picker.
-- **[Synth] Patch export/import (portability)** — the shared bank is same-origin
-  localStorage only. Add copy/paste-JSON (and maybe a share-link) so patches move
-  between devices/browsers, matching Drums share links.
+- **[Synth] Patch export/import (portability)** ✅ — COPY/PASTE JSON in both the
+  Synth and Voice Lab (`patchToJSON`/`patchFromJSON` in `core/voice.js`). A
+  share-link form (like Drums) is still open as a follow-up.
 - **[Synth] Expose more voice knobs / macro map** — spread, per-voice Q, filter
   ADSR are engine params but not yet on the synth UI (lab has all of them). Decide
   which to surface vs keep preset-only.
