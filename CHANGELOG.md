@@ -12,6 +12,17 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
 
 ## [Unreleased]
 
+### Added — Export (Drums & Multibank)
+- **WAV / MIDI / stem export** — both the Drums and Multibank sequencers now have
+  an Export dropdown in the topbar. WAV renders the full pattern (Drums renders a
+  complete polymeter cycle — the LCM of track lengths — capped) through an
+  `OfflineAudioContext` that mirrors the live graph exactly, so the file sounds
+  like what you hear. MIDI writes a Standard MIDI File (Drums: GM percussion on
+  channel 10, step probability → velocity; Multibank: drums on channel 10, each
+  melodic panel on its own channel with its note). Stems render each track/panel
+  in isolation and bundle them as a ZIP. All pure Web Audio + hand-written byte
+  encoders in the new shared `core/export.js` — no libraries, no samples.
+
 ### Added — Voice Lab
 - **WAV export** — the transport's ⬇ WAV button renders the current loop (two
   passes plus a reverb tail) to a 16-bit stereo WAV and downloads it. Uses an

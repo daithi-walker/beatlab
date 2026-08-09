@@ -10,21 +10,23 @@ Items within each section are roughly priority-ordered (top = do soonest).
 
 ## Export
 
-- **[Platform] WAV export** — render current pattern to a downloadable WAV via
-  `OfflineAudioContext`. No dependencies. ~1–2 days. Do this first; it unlocks
-  everything below. Voice Lab ships loop→WAV (`renderWav`/`audioBufferToWav` in
-  `synth/voice-lab.html`); still to do: wire the same into Drums/Multibank.
-- **[Platform] MIDI export** — export step patterns as a `.mid` file for DAW
+- **[Platform] WAV export** ✅ — render current pattern to a downloadable WAV via
+  `OfflineAudioContext`. Shipped in Voice Lab, Drums, and Multibank via shared
+  `core/export.js` (`audioBufferToWav`, `renderOffline`). No dependencies.
+- **[Platform] MIDI export** ✅ — export step patterns as a `.mid` file for DAW
   import (Ableton, Logic, GarageBand). Drums use channel 10 + GM note mapping
-  (kick=36, snare=38, etc.). BPM-agnostic; preserves timing and velocity.
-  ~1–2 days. The "mixing format" users will ask for. Voice Lab ships this
-  (`seqToMidi` in `synth/voice-lab.html`); still to do: wire into Drums/Multibank.
+  (kick=36, snare=38, etc.); Multibank drums on ch 10, melodic panels per-channel.
+  BPM-agnostic; preserves timing and velocity (`notesToMidi` in `core/export.js`).
+  Shipped in Voice Lab, Drums, and Multibank.
+- **[Platform] Stem export** ✅ — render each track independently
+  (`OfflineAudioContext` per track), bundle as a ZIP. No `JSZip` needed — a
+  hand-rolled stored-ZIP writer (`makeZip` in `core/export.js`). Shipped in Drums
+  and Multibank.
 - **[Platform] MP3/AAC export** — encode the WAV buffer client-side.
   WebCodecs API for AAC (patchy browser support); `lamejs` WASM for MP3
-  (reliable, ~200 KB bundle). Requires WAV export first. ~2–4 days.
-- **[Platform] Stem export** — render each track independently (mute all
-  others, run OfflineAudioContext N times), bundle as a ZIP via `JSZip`.
-  ~3–5 days.
+  (reliable, ~200 KB bundle). Requires WAV export first (done). ~2–4 days.
+  **NOTE:** MP3 needs an external dep (`lamejs`), which CLAUDE.md says must be
+  discussed before adding. Open decision — see the "One HTML file per app" rule.
 
 ---
 
