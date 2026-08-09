@@ -115,6 +115,15 @@ export function loadPatch(name)         { const p = loadPattern(BANK_APP, name);
 export function listPatches()           { return listPatterns(BANK_APP); }
 export function deletePatch(name)        { deletePattern(BANK_APP, name); }
 
+// ── portability: patch ⇄ JSON ────────────────────────────────────────────────
+// The bank lives in same-origin localStorage, so it can't cross devices or
+// browsers. JSON lets a patch travel by copy/paste (or a future share link).
+export function patchToJSON(patch)      { return JSON.stringify(normPatch(patch), null, 2); }
+export function patchFromJSON(str) {
+  let o; try { o = JSON.parse(str); } catch (e) { return null; }
+  return (o && typeof o === 'object' && !Array.isArray(o)) ? normPatch(o) : null;
+}
+
 // ── the engine ───────────────────────────────────────────────────────────────
 // createVoiceEngine(ctx, { output, reverb })
 //   output — the node all dry voice audio connects to (e.g. a filter or bus)

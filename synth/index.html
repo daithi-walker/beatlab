@@ -451,6 +451,11 @@ body {
           <button id="save-patch" title="Save the current voice as a patch">SAVE</button>
           <button id="del-patch" title="Delete the selected saved patch">DEL</button>
         </div>
+        <div class="patchbar">
+          <button id="rand-patch" title="Roll a fresh random voice">🎲 RAND</button>
+          <button id="copy-patch" title="Copy this patch as JSON (portable)">COPY</button>
+          <button id="paste-patch" title="Load a patch from pasted JSON">PASTE</button>
+        </div>
         <div class="srow"><label>CUT</label><input type="range" id="o-cut" min="60" max="8000" step="10" value="8000"><span class="v" id="o-cut-v">8.0k</span></div>
         <div class="srow"><label>FENV</label><input type="range" id="o-fenv" min="0" max="6000" step="10" value="0"><span class="v" id="o-fenv-v">0</span></div>
         <a class="lab-link" href="voice-lab.html">◆ Voice Lab ↗</a>
@@ -498,8 +503,8 @@ A S D F G H J K L ;</pre>
 import { CHROMATIC, noteToFreq, makeImpulse, distCurve } from '../core/audio.js';
 import { initTopnav } from '../core/topnav.js';
 import { getVolume, setVolume } from '../core/storage.js';
-import { createVoiceEngine, FACTORY_PRESETS, FACTORY_PRESET_LIST, normPatch,
-         savePatch, loadPatch, listPatches, deletePatch } from '../core/voice.js';
+import { createVoiceEngine, FACTORY_PRESETS, FACTORY_PRESET_LIST, normPatch, randomPatch,
+         savePatch, loadPatch, listPatches, deletePatch, patchToJSON, patchFromJSON } from '../core/voice.js';
 initTopnav({ current: 'synth', root: '../', label: 'Synth' });
 
 // ── constants ──────────────────────────────────────────
@@ -1291,6 +1296,25 @@ document.getElementById('del-patch').addEventListener('click',()=>{
   if(!val.startsWith('u:')) return;
   deletePatch(val.slice(2));
   refreshPresetPicker('f:init');
+});
+// Briefly swap a button's label to give tactile feedback (copy/paste result).
+function flashBtn(btn,msg='✓'){ const t=btn.textContent; btn.textContent=msg; setTimeout(()=>{ btn.textContent=t; },900); }
+// Roll a fresh random voice and audition it (updates held notes live too).
+document.getElementById('rand-patch').addEventListener('click',()=>{ unlock(); applyPatch(randomPatch()); });
+// Copy the current patch as JSON so it can travel to another device/browser.
+document.getElementById('copy-patch').addEventListener('click',()=>{
+  const json=patchToJSON(currentPatch()), btn=document.getElementById('copy-patch');
+  if(navigator.clipboard && navigator.clipboard.writeText)
+    navigator.clipboard.writeText(json).then(()=>flashBtn(btn)).catch(()=>prompt('Copy this patch:',json));
+  else prompt('Copy this patch:',json);
+});
+// Load a patch from pasted JSON. prompt() is reliable across mobile browsers,
+// unlike the clipboard read API which iOS Safari gates behind a permission.
+document.getElementById('paste-patch').addEventListener('click',()=>{
+  unlock();
+  const s=prompt('Paste patch JSON:'); if(!s) return;
+  const p=patchFromJSON(s);
+  if(p) applyPatch(p); else flashBtn(document.getElementById('paste-patch'),'✗');
 });
 refreshPresetPicker('f:init');
 

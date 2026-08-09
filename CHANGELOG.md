@@ -12,6 +12,16 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
 
 ## [Unreleased]
 
+### Added — Synth
+- **🎲 RANDOM in the Synth** — the voice panel now rolls a fresh playable patch
+  in one tap (same `randomPatch()` the Voice Lab uses), auditioning it on any
+  held notes.
+- **Portable patches (copy/paste JSON)** — COPY puts the current patch on the
+  clipboard as JSON; PASTE loads one from pasted JSON. Patches now move between
+  devices and browsers, not just within one origin's `localStorage`. Available
+  in both the Synth and the Voice Lab. `patchToJSON()` / `patchFromJSON()` in
+  `core/voice.js`.
+
 ## [0.5.0] - 2026-08-09
 
 ### Added — Synth (rich synthesis, no samples)
