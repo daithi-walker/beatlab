@@ -164,6 +164,7 @@ a.back:hover { color:var(--teal); }
     <button class="big-btn" id="play">▶ PLAY</button>
     <button class="big-btn ab-btn" id="ab">A/B → THIN</button>
     <button class="big-btn" id="export-wav" title="Render the loop to a WAV file">⬇ WAV</button>
+    <button class="big-btn" id="export-mid" title="Export the loop as a MIDI file">⬇ MIDI</button>
     <div class="mini"><label>BPM</label><input type="range" id="bpm" min="80" max="180" step="1" value="120"><span class="val" id="bpm-v">120</span></div>
     <div class="mini"><label>VOL</label><input type="range" id="vol" min="0" max="1" step="0.01" value="0.6"><span class="val" id="vol-v">60%</span></div>
   </div>
@@ -529,24 +530,61 @@ function audioBufferToWav(buf){
   }
   return new Blob([ab], {type:'audio/wav'});
 }
+function downloadBlob(blob, name){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1000);
+}
+function fileTag(){ return (presetName||'patch').replace(/[^a-z0-9]+/gi,'-').toLowerCase(); }
 document.getElementById('export-wav').addEventListener('click',async()=>{
   unlock();
   const btn=document.getElementById('export-wav'), label=btn.textContent;
   btn.disabled=true; btn.textContent='… RENDERING';
   try{
     const rendered=await renderWav(2);
-    const blob=audioBufferToWav(rendered);
-    const tag=(presetName||'patch').replace(/[^a-z0-9]+/gi,'-').toLowerCase();
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url; a.download=`beatlab-voice-${tag}-${bpm}bpm.wav`;
-    document.body.appendChild(a); a.click();
-    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1000);
+    downloadBlob(audioBufferToWav(rendered), `beatlab-voice-${fileTag()}-${bpm}bpm.wav`);
     btn.textContent='⬇ SAVED ✓';
   }catch(e){
     console.error(e); btn.textContent='⬇ FAILED';
   }
   setTimeout(()=>{ btn.textContent=label; btn.disabled=false; }, 1200);
+});
+
+// ── MIDI export ─────────────────────────────────────────
+// Write the current loop as a Standard MIDI File (format 0): melody on ch 1,
+// drums on GM ch 10 (kick 36, closed hat 42). Pure byte-writing, no libraries.
+function seqToMidi(){
+  const TPQ=480, stepTicks=TPQ/4;                         // 16th-note grid
+  const usPerQ=Math.round(60000000/bpm);
+  const noteNum=n=>{ const m=n && n.match(/^([A-G]#?)(-?\d+)$/); return m ? noteToMidi(m[1],+m[2]) : null; };
+  const gateTicks=Math.max(1, Math.round(gate*stepTicks));
+  const ev=[];
+  for(let i=0;i<SEQLEN;i++){
+    const t=i*stepTicks, m=noteNum(mel[i]);
+    if(m!=null){ ev.push({t,on:1,ch:0,note:m,vel:100}); ev.push({t:t+gateTicks,on:0,ch:0,note:m,vel:0}); }
+    if(kick[i]){ ev.push({t,on:1,ch:9,note:36,vel:112}); ev.push({t:t+Math.round(stepTicks*0.9),on:0,ch:9,note:36,vel:0}); }
+    if(hat[i]){  ev.push({t,on:1,ch:9,note:42,vel:80});  ev.push({t:t+Math.round(stepTicks*0.5),on:0,ch:9,note:42,vel:0}); }
+  }
+  ev.sort((a,b)=> a.t-b.t || a.on-b.on);                  // note-offs before note-ons at the same tick
+  const vlq=v=>{ const b=[v&0x7f]; v>>=7; while(v>0){ b.unshift((v&0x7f)|0x80); v>>=7; } return b; };
+  const trk=[0x00,0xFF,0x51,0x03,(usPerQ>>16)&0xff,(usPerQ>>8)&0xff,usPerQ&0xff];  // tempo
+  let last=0;
+  for(const e of ev){ trk.push(...vlq(e.t-last)); last=e.t; trk.push((e.on?0x90:0x80)|e.ch, e.note, e.vel); }
+  const endT=Math.max(SEQLEN*stepTicks, last);
+  trk.push(...vlq(endT-last), 0xFF,0x2F,0x00);            // end of track
+  const L=trk.length;
+  const head=[0x4d,0x54,0x68,0x64, 0,0,0,6, 0,0, 0,1, (TPQ>>8)&0xff,TPQ&0xff];     // MThd, fmt 0, 1 trk
+  const thd =[0x4d,0x54,0x72,0x6b, (L>>24)&0xff,(L>>16)&0xff,(L>>8)&0xff,L&0xff];  // MTrk + length
+  return new Uint8Array([...head,...thd,...trk]);
+}
+document.getElementById('export-mid').addEventListener('click',()=>{
+  const btn=document.getElementById('export-mid'), label=btn.textContent;
+  try{
+    downloadBlob(new Blob([seqToMidi()], {type:'audio/midi'}), `beatlab-voice-${fileTag()}-${bpm}bpm.mid`);
+    btn.textContent='⬇ SAVED ✓';
+  }catch(e){ console.error(e); btn.textContent='⬇ FAILED'; }
+  setTimeout(()=>{ btn.textContent=label; }, 1200);
 });
 
 // ── sequencer controls ──────────────────────────────────

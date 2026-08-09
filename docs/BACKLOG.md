@@ -17,7 +17,8 @@ Items within each section are roughly priority-ordered (top = do soonest).
 - **[Platform] MIDI export** — export step patterns as a `.mid` file for DAW
   import (Ableton, Logic, GarageBand). Drums use channel 10 + GM note mapping
   (kick=36, snare=38, etc.). BPM-agnostic; preserves timing and velocity.
-  ~1–2 days. The "mixing format" users will ask for.
+  ~1–2 days. The "mixing format" users will ask for. Voice Lab ships this
+  (`seqToMidi` in `synth/voice-lab.html`); still to do: wire into Drums/Multibank.
 - **[Platform] MP3/AAC export** — encode the WAV buffer client-side.
   WebCodecs API for AAC (patchy browser support); `lamejs` WASM for MP3
   (reliable, ~200 KB bundle). Requires WAV export first. ~2–4 days.

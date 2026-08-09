@@ -16,8 +16,10 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
 - **WAV export** — the transport's ⬇ WAV button renders the current loop (two
   passes plus a reverb tail) to a 16-bit stereo WAV and downloads it. Uses an
   `OfflineAudioContext` mirroring the live graph (voice engine, convolution
-  reverb, synth drums); pure Web Audio, no libraries or samples. First step
-  toward the platform's MP3/MIDI/stem export roadmap.
+  reverb, synth drums); pure Web Audio, no libraries or samples.
+- **MIDI export** — the ⬇ MIDI button writes the loop as a Standard MIDI File
+  (format 0): melody on channel 1, drums on GM channel 10 (kick 36, hat 42),
+  tempo baked in. Pure byte-writing, no libraries. Drop it straight into a DAW.
 
 ### Added — Synth
 - **🎲 RANDOM in the Synth** — the voice panel now rolls a fresh playable patch
