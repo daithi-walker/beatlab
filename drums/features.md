@@ -48,6 +48,14 @@
 - **BPM** — slider + number input in Timing dropdown; bidirectional sync
 - **Master volume** — slider, defaults to 50%; persists across refresh and is shared across all BeatLab apps via `beatlab:settings:volume`
 - **Reset** — restores steps, mutes, per-track lengths, time signature, and BPM to defaults
+- **Export** — topbar Export dropdown with WAV, MP3, MIDI, and Stems (ZIP), all
+  via shared `core/export.js`. `renderDrums()` renders offline through an
+  `OfflineAudioContext` mirroring the live graph, reusing the exact voice
+  synthesis via a module-global swap (restored before `startRendering()`); it
+  renders a full polymeter cycle (LCM of track lengths, capped at 256 steps) x2.
+  MIDI uses GM percussion on channel 10 with step probability → velocity. Stems
+  render each non-empty track in isolation. MP3 uses vendored `lamejs` (the only
+  dependency; see `docs/adr-008-lamejs-mp3.md`). WAV/MIDI/stems are dependency-free.
 - **Lookahead scheduler** — 25ms tick, 100ms lookahead; audio-clock locked
 - **View mode persistence** — last view (Sequencer / Pads) restored on page refresh; first visit defaults to Pads on mobile, Sequencer on desktop (`pointer: fine`)
 - **Spacebar** play/stop
