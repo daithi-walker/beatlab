@@ -71,10 +71,13 @@ code sketches, and implementation order. All four phases live in `drums/index.ht
   drift from different starting points rather than all hitting simultaneously on
   the downbeat. Simple to implement: initialise `trackPos` to the offset value
   instead of 0 when playback starts.
-- **Swing** — offset even 16th notes by a percentage (0–100%). Single
-  `swingAmount` param in `scheduleStep()`. Makes patterns feel human and loose.
-- **Per-step velocity** — each step fires at a set volume (ghost notes, accents).
-  Encode as a third state alongside `on` and `prob`.
+- **Swing** ✅ — Swing slider (0–60%) in the Timing dropdown delays every odd
+  16th in `tick()`. Applies to offline export; persists in patterns and share
+  links (v2 encoding).
+- **Per-step velocity** ✅ — each step fires at a set volume (ghost notes, accents).
+  Shipped: step inspector (right-click / long-press) with Ghost/Soft/Full/Accent
+  levels alongside probability; share encoding v3 carries `vel` per step. Applies
+  to live playback, WAV/MP3, and MIDI export.
 - **Overdub** — record additional pad taps on top of an existing take without
   clearing it first.
 - **Take playback in Pads** — replay a saved take so pad animations play back

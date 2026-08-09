@@ -13,6 +13,13 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
 ## [Unreleased]
 
 ### Added — Drums
+- **Per-step velocity** — right-click or long-press an active step to open a step
+  inspector with Velocity (Ghost / Soft / Full / Accent) and Probability chips.
+  Velocity scales the hit's level (and reverb send) and drives cell brightness;
+  it applies to live playback, WAV/MP3 export, and MIDI export (per-step velocity
+  → MIDI velocity). Share encoding bumped to v3: each step now carries velocity
+  and records probability losslessly (v1/v2 collapsed 25%→50%). Old links still
+  open and play at full velocity.
 - **Swing** — a Swing slider (0–60%) in the Timing dropdown delays every odd 16th
   note, stretching the groove from straight toward a triplet feel. Applies to
   live playback and to WAV/MP3 export. Persists in saved patterns and share links

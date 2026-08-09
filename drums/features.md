@@ -38,7 +38,10 @@
 - **Cross-track drag** in sequencer — paint or erase steps across all tracks in any direction; single container listener with setPointerCapture
 - **Time signature** — 1–32 beats/bar; changes step count live, rebuilds grid
 - **Per-track step length (polymeter)** — each track loops independently; tracks drift in and out of phase automatically
-- **Step probability** — right-click (or long-press) an active step to cycle fire chance: 100% → 75% → 50% → 25%
+- **Step inspector (velocity + probability)** — right-click (or long-press) an active step to open a small popover with two chip rows:
+  - **Velocity** — Ghost (40) / Soft (70) / Full (100, default) / Accent (130). Scales the hit's dry level and reverb send by swapping `masterGain`/`reverbConvolver` for per-hit gain nodes inside `voice()`. Cells dim for ghost/soft and glow for accent (`data-vel` → CSS). Applies to live playback and offline export; per-step velocity → MIDI velocity on export.
+  - **Probability** — fire chance 100% / 75% / 50% / 25% (25% is now lossless in share links; see v3 encoding)
+  - Touch: quick tap toggles a step off, drag erases, long-press (400ms) opens the inspector
 - **Euclidean rhythm generator** — per-track "E" button; Bjorklund algorithm; grey zone past `trackLen` shows repeating pattern (read-only). Classic patterns: E(3,8) = son clave, E(5,8) = bossa nova, E(7,12) = cascara
 - **Kit dropdown** — active kit highlighted; visible in Sequencer and Pads modes; selection persists across page refresh
 - **Patterns dropdown** — built-in presets + user-saved patterns + saved takes
@@ -54,7 +57,7 @@
   `OfflineAudioContext` mirroring the live graph, reusing the exact voice
   synthesis via a module-global swap (restored before `startRendering()`); it
   renders a full polymeter cycle (LCM of track lengths, capped at 256 steps) x2.
-  MIDI uses GM percussion on channel 10 with step probability → velocity. Stems
+  MIDI uses GM percussion on channel 10 with per-step velocity → MIDI velocity. Stems
   render each non-empty track in isolation. MP3 uses vendored `lamejs` (the only
   dependency; see `docs/adr-008-lamejs-mp3.md`). WAV/MIDI/stems are dependency-free.
 - **Lookahead scheduler** — 25ms tick, 100ms lookahead; audio-clock locked
