@@ -22,11 +22,13 @@ Items within each section are roughly priority-ordered (top = do soonest).
   (`OfflineAudioContext` per track), bundle as a ZIP. No `JSZip` needed — a
   hand-rolled stored-ZIP writer (`makeZip` in `core/export.js`). Shipped in Drums
   and Multibank.
-- **[Platform] MP3/AAC export** — encode the WAV buffer client-side.
-  WebCodecs API for AAC (patchy browser support); `lamejs` WASM for MP3
-  (reliable, ~200 KB bundle). Requires WAV export first (done). ~2–4 days.
-  **NOTE:** MP3 needs an external dep (`lamejs`), which CLAUDE.md says must be
-  discussed before adding. Open decision — see the "One HTML file per app" rule.
+- **[Platform] MP3 export** ✅ — Drums and Multibank export MP3 via vendored
+  `lamejs` (pure JS, no WASM, iOS-safe) in `core/vendor/lamejs.min.js`.
+  `audioBufferToMp3()` in `core/export.js`. Approved as a scoped external-dep
+  exception — see `docs/adr-008-lamejs-mp3.md`.
+- **[Platform] AAC export** — dependency-free AAC via the WebCodecs
+  `AudioEncoder` is still open; deferred because support is unreliable on
+  iOS/Safari (a first-class target). Revisit when WebCodecs AAC is dependable.
 
 ---
 

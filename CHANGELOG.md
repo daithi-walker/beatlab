@@ -20,8 +20,12 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
   like what you hear. MIDI writes a Standard MIDI File (Drums: GM percussion on
   channel 10, step probability → velocity; Multibank: drums on channel 10, each
   melodic panel on its own channel with its note). Stems render each track/panel
-  in isolation and bundle them as a ZIP. All pure Web Audio + hand-written byte
-  encoders in the new shared `core/export.js` — no libraries, no samples.
+  in isolation and bundle them as a ZIP. WAV/MIDI/stem are all pure Web Audio +
+  hand-written byte encoders in the new shared `core/export.js` — no libraries.
+- **MP3 export** — Drums and Multibank can also export MP3. This is the one
+  export path with a dependency: `lamejs` (pure JS, no WASM, works on iOS),
+  vendored at `core/vendor/lamejs.min.js` and approved as a scoped exception to
+  the no-external-deps rule. See `docs/adr-008-lamejs-mp3.md`.
 
 ### Added — Voice Lab
 - **WAV export** — the transport's ⬇ WAV button renders the current loop (two

@@ -79,6 +79,37 @@ export function notesToMidi(notes, { bpm = 120, ppq = 480, endBeats = null } = {
 
 export function midiBlob(notes, opts) { return new Blob([notesToMidi(notes, opts)], { type: 'audio/midi' }); }
 
+// ── MP3 (via vendored lamejs) ───────────────────────────────────────────────
+// This is the ONE export path with an external dependency. lamejs is pure JS
+// (no WASM, works on iOS) and is loaded as a classic <script> before the module
+// that calls this, exposing window.lamejs. See docs/adr-008-lamejs-mp3.md.
+// Apps that don't load lamejs simply never call this. Encodes up to 2 channels.
+export function audioBufferToMp3(buf, kbps = 192) {
+  const lame = (typeof window !== 'undefined') && window.lamejs;
+  if (!lame || !lame.Mp3Encoder) throw new Error('lamejs not loaded — cannot encode MP3');
+  const nc = Math.min(2, buf.numberOfChannels), sr = buf.sampleRate;
+  const enc = new lame.Mp3Encoder(nc, sr, kbps);
+  const toI16 = (f32) => {
+    const out = new Int16Array(f32.length);
+    for (let i = 0; i < f32.length; i++) {
+      const s = Math.max(-1, Math.min(1, f32[i]));
+      out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    }
+    return out;
+  };
+  const left = toI16(buf.getChannelData(0));
+  const right = nc > 1 ? toI16(buf.getChannelData(1)) : null;
+  const BLOCK = 1152, parts = [];
+  for (let i = 0; i < left.length; i += BLOCK) {
+    const l = left.subarray(i, i + BLOCK);
+    const chunk = right ? enc.encodeBuffer(l, right.subarray(i, i + BLOCK)) : enc.encodeBuffer(l);
+    if (chunk.length) parts.push(chunk);
+  }
+  const tail = enc.flush();
+  if (tail.length) parts.push(tail);
+  return new Blob(parts, { type: 'audio/mpeg' });
+}
+
 // ── ZIP (stored / no compression) ─────────────────────────────────────────────
 // files: [{ name, data:Uint8Array }]. Stored entries mean no compressor is
 // needed — audio (WAV) barely compresses anyway, so this costs almost nothing.

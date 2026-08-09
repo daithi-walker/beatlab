@@ -666,10 +666,12 @@
   </div>
 </div>
 
+<!-- lamejs (vendored, pure JS) — MP3 export only. See docs/adr-008-lamejs-mp3.md -->
+<script src="../core/vendor/lamejs.min.js"></script>
 <script type="module">
 import { makeImpulse, makePinkNoise, makeWhiteNoise } from '../core/audio.js';
 import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVolume } from '../core/storage.js';
-import { audioBufferToWav, notesToMidi, makeZip, downloadBlob, safeName, renderOffline } from '../core/export.js';
+import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob, safeName, renderOffline } from '../core/export.js';
 
 (() => {
   'use strict';
@@ -2559,6 +2561,13 @@ import { audioBufferToWav, notesToMidi, makeZip, downloadBlob, safeName, renderO
     });
   });
 
+  document.getElementById('export-mp3-btn').addEventListener('click', (e) => {
+    withBtnBusy(e.currentTarget, 'Encoding…', async () => {
+      const buf = await renderDrums(2);
+      downloadBlob(audioBufferToMp3(buf), exportTag() + '.mp3');
+    });
+  });
+
   document.getElementById('export-mid-btn').addEventListener('click', (e) => {
     withBtnBusy(e.currentTarget, 'Writing…', async () => {
       const bytes = drumsToMidi(1);
@@ -2682,6 +2691,7 @@ import { audioBufferToWav, notesToMidi, makeZip, downloadBlob, safeName, renderO
 <div class="tb-drop-menu" id="kit-menu"></div>
 <div class="tb-drop-menu" id="export-menu">
   <button class="tb-drop-item" id="export-wav-btn">⬇ WAV audio</button>
+  <button class="tb-drop-item" id="export-mp3-btn">⬇ MP3 audio</button>
   <button class="tb-drop-item" id="export-mid-btn">⬇ MIDI file</button>
   <button class="tb-drop-item" id="export-stems-btn">⬇ Stems (ZIP)</button>
 </div>

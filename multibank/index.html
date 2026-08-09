@@ -403,6 +403,7 @@
 <!-- Export dropdown -->
 <div id="export-menu" class="tb-drop-menu">
   <button class="tb-drop-item" id="export-wav-btn">⬇ WAV audio</button>
+  <button class="tb-drop-item" id="export-mp3-btn">⬇ MP3 audio</button>
   <button class="tb-drop-item" id="export-mid-btn">⬇ MIDI file</button>
   <button class="tb-drop-item" id="export-stems-btn">⬇ Stems (ZIP)</button>
 </div>
@@ -430,10 +431,12 @@
 <div id="beat-row" aria-hidden="true"></div>
 <div id="audio-banner">tap anywhere to enable audio</div>
 
+<!-- lamejs (vendored, pure JS) — MP3 export only. See docs/adr-008-lamejs-mp3.md -->
+<script src="../core/vendor/lamejs.min.js"></script>
 <script type="module">
 import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNoise, distCurve as makeDistortionCurve } from '../core/audio.js';
 import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVolume } from '../core/storage.js';
-import { audioBufferToWav, notesToMidi, makeZip, downloadBlob, safeName, renderOffline } from '../core/export.js';
+import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob, safeName, renderOffline } from '../core/export.js';
 import { initTopnav } from '../core/topnav.js';
 initTopnav({ current: 'multibank', root: '../', label: 'Multibank' });
 
@@ -1638,6 +1641,13 @@ initTopnav({ current: 'multibank', root: '../', label: 'Multibank' });
     withBtnBusy(e.currentTarget, 'Rendering…', async () => {
       const buf = await renderMulti(2);
       if (buf) downloadBlob(audioBufferToWav(buf), exportTag() + '.wav');
+    });
+  });
+
+  document.getElementById('export-mp3-btn').addEventListener('click', e => {
+    withBtnBusy(e.currentTarget, 'Encoding…', async () => {
+      const buf = await renderMulti(2);
+      if (buf) downloadBlob(audioBufferToMp3(buf), exportTag() + '.mp3');
     });
   });
 
