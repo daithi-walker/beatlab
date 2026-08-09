@@ -261,6 +261,7 @@ a.back:hover { color:var(--teal); }
 import { noteToFreq, noteStringToFreq, makeImpulse, makeWhiteNoise, distCurve } from '../core/audio.js';
 import { createVoiceEngine, FACTORY_PRESETS, FACTORY_PRESET_LIST, normPatch, randomPatch,
          savePatch, loadPatch, listPatches, deletePatch, patchToJSON, patchFromJSON } from '../core/voice.js';
+import { audioBufferToWav, notesToMidi, downloadBlob, safeName } from '../core/export.js';
 
 // ── audio graph ─────────────────────────────────────────
 // The voice engine (core/voice.js) owns note synthesis; the lab only wires the
@@ -512,31 +513,7 @@ async function renderWav(loops=2){
   }
   return octx.startRendering();
 }
-function audioBufferToWav(buf){
-  const nc=buf.numberOfChannels, sr=buf.sampleRate, len=buf.length;
-  const blockAlign=nc*2, dataLen=len*blockAlign;
-  const ab=new ArrayBuffer(44+dataLen), view=new DataView(ab);
-  const ws=(off,s)=>{ for(let i=0;i<s.length;i++) view.setUint8(off+i, s.charCodeAt(i)); };
-  ws(0,'RIFF'); view.setUint32(4, 36+dataLen, true); ws(8,'WAVE');
-  ws(12,'fmt '); view.setUint32(16,16,true); view.setUint16(20,1,true);
-  view.setUint16(22,nc,true); view.setUint32(24,sr,true);
-  view.setUint32(28, sr*blockAlign, true); view.setUint16(32, blockAlign, true); view.setUint16(34,16,true);
-  ws(36,'data'); view.setUint32(40, dataLen, true);
-  const chans=[]; for(let c=0;c<nc;c++) chans.push(buf.getChannelData(c));
-  let off=44;
-  for(let i=0;i<len;i++) for(let c=0;c<nc;c++){
-    const v=Math.max(-1, Math.min(1, chans[c][i]));
-    view.setInt16(off, v<0 ? v*0x8000 : v*0x7FFF, true); off+=2;
-  }
-  return new Blob([ab], {type:'audio/wav'});
-}
-function downloadBlob(blob, name){
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download=name; document.body.appendChild(a); a.click();
-  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1000);
-}
-function fileTag(){ return (presetName||'patch').replace(/[^a-z0-9]+/gi,'-').toLowerCase(); }
+function fileTag(){ return safeName(presetName||'patch'); }
 document.getElementById('export-wav').addEventListener('click',async()=>{
   unlock();
   const btn=document.getElementById('export-wav'), label=btn.textContent;
@@ -552,31 +529,19 @@ document.getElementById('export-wav').addEventListener('click',async()=>{
 });
 
 // ── MIDI export ─────────────────────────────────────────
-// Write the current loop as a Standard MIDI File (format 0): melody on ch 1,
-// drums on GM ch 10 (kick 36, closed hat 42). Pure byte-writing, no libraries.
+// Build the loop as note events (times in quarter-note beats) and let
+// core/export.js write the Standard MIDI File: melody on ch 1, drums on GM
+// ch 10 (kick 36, closed hat 42).
 function seqToMidi(){
-  const TPQ=480, stepTicks=TPQ/4;                         // 16th-note grid
-  const usPerQ=Math.round(60000000/bpm);
   const noteNum=n=>{ const m=n && n.match(/^([A-G]#?)(-?\d+)$/); return m ? noteToMidi(m[1],+m[2]) : null; };
-  const gateTicks=Math.max(1, Math.round(gate*stepTicks));
-  const ev=[];
+  const notes=[];
   for(let i=0;i<SEQLEN;i++){
-    const t=i*stepTicks, m=noteNum(mel[i]);
-    if(m!=null){ ev.push({t,on:1,ch:0,note:m,vel:100}); ev.push({t:t+gateTicks,on:0,ch:0,note:m,vel:0}); }
-    if(kick[i]){ ev.push({t,on:1,ch:9,note:36,vel:112}); ev.push({t:t+Math.round(stepTicks*0.9),on:0,ch:9,note:36,vel:0}); }
-    if(hat[i]){  ev.push({t,on:1,ch:9,note:42,vel:80});  ev.push({t:t+Math.round(stepTicks*0.5),on:0,ch:9,note:42,vel:0}); }
+    const start=i*0.25, m=noteNum(mel[i]);                // 16th note = 0.25 beat
+    if(m!=null) notes.push({ start, dur:gate*0.25, note:m, vel:100, ch:0 });
+    if(kick[i]) notes.push({ start, dur:0.22, note:36, vel:112, ch:9 });
+    if(hat[i])  notes.push({ start, dur:0.12, note:42, vel:80,  ch:9 });
   }
-  ev.sort((a,b)=> a.t-b.t || a.on-b.on);                  // note-offs before note-ons at the same tick
-  const vlq=v=>{ const b=[v&0x7f]; v>>=7; while(v>0){ b.unshift((v&0x7f)|0x80); v>>=7; } return b; };
-  const trk=[0x00,0xFF,0x51,0x03,(usPerQ>>16)&0xff,(usPerQ>>8)&0xff,usPerQ&0xff];  // tempo
-  let last=0;
-  for(const e of ev){ trk.push(...vlq(e.t-last)); last=e.t; trk.push((e.on?0x90:0x80)|e.ch, e.note, e.vel); }
-  const endT=Math.max(SEQLEN*stepTicks, last);
-  trk.push(...vlq(endT-last), 0xFF,0x2F,0x00);            // end of track
-  const L=trk.length;
-  const head=[0x4d,0x54,0x68,0x64, 0,0,0,6, 0,0, 0,1, (TPQ>>8)&0xff,TPQ&0xff];     // MThd, fmt 0, 1 trk
-  const thd =[0x4d,0x54,0x72,0x6b, (L>>24)&0xff,(L>>16)&0xff,(L>>8)&0xff,L&0xff];  // MTrk + length
-  return new Uint8Array([...head,...thd,...trk]);
+  return notesToMidi(notes, { bpm, ppq:480, endBeats:SEQLEN*0.25 });
 }
 document.getElementById('export-mid').addEventListener('click',()=>{
   const btn=document.getElementById('export-mid'), label=btn.textContent;
