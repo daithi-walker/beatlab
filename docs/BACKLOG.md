@@ -48,12 +48,13 @@ Items within each section are roughly priority-ordered (top = do soonest).
 See [`docs/groovebox.md`](groovebox.md) for the full design — architecture,
 code sketches, and implementation order. All four phases live in `drums/index.html`.
 
-- **[Drums] Phase 1 — Live take looping** — loop a recorded take directly from
+- **[Drums] Phase 1 — Live take looping** ✅ — loop a recorded take directly from
   beat-relative events without converting to the step grid. BPM-aware, animates
-  pads. ~2–3h. No dependencies.
-- **[Drums] Phase 2 — Queued pattern switching** — tap a pattern while playing;
-  it queues to start on the next bar downbeat. Amber highlight on queued pattern.
-  ~1–2h. No dependencies.
+  pads. Shipped (`liveLoop`/`tickLiveLoop`).
+- **[Drums] Phase 2 — Queued pattern switching** ✅ — tap a pattern/preset while
+  playing; it queues to swap in on the next bar downbeat (amber pulsing arrow,
+  tap again to cancel). Shipped (`pendingPattern` + `tick()` hook + `applyState`
+  live path).
 - **[Drums] Phase 3 — Scene launcher** — third view mode (alongside Sequencer
   and Pads): a grid of pattern slots, tap to queue, long-press to overwrite.
   Designed for live sets. ~3–4h. Requires Phase 2.

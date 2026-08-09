@@ -19,7 +19,7 @@ Items 2–5 are what this document covers. Items 1 is already shipped.
 
 ---
 
-## Phase 1 — Live take looping
+## Phase 1 — Live take looping ✅ SHIPPED
 
 **What:** After recording a take, loop it directly from the beat-relative event
 list without converting to the step sequencer. Loops are BPM-aware — changing
@@ -163,7 +163,14 @@ the live loop. No coordination needed — both feed into the same `masterGain`.
 
 ---
 
-## Phase 2 — Queued pattern switching
+## Phase 2 — Queued pattern switching ✅ SHIPPED
+
+Implementation note: `applyState()` takes a `{ live }` option so the swap can run
+without stopping the transport (the sketch below called `applyState` directly,
+which would have stopped playback). The bar-boundary check lives at the top of the
+`tick()` scheduling loop, and queuing is centralised in `queueOrLoad()`; tapping a
+queued item again cancels it. Both the topbar Patterns dropdown and the desktop
+right panel route through `queueOrLoad` and show the amber `.queued` highlight.
 
 **What:** While playing, tap a saved pattern and it queues to start on the next
 bar downbeat instead of cutting immediately. This is how every hardware groovebox

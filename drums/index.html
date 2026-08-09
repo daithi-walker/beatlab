@@ -145,6 +145,13 @@
   .pattern-row-name { flex: 1; font-size: 0.72rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pattern-row-del { background: none; border: none; color: var(--faint); cursor: pointer; font-size: 0.72rem; padding: 2px 4px; transition: color 120ms; }
   .pattern-row-del:hover { color: var(--pink); }
+  /* queued pattern (Phase 2 groovebox): amber highlight + arrow while it waits for the next bar */
+  .queued-arrow { display: none; color: var(--amber); }
+  .pattern-row.queued .pattern-row-name, .tb-drop-item.queued { color: var(--amber); }
+  .pattern-row.queued .queued-arrow, .tb-drop-item.queued .queued-arrow { display: inline; }
+  .pattern-row.queued { background: rgba(245,166,35,0.08); }
+  @keyframes queuedPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+  .pattern-row.queued .queued-arrow, .tb-drop-item.queued .queued-arrow { animation: queuedPulse 1s ease-in-out infinite; }
   #patterns-list-empty { padding: 8px 14px; font-size: 0.68rem; color: var(--muted); }
   #patterns-save-row { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid var(--divider); }
   #patterns-name-input { flex: 1; background: var(--surface-2); border: 1px solid var(--divider); border-radius: 4px; color: var(--text); font-size: 0.72rem; padding: 4px 8px; font-family: inherit; outline: none; }
@@ -988,6 +995,7 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
 
   /* ── SCHEDULER ────────────────────────────────────────────── */
   let playing = false, currentStep = 0, nextBeatTime = 0, tickTimer = null;
+  let pendingPattern = null; // { key, name, data } — queued to swap in on the next bar downbeat
 
   function scheduleStep(globalStep, time) {
     TRACKS.forEach(t => {
@@ -1004,7 +1012,14 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
   }
 
   function tick() {
+    let swapped = false;
     while (nextBeatTime < ctx.currentTime + LOOKAHEAD) {
+      // Queued pattern switch: swap in on the bar downbeat (before step 0 fires),
+      // so the transition is clean and aligned to the bar.
+      if (currentStep === 0 && pendingPattern) {
+        applyState(pendingPattern.data, { live: true });
+        pendingPattern = null; swapped = true;
+      }
       // Swing: delay every odd 16th so even→odd gaps stretch and odd→even shrink.
       // The grid (nextBeatTime) stays straight; only the fired time is offset.
       const swOffset = (currentStep % 2 === 1) ? swing * stepDuration() : 0;
@@ -1012,6 +1027,7 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
       nextBeatTime += stepDuration();
       currentStep = (currentStep + 1) % STEPS;
     }
+    if (swapped) refreshQueuedHighlights();
     tickLiveLoop(ctx.currentTime);
   }
 
@@ -1099,6 +1115,7 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
     playing = false; clearInterval(tickTimer); clearPlayhead();
     document.getElementById('play-btn').textContent = '▶ Play';
     document.getElementById('play-btn').classList.remove('playing');
+    if (pendingPattern) { pendingPattern = null; refreshQueuedHighlights(); }
   }
 
   function toggleTransport() { playing ? stopTransport() : startTransport(); }
@@ -2058,10 +2075,21 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
     return out;
   }
 
-  function applyState(saved) {
-    if (playing) stopTransport();
+  // live:true swaps state without stopping the transport — used for queued
+  // pattern switching on the bar downbeat (see tick()).
+  function applyState(saved, { live = false } = {}) {
+    if (!live && playing) stopTransport();
     if (saved.bpm) setBpm(saved.bpm);
-    if (saved.beatsPerBar) applyTimeSig(saved.beatsPerBar);
+    if (saved.beatsPerBar) {
+      if (live) {
+        BEATS_PER_BAR = Math.max(1, Math.min(32, saved.beatsPerBar));
+        STEPS = BEATS_PER_BAR * STEPS_PER_BEAT;
+        document.getElementById('timesig-input').value = BEATS_PER_BAR;
+        document.getElementById('steps-btn').textContent = STEPS;
+      } else {
+        applyTimeSig(saved.beatsPerBar);
+      }
+    }
     setSwing(Math.round((saved.swing || 0) * 100));
     if (saved.steps && saved.steps !== STEPS) {
       STEPS = saved.steps;
@@ -2089,8 +2117,35 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
     allMuted = false;
     muteAllBtn.textContent = 'Mute All';
     muteAllBtn.style.color = muteAllBtn.style.borderColor = muteAllBtn.style.background = '';
+    if (live) currentStep = 0; // align the swapped pattern to the bar downbeat
     buildGrid(); rebuildBeatRow();
     dirty = false;
+  }
+
+  // Load a pattern immediately when stopped; queue it for the next bar downbeat
+  // when playing (tap the queued item again to cancel). key uniquely identifies
+  // the source item so its list row can show the amber "queued" highlight.
+  function queueOrLoad(key, name, data, onLoad) {
+    if (!data) return;
+    if (!playing) {
+      if (dirty && !confirm(`Load "${name}"? Unsaved changes will be lost.`)) return;
+      applyState(data);
+      if (onLoad) onLoad();
+      closeAllDrops();
+      return;
+    }
+    // Playing: queue to the next bar, or cancel if this item is already queued.
+    pendingPattern = (pendingPattern && pendingPattern.key === key)
+      ? null : { key, name, data };
+    refreshQueuedHighlights();
+  }
+
+  // Re-render every pattern/preset list so the queued highlight stays in sync.
+  function refreshQueuedHighlights() {
+    renderPatternList();
+    renderPresets();
+    if (typeof renderRpPatternList === 'function') renderRpPatternList();
+    if (typeof renderRpPresets === 'function') renderRpPresets();
   }
 
   function renderPatternList() {
@@ -2102,14 +2157,18 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
       em.textContent = 'No saved patterns yet.'; list.appendChild(em); return;
     }
     names.forEach(name => {
-      const row = document.createElement('div'); row.className = 'pattern-row';
-      const nameEl = document.createElement('span'); nameEl.className = 'pattern-row-name'; nameEl.textContent = name;
+      const key = 'p:' + name;
+      const row = document.createElement('div');
+      row.className = 'pattern-row' + (pendingPattern?.key === key ? ' queued' : '');
+      const nameEl = document.createElement('span'); nameEl.className = 'pattern-row-name';
+      const arrow = document.createElement('span'); arrow.className = 'queued-arrow'; arrow.textContent = '→ ';
+      const label = document.createElement('span'); label.textContent = name;
+      nameEl.appendChild(arrow); nameEl.appendChild(label);
       nameEl.addEventListener('click', () => {
-        if (dirty && !confirm(`Load "${name}"? Unsaved changes will be lost.`)) return;
-        applyState(loadPattern(APP_ID, name));
-        document.getElementById('patterns-name-input').value = name;
-        updateSaveBtn();
-        closeAllDrops();
+        queueOrLoad(key, name, loadPattern(APP_ID, name), () => {
+          document.getElementById('patterns-name-input').value = name;
+          updateSaveBtn();
+        });
       });
       const del = document.createElement('button'); del.className = 'pattern-row-del'; del.textContent = '✕';
       del.addEventListener('click', e => { e.stopPropagation(); deletePattern(APP_ID, name); renderPatternList(); });
@@ -2190,12 +2249,16 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
       em.textContent = 'No saved patterns yet.'; list.appendChild(em); return;
     }
     names.forEach(name => {
-      const row = document.createElement('div'); row.className = 'pattern-row';
-      const nameEl = document.createElement('span'); nameEl.className = 'pattern-row-name'; nameEl.textContent = name;
+      const key = 'p:' + name;
+      const row = document.createElement('div');
+      row.className = 'pattern-row' + (pendingPattern?.key === key ? ' queued' : '');
+      const nameEl = document.createElement('span'); nameEl.className = 'pattern-row-name';
+      const arrow = document.createElement('span'); arrow.className = 'queued-arrow'; arrow.textContent = '→ ';
+      const label = document.createElement('span'); label.textContent = name;
+      nameEl.appendChild(arrow); nameEl.appendChild(label);
       nameEl.addEventListener('click', () => {
-        if (dirty && !confirm(`Load "${name}"? Unsaved changes will be lost.`)) return;
-        applyState(loadPattern(APP_ID, name));
-        document.getElementById('rp-patterns-name-input').value = name;
+        queueOrLoad(key, name, loadPattern(APP_ID, name),
+          () => { document.getElementById('rp-patterns-name-input').value = name; });
       });
       const del = document.createElement('button'); del.className = 'pattern-row-del'; del.textContent = '✕';
       del.addEventListener('click', e => { e.stopPropagation(); deletePattern(APP_ID, name); renderRpPatternList(); renderPatternList(); });
@@ -2208,12 +2271,13 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
     if (!list) return;
     list.innerHTML = '';
     PRESETS.forEach(p => {
-      const btn = document.createElement('button'); btn.className = 'tb-drop-item';
-      btn.textContent = p.name;
-      btn.addEventListener('click', () => {
-        if (dirty && !confirm(`Load "${p.name}"? Unsaved changes will be lost.`)) return;
-        applyState(p.state);
-      });
+      const key = 'preset:' + p.name;
+      const btn = document.createElement('button');
+      btn.className = 'tb-drop-item' + (pendingPattern?.key === key ? ' queued' : '');
+      const arrow = document.createElement('span'); arrow.className = 'queued-arrow'; arrow.textContent = '→ ';
+      const label = document.createElement('span'); label.textContent = p.name;
+      btn.appendChild(arrow); btn.appendChild(label);
+      btn.addEventListener('click', () => queueOrLoad(key, p.name, p.state));
       list.appendChild(btn);
     });
   }
@@ -2344,13 +2408,14 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
     const list = document.getElementById('presets-list');
     list.innerHTML = '';
     PRESETS.forEach(p => {
-      const row = document.createElement('div'); row.className = 'pattern-row';
-      const nameEl = document.createElement('span'); nameEl.className = 'pattern-row-name'; nameEl.textContent = p.name;
-      nameEl.addEventListener('click', () => {
-        if (dirty && !confirm(`Load "${p.name}"? Unsaved changes will be lost.`)) return;
-        applyState(p.state);
-        closeAllDrops();
-      });
+      const key = 'preset:' + p.name;
+      const row = document.createElement('div');
+      row.className = 'pattern-row' + (pendingPattern?.key === key ? ' queued' : '');
+      const nameEl = document.createElement('span'); nameEl.className = 'pattern-row-name';
+      const arrow = document.createElement('span'); arrow.className = 'queued-arrow'; arrow.textContent = '→ ';
+      const label = document.createElement('span'); label.textContent = p.name;
+      nameEl.appendChild(arrow); nameEl.appendChild(label);
+      nameEl.addEventListener('click', () => queueOrLoad(key, p.name, p.state));
       row.appendChild(nameEl);
       list.appendChild(row);
     });

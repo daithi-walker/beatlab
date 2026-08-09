@@ -13,6 +13,13 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
 ## [Unreleased]
 
 ### Added — Drums
+- **Queued pattern switching (groovebox)** — while playing, tapping a saved
+  pattern or preset queues it to swap in on the next bar downbeat instead of
+  cutting immediately, so live transitions stay clean. The queued item gets an
+  amber, pulsing arrow; tap it again to cancel. When stopped, patterns still
+  load instantly. Works from the topbar Patterns dropdown and the desktop right
+  panel. The swap uses a new live path in `applyState()` that never stops the
+  transport and realigns polymeter tracks to the downbeat.
 - **Per-step velocity** — right-click or long-press an active step to open a step
   inspector with Velocity (Ghost / Soft / Full / Accent) and Probability chips.
   Velocity scales the hit's level (and reverb send) and drives cell brightness;

@@ -48,6 +48,14 @@
   - **Built-in presets**: Four on the Floor, Polyrhythm 3/5/7, Clave Groove
   - Polyrhythm preset uses per-track loop lengths to demonstrate independent phase drift
   - Dirty-state tracking: warns before loading over unsaved changes
+- **Queued pattern switching (groovebox Phase 2)** — while the transport is running,
+  tapping a saved pattern or preset queues it to swap in on the next bar downbeat
+  (clean, bar-aligned transition) rather than cutting immediately. The queued item
+  shows an amber pulsing → arrow; tap it again to cancel the queue. When stopped,
+  patterns load instantly as before. Implemented via `pendingPattern` + a bar-boundary
+  check in `tick()` and a `live` swap path in `applyState()` that keeps the transport
+  running and realigns all tracks' `trackPos` to the downbeat. Works from both the
+  topbar Patterns dropdown and the desktop right panel.
 - **BPM** — slider + number input in Timing dropdown; bidirectional sync
 - **Swing** — slider (0–60%) in Timing dropdown; delays every odd 16th by `swing × stepDuration()` in `tick()` (grid stays straight, only the fired time shifts). Applies to offline export too; persists in patterns and share links (v2 encoding)
 - **Master volume** — slider, defaults to 50%; persists across refresh and is shared across all BeatLab apps via `beatlab:settings:volume`
