@@ -12,6 +12,8 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-09
+
 ### Added — Synth (rich synthesis, no samples)
 - **Shared voice engine** (`core/voice.js`) — a single pure-synthesis voice:
   unison stack of detuned oscillators + optional sub-octave sine → waveshaper

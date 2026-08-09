@@ -167,7 +167,7 @@ keeping single-file / no-samples / mobile intact.
   `SharedArrayBuffer` or BroadcastChannel message bus.
 - **Progressive Web App (PWA)** — add a service worker + manifest so BeatLab
   installs to the home screen and works offline.
-- **Versioning** — see `CHANGELOG.md`. Currently on `0.4.0`.
+- **Versioning** — see `CHANGELOG.md`. Currently on `0.5.0`.
 
 ---
 

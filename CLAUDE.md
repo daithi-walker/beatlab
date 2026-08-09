@@ -77,7 +77,7 @@ Exception: Nectar's tab viewer uses AlphaTab + SF2 soundfont (documented in
 ### Versioning
 We use semantic versioning. While pre-1.0, minor bumps (`0.x`) = meaningful
 feature milestones; patch bumps (`0.x.y`) = fixes. Update `CHANGELOG.md` when
-shipping. Current version: **0.4.0**.
+shipping. Current version: **0.5.0**.
 
 ### Commit style
 Prefix commits with the app name: `Drums:`, `Nectar:`, `Multibank:`,
