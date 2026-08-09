@@ -574,6 +574,7 @@
     <button class="topbar-btn" id="clear-btn">Reset</button>
     <div class="divider-v"></div>
     <button class="topbar-btn" id="share-btn">Share</button>
+    <button class="topbar-btn" id="export-drop-btn">Export ▾</button>
   </div>
 
   <div id="right-controls">
@@ -668,6 +669,7 @@
 <script type="module">
 import { makeImpulse, makePinkNoise, makeWhiteNoise } from '../core/audio.js';
 import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVolume } from '../core/storage.js';
+import { audioBufferToWav, notesToMidi, makeZip, downloadBlob, safeName, renderOffline } from '../core/export.js';
 
 (() => {
   'use strict';
@@ -2455,6 +2457,129 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
     });
   });
 
+  /* ── EXPORT (WAV / MIDI / stems) ──────────────────────────── */
+  // GM percussion note map (channel 10). Keyed by track id, fixed like KITS.
+  const GM_DRUM = {
+    kick:36, snare:38, clap:39, hihat:42, openhat:46, crash:49,
+    tomhi:50, tomlo:45, rim:37, shaker:70, cowbell:56, clave:75,
+  };
+
+  const _gcd = (a, b) => { while (b) { [a, b] = [b, a % b]; } return a; };
+  const _lcm = (a, b) => a / _gcd(a, b) * b;
+
+  // Full polymeter cycle in global steps: LCM of every track's effective length,
+  // so tracks that drift out of phase render one complete pass. Capped so an
+  // awkward set of lengths can't produce a minutes-long render.
+  function loopSteps() {
+    let L = STEPS;
+    TRACKS.forEach(t => { L = _lcm(L, state[t.id].trackLen || STEPS); });
+    return Math.min(L, 256);
+  }
+
+  // Offline render of the pattern. Reuses the exact live synthesis by swapping
+  // the module audio globals to an OfflineAudioContext for the (synchronous)
+  // scheduling pass, then restoring them before we await startRendering(). No
+  // await runs between swap and restore, so live playback is never disturbed.
+  // onlyTrack renders a single isolated track (for stems) and ignores its mute.
+  async function renderDrums(loops = 2, onlyTrack = null) {
+    const total = loopSteps() * loops;
+    const sd = stepDuration();
+    const startOffset = 0.02, tail = 2.5;
+    const duration = total * sd + startOffset + tail;
+    const live = { ctx, masterGain, compressor, reverbConvolver, reverbReturn, pinkBuf, whiteBuf };
+    return renderOffline({ duration, setup: (octx) => {
+      const oMaster = octx.createGain();
+      oMaster.gain.value = live.masterGain ? live.masterGain.gain.value : getVolume(0.5);
+      const oComp = octx.createDynamicsCompressor();
+      oComp.threshold.value = -18; oComp.ratio.value = 4;
+      oMaster.connect(oComp); oComp.connect(octx.destination);
+      const oConv = octx.createConvolver(); oConv.buffer = makeImpulse(octx, 2.2, 2.5);
+      const oReturn = octx.createGain(); oReturn.gain.value = 0.75;
+      oConv.connect(oReturn); oReturn.connect(oMaster);
+      const oPink = makePinkNoise(octx, 2), oWhite = makeWhiteNoise(octx, 2);
+      // swap module globals → offline
+      ctx = octx; masterGain = oMaster; compressor = oComp;
+      reverbConvolver = oConv; reverbReturn = oReturn; pinkBuf = oPink; whiteBuf = oWhite;
+      try {
+        for (let g = 0; g < total; g++) {
+          const time = startOffset + g * sd;
+          TRACKS.forEach(t => {
+            const ts = state[t.id];
+            if (onlyTrack) { if (t.id !== onlyTrack) return; }
+            else if (ts.muted) return;
+            const cell = ts.steps[g % (ts.trackLen || STEPS)];
+            if (cell && cell.on) voice(t.id, time);
+          });
+        }
+      } finally {
+        // restore live globals BEFORE the pending startRendering() await
+        ctx = live.ctx; masterGain = live.masterGain; compressor = live.compressor;
+        reverbConvolver = live.reverbConvolver; reverbReturn = live.reverbReturn;
+        pinkBuf = live.pinkBuf; whiteBuf = live.whiteBuf;
+      }
+    }});
+  }
+
+  // Pattern → Standard MIDI File. One loop; DAWs loop it. prob → velocity.
+  function drumsToMidi(loops = 1) {
+    const total = loopSteps() * loops;
+    const notes = [];
+    for (let g = 0; g < total; g++) {
+      const beat = g / STEPS_PER_BEAT; // quarter-note beats
+      TRACKS.forEach(t => {
+        const ts = state[t.id];
+        if (ts.muted) return;
+        const cell = ts.steps[g % (ts.trackLen || STEPS)];
+        if (cell && cell.on) notes.push({
+          start: beat, dur: 0.25, note: GM_DRUM[t.id],
+          vel: Math.round(127 * (cell.prob / 100)), ch: 9,
+        });
+      });
+    }
+    return notesToMidi(notes, { bpm, ppq: 480, endBeats: total / STEPS_PER_BEAT });
+  }
+
+  function exportTag() { return `beatlab-drums-${safeName(currentKit)}-${bpm}bpm`; }
+
+  // Flash a dropdown item's label while an async export runs.
+  async function withBtnBusy(btn, busyText, fn) {
+    const orig = btn.textContent;
+    btn.textContent = busyText; btn.disabled = true;
+    try { await fn(); btn.textContent = '✓ Done'; }
+    catch (e) { btn.textContent = '⚠ Failed'; console.error(e); }
+    finally { setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1400); }
+  }
+
+  wireDropdown('export-drop-btn', 'export-menu');
+
+  document.getElementById('export-wav-btn').addEventListener('click', (e) => {
+    withBtnBusy(e.currentTarget, 'Rendering…', async () => {
+      const buf = await renderDrums(2);
+      downloadBlob(audioBufferToWav(buf), exportTag() + '.wav');
+    });
+  });
+
+  document.getElementById('export-mid-btn').addEventListener('click', (e) => {
+    withBtnBusy(e.currentTarget, 'Writing…', async () => {
+      const bytes = drumsToMidi(1);
+      downloadBlob(new Blob([bytes], { type: 'audio/midi' }), exportTag() + '.mid');
+    });
+  });
+
+  document.getElementById('export-stems-btn').addEventListener('click', (e) => {
+    withBtnBusy(e.currentTarget, 'Rendering…', async () => {
+      const files = [];
+      for (const t of TRACKS) {
+        if (!state[t.id].steps.some(c => c.on)) continue; // skip empty tracks
+        const buf = await renderDrums(2, t.id);
+        const data = new Uint8Array(await audioBufferToWav(buf).arrayBuffer());
+        files.push({ name: safeName(t.name) + '.wav', data });
+      }
+      if (!files.length) return;
+      downloadBlob(makeZip(files), exportTag() + '-stems.zip');
+    });
+  });
+
   /* ── INIT ─────────────────────────────────────────────────── */
   buildGrid(); rebuildBeatRow(); buildKitSelector(); buildPads(); initSeqDrag();
 
@@ -2555,6 +2680,11 @@ import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVo
   <button class="tb-drop-item" id="mode-pads-btn">Pads</button>
 </div>
 <div class="tb-drop-menu" id="kit-menu"></div>
+<div class="tb-drop-menu" id="export-menu">
+  <button class="tb-drop-item" id="export-wav-btn">⬇ WAV audio</button>
+  <button class="tb-drop-item" id="export-mid-btn">⬇ MIDI file</button>
+  <button class="tb-drop-item" id="export-stems-btn">⬇ Stems (ZIP)</button>
+</div>
 <div class="tb-drop-menu" id="timing-menu">
   <div class="timing-row">
     <span class="timing-lbl">BPM</span>
