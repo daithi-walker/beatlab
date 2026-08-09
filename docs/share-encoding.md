@@ -23,24 +23,33 @@ the matching decoder. Adding a new version is mechanical:
 Payload is base64url (no `+`, `/`, `=` — URL-safe). Bits are written
 most-significant-bit first within each byte.
 
-### Version 1 (current, `SHARE_VERSION = 1`)
+### Version 2 (current, `SHARE_VERSION = 2`)
 
 Total: 32-bit header + 12 tracks × 71 bits = 884 bits = 111 bytes → ~148 base64url chars.
+
+Identical to v1 except the 5 trailing header bits (reserved/`0` in v1) now carry
+**swing**. v1 links still decode via `decodeV1`, which ignores those bits, so
+swing reads as 0 (straight) — a safe default.
 
 #### Header (32 bits)
 
 | Field          | Bits | Encoding                          |
 |----------------|------|-----------------------------------|
-| version        | 4    | `1` (literal)                     |
+| version        | 4    | `2` (literal)                     |
 | bpm            | 7    | `bpm - 60` (range 60–187)         |
 | beatsPerBar    | 5    | `beatsPerBar - 1` (range 1–32)    |
 | kitIdx         | 2    | index into `KIT_NAMES` array      |
 | reserved       | 2    | `0`                               |
 | steps          | 7    | `steps - 1` (range 1–128)         |
-| reserved       | 5    | `0`                               |
+| swing          | 5    | `round(swing × 50)` — swing is a 0–0.6 fraction (0–30 stored) |
 
 `KIT_NAMES` order is fixed by `Object.keys(KITS)`: `808=0, Acoustic=1, Lo-Fi=2, Electronic=3`.
 **Do not reorder KITS** without bumping the version.
+
+### Version 1 (`SHARE_VERSION = 1`)
+
+Same as v2 but the trailing 5 header bits were reserved (`0`) instead of swing.
+`decodeV1` remains in the code unchanged so old links keep working.
 
 #### Per track × 12 (71 bits each, in TRACKS array order)
 

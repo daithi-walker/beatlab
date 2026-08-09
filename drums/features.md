@@ -46,6 +46,7 @@
   - Polyrhythm preset uses per-track loop lengths to demonstrate independent phase drift
   - Dirty-state tracking: warns before loading over unsaved changes
 - **BPM** — slider + number input in Timing dropdown; bidirectional sync
+- **Swing** — slider (0–60%) in Timing dropdown; delays every odd 16th by `swing × stepDuration()` in `tick()` (grid stays straight, only the fired time shifts). Applies to offline export too; persists in patterns and share links (v2 encoding)
 - **Master volume** — slider, defaults to 50%; persists across refresh and is shared across all BeatLab apps via `beatlab:settings:volume`
 - **Reset** — restores steps, mutes, per-track lengths, time signature, and BPM to defaults
 - **Export** — topbar Export dropdown with WAV, MP3, MIDI, and Stems (ZIP), all

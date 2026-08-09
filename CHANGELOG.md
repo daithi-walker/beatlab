@@ -12,6 +12,13 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
 
 ## [Unreleased]
 
+### Added — Drums
+- **Swing** — a Swing slider (0–60%) in the Timing dropdown delays every odd 16th
+  note, stretching the groove from straight toward a triplet feel. Applies to
+  live playback and to WAV/MP3 export. Persists in saved patterns and share links
+  (share encoding bumped to v2 — the swing value reuses bits that were reserved in
+  v1, so old links still open and just play straight).
+
 ### Added — Export (Drums & Multibank)
 - **WAV / MIDI / stem export** — both the Drums and Multibank sequencers now have
   an Export dropdown in the topbar. WAV renders the full pattern (Drums renders a

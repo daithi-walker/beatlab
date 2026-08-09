@@ -685,6 +685,7 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
   let BEATS_PER_BAR = 4;
   let STEPS = BEATS_PER_BAR * STEPS_PER_BEAT; // 16
   let bpm   = 120;
+  let swing = 0;   // 0..0.6 — fraction of a step that odd 16ths are delayed
   let mode  = 'seq';
   function stepDuration() { return 60 / bpm / STEPS_PER_BEAT; }
   function beatDuration()  { return 60 / bpm; }
@@ -951,7 +952,10 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
 
   function tick() {
     while (nextBeatTime < ctx.currentTime + LOOKAHEAD) {
-      scheduleStep(currentStep, nextBeatTime);
+      // Swing: delay every odd 16th so even→odd gaps stretch and odd→even shrink.
+      // The grid (nextBeatTime) stays straight; only the fired time is offset.
+      const swOffset = (currentStep % 2 === 1) ? swing * stepDuration() : 0;
+      scheduleStep(currentStep, nextBeatTime + swOffset);
       nextBeatTime += stepDuration();
       currentStep = (currentStep + 1) % STEPS;
     }
@@ -1872,6 +1876,7 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
     BEATS_PER_BAR = 0; // force applyTimeSig to not early-return
     applyTimeSig(4);
     setBpm(120);
+    setSwing(0);
     // Reset mute-all button state
     allMuted = false;
     muteAllBtn.textContent = 'Mute All';
@@ -1899,7 +1904,7 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
 
   /* ── PATTERNS ─────────────────────────────────────────────── */
   function captureState() {
-    const out = { bpm, steps: STEPS, beatsPerBar: BEATS_PER_BAR, kit: currentKit, tracks: {} };
+    const out = { bpm, steps: STEPS, beatsPerBar: BEATS_PER_BAR, swing, kit: currentKit, tracks: {} };
     TRACKS.forEach(t => {
       const ts = state[t.id];
       out.tracks[t.id] = {
@@ -1915,6 +1920,7 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
     if (playing) stopTransport();
     if (saved.bpm) setBpm(saved.bpm);
     if (saved.beatsPerBar) applyTimeSig(saved.beatsPerBar);
+    setSwing(Math.round((saved.swing || 0) * 100));
     if (saved.steps && saved.steps !== STEPS) {
       STEPS = saved.steps;
       document.getElementById('steps-btn').textContent = STEPS;
@@ -2320,6 +2326,16 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
   bpmInput.addEventListener('change',  e => { setBpm(parseInt(e.target.value, 10)); dirty = true; });
   bpmInput.addEventListener('keydown', e => { if (e.key === 'Enter') bpmInput.blur(); });
 
+  const swingSlider = document.getElementById('swing-slider');
+  const swingValue  = document.getElementById('swing-value');
+  function setSwing(pct) {           // pct is 0..60 (%), swing fraction = pct/100
+    pct = Math.max(0, Math.min(60, isFinite(pct) ? pct : 0));
+    swing = pct / 100;
+    swingSlider.value = pct;
+    swingValue.textContent = pct + '%';
+  }
+  swingSlider.addEventListener('input', e => { setSwing(parseInt(e.target.value, 10)); dirty = true; });
+
   /* ── PLAY / KEYBOARD ──────────────────────────────────────── */
   document.getElementById('play-btn').addEventListener('click', toggleTransport);
   document.addEventListener('keydown', e => {
@@ -2356,11 +2372,12 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
   // and add a new decodeVN() function. Never modify an existing decoder —
   // old shared links must always decode correctly.
   //
-  // Current layout (v1) — ~150 base64url chars:
-  //   [version: 4][bpm-60: 7][beatsPerBar-1: 5][kitIdx: 2][rsvd: 2][steps-1: 7][rsvd: 5]
+  // Current layout (v2) — ~150 base64url chars:
+  //   [version: 4][bpm-60: 7][beatsPerBar-1: 5][kitIdx: 2][rsvd: 2][steps-1: 7][swing×50: 5]
   //   Per track × 12:
   //     [muted: 1][trackLen: 6][step×32: 2 each] — 00=off 01=100% 10=75% 11=≤50%
-  const SHARE_VERSION = 1;
+  //   v1 was identical but the trailing 5 header bits were reserved (0); decodeV1 ignores them.
+  const SHARE_VERSION = 2; // v2: swing occupies the 5 trailing header bits (v1 reserved them as 0)
   const KIT_NAMES = Object.keys(KITS); // fixed order: 808, Acoustic, Lo-Fi, Electronic
 
   function encodeState() {
@@ -2375,7 +2392,7 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
       push(Math.max(0,   KIT_NAMES.indexOf(s.kit)), 2);
       push(0, 2); // reserved
       push(Math.min(127, Math.max(0, s.steps - 1)), 7);
-      push(0, 5); // reserved — header total = 4+7+5+2+2+7+5 = 32 bits
+      push(Math.min(31, Math.max(0, Math.round((s.swing || 0) * 50))), 5); // swing (v2); header total = 32 bits
 
       TRACKS.forEach(t => {
         const ts = s.tracks[t.id] || {};
@@ -2427,6 +2444,32 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
     return { bpm, beatsPerBar, kit, steps, tracks };
   }
 
+  // v2 == v1 layout, but the 5 trailing header bits (reserved in v1) carry swing.
+  function decodeV2(read) {
+    const bpm         = read(7) + 60;
+    const beatsPerBar = read(5) + 1;
+    const kit         = KIT_NAMES[read(2)] || KIT_NAMES[0];
+    read(2); // reserved
+    const steps       = read(7) + 1;
+    const swing       = read(5) / 50; // 0..0.62
+
+    const tracks = {};
+    TRACKS.forEach(t => {
+      const muted    = !!read(1);
+      const trackLen = read(6);
+      const stepArr  = [];
+      for (let i = 0; i < 32; i++) {
+        const v = read(2);
+        if      (v === 0) stepArr.push({ on: false, prob: 100 });
+        else if (v === 1) stepArr.push({ on: true,  prob: 100 });
+        else if (v === 2) stepArr.push({ on: true,  prob: 75  });
+        else              stepArr.push({ on: true,  prob: 50  });
+      }
+      tracks[t.id] = { muted, trackLen, steps: stepArr };
+    });
+    return { bpm, beatsPerBar, kit, steps, swing, tracks };
+  }
+
   function decodeState(hash) {
     try {
       const b64 = hash.replace(/-/g, '+').replace(/_/g, '/');
@@ -2442,7 +2485,8 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
 
       const version = read(4);
       if (version === 1) return decodeV1(read);
-      // Future: if (version === 2) return decodeV2(read);
+      if (version === 2) return decodeV2(read);
+      // Future: if (version === 3) return decodeV3(read);
       return null; // unknown version
     } catch { return null; }
   }
@@ -2504,7 +2548,7 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
       reverbConvolver = oConv; reverbReturn = oReturn; pinkBuf = oPink; whiteBuf = oWhite;
       try {
         for (let g = 0; g < total; g++) {
-          const time = startOffset + g * sd;
+          const time = startOffset + g * sd + ((g % 2 === 1) ? swing * sd : 0);
           TRACKS.forEach(t => {
             const ts = state[t.id];
             if (onlyTrack) { if (t.id !== onlyTrack) return; }
@@ -2708,6 +2752,11 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
   <div class="timing-row">
     <span class="timing-lbl">Beats/bar</span>
     <input type="number" class="ctrl-value" id="timesig-input" min="1" max="32" value="4" style="width:3ch;">
+  </div>
+  <div class="timing-row">
+    <span class="timing-lbl">Swing</span>
+    <input type="range" id="swing-slider" min="0" max="60" step="2" value="0" style="width:90px;">
+    <span class="ctrl-value" id="swing-value" style="min-width:3ch;text-align:right;">0%</span>
   </div>
 </div>
 <div class="tb-drop-menu" id="patterns-menu">
