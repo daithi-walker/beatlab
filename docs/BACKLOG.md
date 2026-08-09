@@ -148,9 +148,9 @@ keeping single-file / no-samples / mobile intact.
 - **[Synth] Patch export/import (portability)** ✅ — COPY/PASTE JSON in both the
   Synth and Voice Lab (`patchToJSON`/`patchFromJSON` in `core/voice.js`). A
   share-link form (like Drums) is still open as a follow-up.
-- **[Synth] Expose more voice knobs / macro map** — spread, per-voice Q, filter
-  ADSR are engine params but not yet on the synth UI (lab has all of them). Decide
-  which to surface vs keep preset-only.
+- **[Synth] Expose more voice knobs / macro map** — SPREAD and RES (Q) now on the
+  synth UI (both live). Filter ADSR remains preset-only for now; revisit whether a
+  macro map beats individual sliders before surfacing more.
 - **[Synth] Industrial perc voices** — noise+filter-env metallic hits already
   sketched in the lab; generalise as a kit for Drums/Multibank.
 

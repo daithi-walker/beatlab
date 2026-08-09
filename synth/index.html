@@ -437,6 +437,7 @@ body {
       <div class="pb">
         <div class="srow"><label>UNI</label><input type="range" id="o-uni" min="1" max="7" step="1" value="1"><span class="v" id="o-uni-v">1</span></div>
         <div class="srow"><label>DET</label><input type="range" id="o-det" min="0" max="40" step="1" value="12"><span class="v" id="o-det-v">12c</span></div>
+        <div class="srow"><label>SPR</label><input type="range" id="o-spr" min="0" max="1" step="0.01" value="0.4"><span class="v" id="o-spr-v">40%</span></div>
         <div class="srow"><label>SUB</label><input type="range" id="o-sub" min="0" max="1" step="0.01" value="0"><span class="v" id="o-sub-v">0%</span></div>
         <div class="srow"><label>DRV</label><input type="range" id="o-drv" min="0" max="1" step="0.01" value="0"><span class="v" id="o-drv-v">0%</span></div>
       </div>
@@ -458,6 +459,7 @@ body {
         </div>
         <div class="srow"><label>CUT</label><input type="range" id="o-cut" min="60" max="8000" step="10" value="8000"><span class="v" id="o-cut-v">8.0k</span></div>
         <div class="srow"><label>FENV</label><input type="range" id="o-fenv" min="0" max="6000" step="10" value="0"><span class="v" id="o-fenv-v">0</span></div>
+        <div class="srow"><label>RES</label><input type="range" id="o-res" min="0.1" max="12" step="0.1" value="1"><span class="v" id="o-res-v">1.0</span></div>
         <a class="lab-link" href="voice-lab.html">◆ Voice Lab ↗</a>
       </div>
     </div>
@@ -1219,12 +1221,15 @@ function oscSlider(id,vid,key,fmt,live){
     if(live) liveUpdate({[key]:val});
   });
 }
+const fmtQ=v=>(+v).toFixed(1);
 oscSlider('o-uni','o-uni-v','unison',v=>v);            // structural — next note
 oscSlider('o-det','o-det-v','detune',v=>`${v}c`,true);
+oscSlider('o-spr','o-spr-v','spread',fmtPct,true);
 oscSlider('o-sub','o-sub-v','sub',fmtPct);             // structural — next note
 oscSlider('o-drv','o-drv-v','drive',fmtPct,true);
 oscSlider('o-cut','o-cut-v','cutoff',fmtHz,true);
 oscSlider('o-fenv','o-fenv-v','fenv',fmtHz);           // filter-env amount — next note
+oscSlider('o-res','o-res-v','q',fmtQ,true);
 
 function syncVoiceUI(){
   setSlider('a-a','a-a-v',adsr.a,fmtMs);
@@ -1233,10 +1238,12 @@ function syncVoiceUI(){
   setSlider('a-r','a-r-v',adsr.r,fmtMs);
   setSlider('o-uni','o-uni-v',osc.unison,v=>v);
   setSlider('o-det','o-det-v',osc.detune,v=>`${v}c`);
+  setSlider('o-spr','o-spr-v',osc.spread,fmtPct);
   setSlider('o-sub','o-sub-v',osc.sub,fmtPct);
   setSlider('o-drv','o-drv-v',osc.drive,fmtPct);
   setSlider('o-cut','o-cut-v',osc.cutoff,fmtHz);
   setSlider('o-fenv','o-fenv-v',osc.fenv,fmtHz);
+  setSlider('o-res','o-res-v',osc.q,v=>(+v).toFixed(1));
   setSlider('fx-rv','fx-rv-v',fx.rv,fmtPct);
   drawADSR();
 }
@@ -1368,10 +1375,12 @@ function resetAll(){
   sv('a-r',adsr.r); document.getElementById('a-r-v').textContent=fmtMs(adsr.r);
   setSlider('o-uni','o-uni-v',osc.unison,v=>v);
   setSlider('o-det','o-det-v',osc.detune,v=>`${v}c`);
+  setSlider('o-spr','o-spr-v',osc.spread,fmtPct);
   setSlider('o-sub','o-sub-v',osc.sub,fmtPct);
   setSlider('o-drv','o-drv-v',osc.drive,fmtPct);
   setSlider('o-cut','o-cut-v',osc.cutoff,fmtHz);
   setSlider('o-fenv','o-fenv-v',osc.fenv,fmtHz);
+  setSlider('o-res','o-res-v',osc.q,v=>(+v).toFixed(1));
   refreshPresetPicker('f:init');
   sv('fx-rv',fx.rv); document.getElementById('fx-rv-v').textContent=fmtPct(fx.rv);
   ['fx-dl','fx-ds','fx-ch'].forEach(id=>{sv(id,0);document.getElementById(id+'-v').textContent='0%';});

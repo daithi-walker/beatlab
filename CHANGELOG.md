@@ -23,6 +23,9 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
 - **🎲 RANDOM in the Synth** — the voice panel now rolls a fresh playable patch
   in one tap (same `randomPatch()` the Voice Lab uses), auditioning it on any
   held notes.
+- **SPREAD and RES knobs** — stereo width (SPR) and filter resonance (RES) are
+  now on the Synth UI, not just carried silently by presets. Both update held
+  notes live.
 - **Portable patches (copy/paste JSON)** — COPY puts the current patch on the
   clipboard as JSON; PASTE loads one from pasted JSON. Patches now move between
   devices and browsers, not just within one origin's `localStorage`. Available
