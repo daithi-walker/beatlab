@@ -163,6 +163,7 @@ a.back:hover { color:var(--teal); }
   <div class="transport">
     <button class="big-btn" id="play">▶ PLAY</button>
     <button class="big-btn ab-btn" id="ab">A/B → THIN</button>
+    <button class="big-btn" id="export-wav" title="Render the loop to a WAV file">⬇ WAV</button>
     <div class="mini"><label>BPM</label><input type="range" id="bpm" min="80" max="180" step="1" value="120"><span class="val" id="bpm-v">120</span></div>
     <div class="mini"><label>VOL</label><input type="range" id="vol" min="0" max="1" step="0.01" value="0.6"><span class="val" id="vol-v">60%</span></div>
   </div>
@@ -450,6 +451,102 @@ function stopPlay(){
 }
 document.getElementById('play').addEventListener('click',()=>{
   unlock(); playing ? stopPlay() : startPlay();
+});
+
+// ── WAV export (offline render) ─────────────────────────
+// Render the current loop through an OfflineAudioContext that mirrors the live
+// graph (voice engine → comp → master; convolver reverb; synth drums), then
+// encode 16-bit PCM and download. Pure Web Audio, no libraries or samples.
+async function renderWav(loops=2){
+  const sd = 60/bpm/4;                          // seconds per 16th step
+  const totalSteps = SEQLEN*loops;
+  const tail = 2.8;                             // let reverb + release ring out
+  const sr = 44100;
+  const octx = new OfflineAudioContext(2, Math.ceil((totalSteps*sd+tail)*sr), sr);
+
+  const comp = octx.createDynamicsCompressor();
+  comp.threshold.value=-16; comp.knee.value=10; comp.ratio.value=4;
+  comp.attack.value=0.004; comp.release.value=0.18;
+  const master = octx.createGain();
+  master.gain.value = +document.getElementById('vol').value;   // match what you hear
+  comp.connect(master); master.connect(octx.destination);
+
+  const convolver = octx.createConvolver();
+  convolver.buffer = makeImpulse(octx, 2.6, 2.2);
+  const wet = octx.createGain(); wet.gain.value=0.9;
+  convolver.connect(wet); wet.connect(comp);
+
+  const oeng = createVoiceEngine(octx, { output: comp, reverb: convolver });
+  oeng.setReverbSend(P.rev);
+  const odrumRev = octx.createGain(); odrumRev.gain.value=0.18; odrumRev.connect(convolver);
+  const onoise = makeWhiteNoise(octx, 1);
+
+  const oKick = (when)=>{
+    const o=octx.createOscillator(), g=octx.createGain();
+    o.frequency.setValueAtTime(150, when);
+    o.frequency.exponentialRampToValueAtTime(45, when+0.11);
+    g.gain.setValueAtTime(1.0, when);
+    g.gain.exponentialRampToValueAtTime(0.0001, when+0.3);
+    o.connect(g); g.connect(comp); o.start(when); o.stop(when+0.32);
+  };
+  const oPerc = (when, bright)=>{
+    const src=octx.createBufferSource(); src.buffer=onoise; src.loop=true;
+    const bp=octx.createBiquadFilter(); bp.type='bandpass';
+    bp.frequency.value = bright?4200:1600; bp.Q.value=1.1;
+    const sh=octx.createWaveShaper(); sh.curve=distCurve(0.5);
+    const g=octx.createGain();
+    g.gain.setValueAtTime(bright?0.28:0.4, when);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + (bright?0.06:0.14));
+    src.connect(bp); bp.connect(sh); sh.connect(g);
+    g.connect(comp); g.connect(odrumRev);
+    src.start(when, (when*97)%0.4); src.stop(when + 0.2);
+  };
+
+  for(let s=0; s<totalSteps; s++){
+    const i=s%SEQLEN, t=s*sd;
+    if(kick[i]) oKick(t);
+    if(hat[i])  oPerc(t, i%2===0);
+    const nn=mel[i];
+    if(nn) oeng.trigger(noteStringToFreq(nn), P, gate*sd, t);
+  }
+  return octx.startRendering();
+}
+function audioBufferToWav(buf){
+  const nc=buf.numberOfChannels, sr=buf.sampleRate, len=buf.length;
+  const blockAlign=nc*2, dataLen=len*blockAlign;
+  const ab=new ArrayBuffer(44+dataLen), view=new DataView(ab);
+  const ws=(off,s)=>{ for(let i=0;i<s.length;i++) view.setUint8(off+i, s.charCodeAt(i)); };
+  ws(0,'RIFF'); view.setUint32(4, 36+dataLen, true); ws(8,'WAVE');
+  ws(12,'fmt '); view.setUint32(16,16,true); view.setUint16(20,1,true);
+  view.setUint16(22,nc,true); view.setUint32(24,sr,true);
+  view.setUint32(28, sr*blockAlign, true); view.setUint16(32, blockAlign, true); view.setUint16(34,16,true);
+  ws(36,'data'); view.setUint32(40, dataLen, true);
+  const chans=[]; for(let c=0;c<nc;c++) chans.push(buf.getChannelData(c));
+  let off=44;
+  for(let i=0;i<len;i++) for(let c=0;c<nc;c++){
+    const v=Math.max(-1, Math.min(1, chans[c][i]));
+    view.setInt16(off, v<0 ? v*0x8000 : v*0x7FFF, true); off+=2;
+  }
+  return new Blob([ab], {type:'audio/wav'});
+}
+document.getElementById('export-wav').addEventListener('click',async()=>{
+  unlock();
+  const btn=document.getElementById('export-wav'), label=btn.textContent;
+  btn.disabled=true; btn.textContent='… RENDERING';
+  try{
+    const rendered=await renderWav(2);
+    const blob=audioBufferToWav(rendered);
+    const tag=(presetName||'patch').replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=`beatlab-voice-${tag}-${bpm}bpm.wav`;
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1000);
+    btn.textContent='⬇ SAVED ✓';
+  }catch(e){
+    console.error(e); btn.textContent='⬇ FAILED';
+  }
+  setTimeout(()=>{ btn.textContent=label; btn.disabled=false; }, 1200);
 });
 
 // ── sequencer controls ──────────────────────────────────

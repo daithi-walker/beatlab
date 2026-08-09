@@ -12,6 +12,13 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
 
 ## [Unreleased]
 
+### Added — Voice Lab
+- **WAV export** — the transport's ⬇ WAV button renders the current loop (two
+  passes plus a reverb tail) to a 16-bit stereo WAV and downloads it. Uses an
+  `OfflineAudioContext` mirroring the live graph (voice engine, convolution
+  reverb, synth drums); pure Web Audio, no libraries or samples. First step
+  toward the platform's MP3/MIDI/stem export roadmap.
+
 ### Added — Synth
 - **🎲 RANDOM in the Synth** — the voice panel now rolls a fresh playable patch
   in one tap (same `randomPatch()` the Voice Lab uses), auditioning it on any
