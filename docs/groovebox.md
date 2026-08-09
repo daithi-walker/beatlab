@@ -241,7 +241,19 @@ A "cancel queue" click on the queued item clears `pendingPattern`.
 
 ---
 
-## Phase 3 — Scene launcher
+## Phase 3 — Scene launcher ✅ SHIPPED
+
+Implementation note: scenes are presets + saved patterns rendered as a grid of
+big slots in a new `#scenes-view` (View ▾ → Scenes). Each slot routes tap →
+`queueOrLoad` (the Phase 2 mechanism), so launching queues on the next bar while
+playing and loads instantly when stopped. An `activeSceneKey` module var tracks
+the loaded scene (green ● highlight); `pendingPattern.key` drives the queued
+amber → highlight. Long-press (500ms, cancelled by a >12px move or the browser
+claiming the gesture for scroll) overwrites a saved scene; "＋ New scene" prompts
+for a name and saves the current pattern. `setMode('scenes')` keeps the transport
+running (only Pads stops it) and shows the transport + timing controls plus the
+desktop patterns panel. `renderScenes()` is folded into `refreshQueuedHighlights()`
+so highlights stay live.
 
 **What:** A third view mode (alongside Sequencer and Pads) showing a grid of
 pattern slots. Each slot is a pad-sized button — tap to queue, long-press to

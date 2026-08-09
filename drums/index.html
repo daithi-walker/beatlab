@@ -341,6 +341,42 @@
   .pad-key  { display: none; position: absolute; top: 6px; right: 8px; font-size: 0.58rem; font-weight: 700; color: var(--faint); letter-spacing: 0; z-index: 1; }
   @media (pointer: fine) { .pad-key { display: block; } }
 
+  /* ── SCENES VIEW (groovebox launcher) ─────────────────────── */
+  #scenes-view {
+    display: none; position: fixed; top: var(--topbar-h); left: 0; right: 0; bottom: 0;
+    flex-direction: column; gap: 12px; padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0));
+    overflow-y: auto;
+  }
+  #scenes-view.active { display: flex; }
+  #scenes-hint { font-size: 0.62rem; letter-spacing: 0.04em; color: var(--muted); line-height: 1.4; flex-shrink: 0; }
+  #scene-grid {
+    display: grid; gap: 10px; align-content: start;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+  .scene-slot {
+    position: relative; min-height: 78px; border-radius: 12px;
+    border: 2px solid var(--divider); background: var(--surface);
+    color: var(--text); font-family: inherit; cursor: pointer;
+    display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between;
+    gap: 6px; padding: 12px; text-align: left; touch-action: manipulation;
+    transition: border-color 120ms, background 120ms, box-shadow 120ms;
+  }
+  .scene-slot:hover { border-color: var(--muted); }
+  .scene-name { font-size: 0.82rem; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .scene-kind { font-size: 0.52rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
+  .scene-status { position: absolute; top: 10px; right: 12px; font-size: 0.8rem; line-height: 1; }
+  .scene-slot.playing { border-color: var(--green); box-shadow: 0 0 16px color-mix(in srgb, var(--green) 38%, transparent); }
+  .scene-slot.playing .scene-name, .scene-slot.playing .scene-status { color: var(--green); }
+  .scene-slot.queued { border-color: var(--amber); background: rgba(245,166,35,0.06); }
+  .scene-slot.queued .scene-name, .scene-slot.queued .scene-status { color: var(--amber); }
+  .scene-slot.queued .scene-status { animation: queuedPulse 1s ease-in-out infinite; }
+  .scene-slot.add {
+    border-style: dashed; color: var(--muted);
+    align-items: center; justify-content: center; text-align: center; gap: 3px;
+  }
+  .scene-slot.add:hover { border-color: var(--teal); color: var(--teal); }
+  .scene-slot.add .scene-hint { font-size: 0.56rem; letter-spacing: 0.06em; color: var(--faint); }
+
   /* ── RECORDING SHEET ──────────────────────────────────────── */
   #rec-sheet-backdrop {
     display: none; position: fixed; inset: 0; z-index: 200;
@@ -535,8 +571,9 @@
   /* ── DESKTOP BREAKPOINT ───────────────────────────────────── */
   @media (min-width: 900px) {
     #rec-panel { display: flex; }
-    #seq-view  { right: var(--panel-w); }
-    #pads-view { right: var(--panel-w); }
+    #seq-view    { right: var(--panel-w); }
+    #pads-view   { right: var(--panel-w); }
+    #scenes-view { right: var(--panel-w); }
     /* Suppress mobile-only UI */
     #rec-sheet, #rec-sheet-backdrop { display: none !important; }
     #patterns-drop, #patterns-divider { display: none !important; }
@@ -629,6 +666,12 @@
     <button id="pads-takes-btn" style="display:none;"></button>
   </div>
   <div id="pad-grid"></div>
+</div>
+
+<!-- Scenes view (groovebox launcher) -->
+<div id="scenes-view">
+  <div id="scenes-hint">Tap a scene to launch it. While playing, it queues and swaps in on the next bar. Long-press a saved scene to overwrite it with the current pattern.</div>
+  <div id="scene-grid"></div>
 </div>
 
 <div id="beat-row"></div>
@@ -996,6 +1039,7 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
   /* ── SCHEDULER ────────────────────────────────────────────── */
   let playing = false, currentStep = 0, nextBeatTime = 0, tickTimer = null;
   let pendingPattern = null; // { key, name, data } — queued to swap in on the next bar downbeat
+  let activeSceneKey = null; // key of the pattern/preset currently loaded (drives the Scenes launcher highlight)
 
   function scheduleStep(globalStep, time) {
     TRACKS.forEach(t => {
@@ -1018,6 +1062,7 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
       // so the transition is clean and aligned to the bar.
       if (currentStep === 0 && pendingPattern) {
         applyState(pendingPattern.data, { live: true });
+        activeSceneKey = pendingPattern.key;
         pendingPattern = null; swapped = true;
       }
       // Swing: delay every odd 16th so even→odd gaps stretch and odd→even shrink.
@@ -1959,36 +2004,46 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
   function setMode(m) {
     mode = m;
     localStorage.setItem('beatlab:drums:mode', m);
-    const isSeq = m === 'seq';
-    const label = isSeq ? 'Sequencer' : 'Pads';
+    const isSeq    = m === 'seq';
+    const isPads   = m === 'pads';
+    const isScenes = m === 'scenes';
+    const label = isSeq ? 'Sequencer' : isScenes ? 'Scenes' : 'Pads';
     document.getElementById('mode-seq-btn').classList.toggle('active', isSeq);
-    document.getElementById('mode-pads-btn').classList.toggle('active', !isSeq);
+    document.getElementById('mode-pads-btn').classList.toggle('active', isPads);
+    const scBtn = document.getElementById('mode-scenes-btn');
+    if (scBtn) scBtn.classList.toggle('active', isScenes);
     const viewBtn = document.getElementById('view-drop-btn');
     const viewTxt = Array.from(viewBtn.childNodes).find(n => n.nodeType === 3 && n.textContent.trim());
     if (viewTxt) viewTxt.textContent = label;
-    document.getElementById('seq-controls').style.display = isSeq ? 'contents' : 'none';
-    document.getElementById('timing-drop').style.display = isSeq ? '' : 'none';
-    document.getElementById('patterns-drop').style.display = '';
+    // Transport controls (play/mute/reset/share/export) and timing live in seq + scenes.
+    document.getElementById('seq-controls').style.display = (isSeq || isScenes) ? 'contents' : 'none';
+    document.getElementById('timing-drop').style.display = (isSeq || isScenes) ? '' : 'none';
+    document.getElementById('patterns-drop').style.display = isScenes ? 'none' : '';
     document.getElementById('patterns-divider').style.display = isSeq ? '' : 'none';
     document.getElementById('kit-drop').style.display = '';
     document.getElementById('seq-view').classList.toggle('hidden', !isSeq);
     document.getElementById('beat-row').classList.toggle('hidden', !isSeq);
-    document.getElementById('pads-view').classList.toggle('active', !isSeq);
-    document.body.classList.toggle('pads-mode', !isSeq);
-    if (!isSeq && playing) stopTransport();
-    if (isSeq) closeRecSheet();
+    document.getElementById('pads-view').classList.toggle('active', isPads);
+    const scenesView = document.getElementById('scenes-view');
+    if (scenesView) scenesView.classList.toggle('active', isScenes);
+    document.body.classList.toggle('pads-mode', isPads);
+    // Only Pads stops the transport; Scenes keeps it running so queued swaps work.
+    if (isPads && playing) stopTransport();
+    if (!isPads) closeRecSheet();
     closeAllDrops();
-    // Desktop panel sections
+    // Desktop panel sections: Pads → record/takes; Seq + Scenes → patterns.
     const rpPads = document.getElementById('rp-pads');
     const rpSeq  = document.getElementById('rp-seq');
-    if (rpPads) rpPads.style.display = isSeq ? 'none' : '';
-    if (rpSeq)  rpSeq.style.display  = isSeq ? '' : 'none';
-    if (isSeq) { renderRpPresets(); renderRpPatternList(); }
-    else { showRpSetup(); renderRpTakesList(); }
+    if (rpPads) rpPads.style.display = isPads ? '' : 'none';
+    if (rpSeq)  rpSeq.style.display  = isPads ? 'none' : '';
+    if (isPads) { showRpSetup(); renderRpTakesList(); }
+    else { renderRpPresets(); renderRpPatternList(); }
+    if (isScenes) renderScenes();
   }
 
   document.getElementById('mode-seq-btn').addEventListener('click', () => setMode('seq'));
   document.getElementById('mode-pads-btn').addEventListener('click', () => setMode('pads'));
+  document.getElementById('mode-scenes-btn').addEventListener('click', () => setMode('scenes'));
 
   /* ── STEPS TOGGLE ─────────────────────────────────────────── */
   document.getElementById('steps-btn').addEventListener('click', () => {
@@ -2041,6 +2096,8 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
     muteAllBtn.textContent = 'Mute All';
     muteAllBtn.style.color = muteAllBtn.style.borderColor = muteAllBtn.style.background = '';
     dirty = false;
+    activeSceneKey = null;
+    if (mode === 'scenes') renderScenes();
   });
 
   /* ── MUTE ALL ─────────────────────────────────────────────── */
@@ -2130,8 +2187,10 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
     if (!playing) {
       if (dirty && !confirm(`Load "${name}"? Unsaved changes will be lost.`)) return;
       applyState(data);
+      activeSceneKey = key;
       if (onLoad) onLoad();
       closeAllDrops();
+      if (typeof renderScenes === 'function') renderScenes();
       return;
     }
     // Playing: queue to the next bar, or cancel if this item is already queued.
@@ -2146,6 +2205,7 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
     renderPresets();
     if (typeof renderRpPatternList === 'function') renderRpPatternList();
     if (typeof renderRpPresets === 'function') renderRpPresets();
+    if (typeof renderScenes === 'function') renderScenes();
   }
 
   function renderPatternList() {
@@ -2419,6 +2479,81 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
       row.appendChild(nameEl);
       list.appendChild(row);
     });
+  }
+
+  /* ── SCENES LAUNCHER (groovebox Phase 3) ──────────────────── */
+  // The Scenes view is a big-button launcher over the same queueOrLoad mechanism
+  // used by the Patterns dropdown: tap to launch (queues on the next bar while
+  // playing), long-press a saved scene to overwrite it. No new data format —
+  // scenes are just presets + saved patterns.
+  let sceneHoldTimer = null, sceneHoldFired = false, sceneHoldStart = null;
+
+  function clearSceneHold() {
+    if (sceneHoldTimer) { clearTimeout(sceneHoldTimer); sceneHoldTimer = null; }
+    sceneHoldStart = null;
+  }
+
+  function makeSceneSlot(key, name, kind, data, overwritable) {
+    const slot = document.createElement('button');
+    slot.className = 'scene-slot'
+      + (activeSceneKey === key ? ' playing' : '')
+      + (pendingPattern?.key === key ? ' queued' : '');
+    const status = document.createElement('span'); status.className = 'scene-status';
+    status.textContent = (pendingPattern?.key === key) ? '→' : (activeSceneKey === key ? '●' : '');
+    const nm = document.createElement('span'); nm.className = 'scene-name'; nm.textContent = name;
+    const kd = document.createElement('span'); kd.className = 'scene-kind'; kd.textContent = kind;
+    slot.appendChild(status); slot.appendChild(nm); slot.appendChild(kd);
+
+    slot.addEventListener('pointerdown', e => {
+      sceneHoldFired = false;
+      sceneHoldStart = { x: e.clientX, y: e.clientY };
+      // No pointer capture: let the browser claim the gesture for scrolling
+      // (it fires pointercancel, which clears the hold instead of launching).
+      if (overwritable) {
+        sceneHoldTimer = setTimeout(() => {
+          sceneHoldTimer = null; sceneHoldFired = true;
+          overwriteScene(name);
+        }, 500);
+      }
+    });
+    slot.addEventListener('pointermove', e => {
+      if (sceneHoldStart && Math.hypot(e.clientX - sceneHoldStart.x, e.clientY - sceneHoldStart.y) > 12) clearSceneHold();
+    });
+    slot.addEventListener('pointerup', () => {
+      const fired = sceneHoldFired;
+      clearSceneHold();
+      if (!fired) queueOrLoad(key, name, data);
+    });
+    slot.addEventListener('pointercancel', clearSceneHold);
+    return slot;
+  }
+
+  function renderScenes() {
+    const grid = document.getElementById('scene-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    PRESETS.forEach(p => grid.appendChild(makeSceneSlot('preset:' + p.name, p.name, 'Preset', p.state, false)));
+    listPatterns(APP_ID).forEach(name => grid.appendChild(makeSceneSlot('p:' + name, name, 'Saved', loadPattern(APP_ID, name), true)));
+    const add = document.createElement('button');
+    add.className = 'scene-slot add';
+    add.innerHTML = '<span class="scene-name">＋ New scene</span><span class="scene-hint">save current pattern</span>';
+    add.addEventListener('click', newScene);
+    grid.appendChild(add);
+  }
+
+  function newScene() {
+    const name = (prompt('Name this scene:') || '').trim();
+    if (!name) return;
+    savePattern(APP_ID, name, captureState());
+    dirty = false; activeSceneKey = 'p:' + name;
+    renderScenes(); renderPatternList(); renderRpPatternList();
+  }
+
+  function overwriteScene(name) {
+    if (!confirm(`Overwrite scene "${name}" with the current pattern?`)) return;
+    savePattern(APP_ID, name, captureState());
+    dirty = false; activeSceneKey = 'p:' + name;
+    renderScenes(); renderPatternList(); renderRpPatternList();
   }
 
   /* ── TOPBAR DROPDOWNS ─────────────────────────────────────── */
@@ -2886,7 +3021,7 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
   const defaultMode = window.matchMedia('(pointer: fine)').matches ? 'seq' : 'pads';
   setMode(localStorage.getItem('beatlab:drums:mode') || defaultMode);
   // Init desktop panel (setMode already handles sections, but ensure lists populated)
-  renderRpTakesList(); renderRpPatternList(); renderRpPresets();
+  renderRpTakesList(); renderRpPatternList(); renderRpPresets(); renderScenes();
 
 })();
 </script>
@@ -2974,6 +3109,7 @@ import { audioBufferToWav, audioBufferToMp3, notesToMidi, makeZip, downloadBlob,
 <div class="tb-drop-menu" id="view-menu">
   <button class="tb-drop-item active" id="mode-seq-btn">Sequencer</button>
   <button class="tb-drop-item" id="mode-pads-btn">Pads</button>
+  <button class="tb-drop-item" id="mode-scenes-btn">Scenes</button>
 </div>
 <div class="tb-drop-menu" id="kit-menu"></div>
 <div class="tb-drop-menu" id="export-menu">

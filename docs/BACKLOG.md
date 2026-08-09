@@ -55,9 +55,12 @@ code sketches, and implementation order. All four phases live in `drums/index.ht
   playing; it queues to swap in on the next bar downbeat (amber pulsing arrow,
   tap again to cancel). Shipped (`pendingPattern` + `tick()` hook + `applyState`
   live path).
-- **[Drums] Phase 3 — Scene launcher** — third view mode (alongside Sequencer
-  and Pads): a grid of pattern slots, tap to queue, long-press to overwrite.
-  Designed for live sets. ~3–4h. Requires Phase 2.
+- **[Drums] Phase 3 — Scene launcher** ✅ — third view mode (View ▾ → Scenes)
+  alongside Sequencer and Pads: a grid of pattern slots (presets + saved
+  patterns). Tap to launch (queues on the next bar while playing), long-press a
+  saved scene to overwrite, "＋ New scene" to save the current pattern. Shows the
+  active scene (green ●) and the queued scene (amber →). Reuses the Phase 2
+  `queueOrLoad`/`pendingPattern` mechanism; transport keeps running on entry.
 - **[Drums] Phase 4 — Per-track real-time FX** — persistent filter, reverb send,
   and volume per track tweakable during playback. Biggest structural change:
   voice routing moves from ephemeral to persistent per-track nodes. ~1 day.

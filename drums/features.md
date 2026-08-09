@@ -48,6 +48,16 @@
   - **Built-in presets**: Four on the Floor, Polyrhythm 3/5/7, Clave Groove
   - Polyrhythm preset uses per-track loop lengths to demonstrate independent phase drift
   - Dirty-state tracking: warns before loading over unsaved changes
+- **Scene launcher (groovebox Phase 3)** — a third view mode (View ▾ → Scenes)
+  beside Sequencer and Pads: a grid of large slots for the built-in presets and
+  every saved pattern. Tap a slot to launch it — while playing it queues and swaps
+  in on the next bar (amber →, reusing the Phase 2 mechanism); stopped it loads
+  instantly. The currently loaded scene shows a green ●. Long-press (500ms) a
+  saved slot to overwrite it with the current pattern; the "＋ New scene" slot
+  prompts for a name and saves. Switching into Scenes keeps the transport running,
+  and the transport + timing controls stay in the topbar so you can play, tweak
+  BPM/swing, and launch scenes live. `activeSceneKey` tracks the loaded scene;
+  `renderScenes()` shares `refreshQueuedHighlights()` so highlights stay in sync.
 - **Queued pattern switching (groovebox Phase 2)** — while the transport is running,
   tapping a saved pattern or preset queues it to swap in on the next bar downbeat
   (clean, bar-aligned transition) rather than cutting immediately. The queued item

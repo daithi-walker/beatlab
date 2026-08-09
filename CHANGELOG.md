@@ -13,6 +13,13 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
 ## [Unreleased]
 
 ### Added — Drums
+- **Scene launcher (groovebox)** — a third view mode (View ▾ → Scenes) alongside
+  Sequencer and Pads: a grid of big pattern slots. Tap a slot to launch it —
+  while playing it queues and swaps in on the next bar (amber →); stopped it
+  loads instantly. The currently loaded scene shows a green ●. Long-press a saved
+  scene to overwrite it with the current pattern, or use "＋ New scene" to save.
+  Scenes are just presets + saved patterns (no new data format) and reuse the
+  queued-switching mechanism. Transport keeps running when you switch into Scenes.
 - **Queued pattern switching (groovebox)** — while playing, tapping a saved
   pattern or preset queues it to swap in on the next bar downbeat instead of
   cutting immediately, so live transitions stay clean. The queued item gets an
