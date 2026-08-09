@@ -370,6 +370,10 @@
 
   <button class="topbar-btn" id="timing-btn">Timing ▾</button>
 
+  <div class="divider-v"></div>
+
+  <button class="topbar-btn" id="export-btn">Export ▾</button>
+
   <div class="vol-group">
     <span class="ctrl-label">Vol</span>
     <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.5">
@@ -394,6 +398,13 @@
     <input id="patterns-name-input" type="text" placeholder="pattern name" spellcheck="false">
     <button id="patterns-save-btn">Save</button>
   </div>
+</div>
+
+<!-- Export dropdown -->
+<div id="export-menu" class="tb-drop-menu">
+  <button class="tb-drop-item" id="export-wav-btn">⬇ WAV audio</button>
+  <button class="tb-drop-item" id="export-mid-btn">⬇ MIDI file</button>
+  <button class="tb-drop-item" id="export-stems-btn">⬇ Stems (ZIP)</button>
 </div>
 
 <!-- Timing dropdown -->
@@ -422,6 +433,7 @@
 <script type="module">
 import { noteStringToFreq as noteToFreq, makeImpulse, makePinkNoise, makeWhiteNoise, distCurve as makeDistortionCurve } from '../core/audio.js';
 import { savePattern, loadPattern, listPatterns, deletePattern, getVolume, setVolume } from '../core/storage.js';
+import { audioBufferToWav, notesToMidi, makeZip, downloadBlob, safeName, renderOffline } from '../core/export.js';
 import { initTopnav } from '../core/topnav.js';
 initTopnav({ current: 'multibank', root: '../', label: 'Multibank' });
 
@@ -493,41 +505,50 @@ initTopnav({ current: 'multibank', root: '../', label: 'Multibank' });
 
   function initAudio() {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
+    buildEngine(ctx);
+  }
 
-    masterGain = ctx.createGain();
+  // Build the full mixer graph (master, compressor, shared reverb/delay/chorus
+  // buses, noise buffers) into `context`, assigning the module audio globals.
+  // Shared by the live context (initAudio) and offline renders (renderMulti),
+  // so both paths use identical routing with no drift.
+  function buildEngine(context) {
+    ctx = context;
+
+    masterGain = context.createGain();
     masterGain.gain.value = getVolume(0.5);
 
-    compressor = ctx.createDynamicsCompressor();
+    compressor = context.createDynamicsCompressor();
     compressor.threshold.value = -18;
     compressor.ratio.value = 4;
 
     masterGain.connect(compressor);
-    compressor.connect(ctx.destination);
+    compressor.connect(context.destination);
 
     // Shared reverb — all panel reverbSend nodes feed this
-    reverbConvolver = ctx.createConvolver();
-    reverbConvolver.buffer = makeImpulse(ctx, 2.5, 2.8);
-    reverbReturn = ctx.createGain();
+    reverbConvolver = context.createConvolver();
+    reverbConvolver.buffer = makeImpulse(context, 2.5, 2.8);
+    reverbReturn = context.createGain();
     reverbReturn.gain.value = 0.9;
     reverbConvolver.connect(reverbReturn);
     reverbReturn.connect(masterGain);
 
     // Shared delay bus — one feedback loop serves all panels
-    sharedDelay = ctx.createDelay(2.0);
+    sharedDelay = context.createDelay(2.0);
     sharedDelay.delayTime.value = 60 / bpm / 2;
-    sharedDelayFeedback = ctx.createGain();
+    sharedDelayFeedback = context.createGain();
     sharedDelayFeedback.gain.value = 0.4;
     sharedDelay.connect(sharedDelayFeedback);
     sharedDelayFeedback.connect(sharedDelay);
     sharedDelay.connect(masterGain);
 
     // Shared chorus bus — one LFO modulates all panels
-    sharedChorusDelay = ctx.createDelay(0.05);
+    sharedChorusDelay = context.createDelay(0.05);
     sharedChorusDelay.delayTime.value = 0.02;
-    sharedChorusLfo = ctx.createOscillator();
+    sharedChorusLfo = context.createOscillator();
     sharedChorusLfo.type = 'sine';
     sharedChorusLfo.frequency.value = 1.2;
-    sharedChorusLfoGain = ctx.createGain();
+    sharedChorusLfoGain = context.createGain();
     sharedChorusLfoGain.gain.value = 0.008;
     sharedChorusLfo.connect(sharedChorusLfoGain);
     sharedChorusLfoGain.connect(sharedChorusDelay.delayTime);
@@ -535,8 +556,8 @@ initTopnav({ current: 'multibank', root: '../', label: 'Multibank' });
     sharedChorusDelay.connect(masterGain);
 
     // Noise buffers — pre-generated once, shared across all drum hits
-    pinkBuf  = makePinkNoise(ctx, 2);
-    whiteBuf = makeWhiteNoise(ctx, 2);  // 2s so crash has enough tail
+    pinkBuf  = makePinkNoise(context, 2);
+    whiteBuf = makeWhiteNoise(context, 2);  // 2s so crash has enough tail
   }
 
   function buildPanelNodes(panel) {
@@ -1451,6 +1472,7 @@ initTopnav({ current: 'multibank', root: '../', label: 'Multibank' });
   function closeAllDropdowns() {
     document.getElementById('patterns-menu').classList.remove('open');
     document.getElementById('timing-menu').classList.remove('open');
+    document.getElementById('export-menu').classList.remove('open');
   }
 
   function positionDropdown(menu, btn) {
@@ -1498,9 +1520,149 @@ initTopnav({ current: 'multibank', root: '../', label: 'Multibank' });
 
   document.addEventListener('click', e => {
     if (!e.target.closest('#patterns-menu') && !e.target.closest('#patterns-btn') &&
-        !e.target.closest('#timing-menu')   && !e.target.closest('#timing-btn')) {
+        !e.target.closest('#timing-menu')   && !e.target.closest('#timing-btn') &&
+        !e.target.closest('#export-menu')   && !e.target.closest('#export-btn')) {
       closeAllDropdowns();
     }
+  });
+
+  /* ════════════════════════════════════════════════════════════
+     EXPORT — WAV / MIDI / stems (shared core/export.js)
+  ════════════════════════════════════════════════════════════ */
+
+  // GM percussion notes (channel 10) for drum voices, keyed by typeKey.
+  const GM_DRUM = {
+    kick:36, snare:38, hihat:42, clap:39, tomhi:50, tomlo:45, openhat:46, crash:49,
+  };
+
+  // Note name (e.g. "D2") → MIDI number. C-1 = 0, so C4 = 60.
+  function noteNameToMidi(name) {
+    const m = /^([A-G])(#|b)?(-?\d+)$/.exec(name);
+    if (!m) return 60;
+    const base = { C:0, D:2, E:4, F:5, G:7, A:9, B:11 }[m[1]];
+    const acc  = m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0;
+    return 12 * (parseInt(m[3], 10) + 1) + base + acc;
+  }
+
+  // Offline render of every panel through a faithful mirror of the live graph.
+  // We swap the module audio globals (and the per-panel `nodes` map) to an
+  // OfflineAudioContext for the synchronous scheduling pass, then restore them
+  // before awaiting startRendering() — no await runs in between, so live state
+  // is never disturbed. onlyPanelId isolates one panel (stems) and ignores mute.
+  async function renderMulti(loops = 2, onlyPanelId = null) {
+    if (!panels.length) return null;
+    const total = STEPS * loops;
+    const sd = stepDuration();
+    const startOffset = 0.02, tail = 3.0; // reverb + delay tail
+    const duration = total * sd + startOffset + tail;
+
+    const live = {
+      ctx, masterGain, compressor, reverbConvolver, reverbReturn,
+      sharedDelay, sharedDelayFeedback, sharedChorusDelay, sharedChorusLfo,
+      sharedChorusLfoGain, pinkBuf, whiteBuf,
+    };
+    const savedNodes = { ...nodes };
+
+    return renderOffline({ duration, setup: (octx) => {
+      buildEngine(octx);                       // rebuild mixer/buses into octx
+      panels.forEach(p => buildPanelNodes(p)); // rebuild per-panel chains → nodes[]
+      try {
+        for (let g = 0; g < total; g++) {
+          const time = startOffset + g * sd;
+          panels.forEach(panel => {
+            if (onlyPanelId != null) { if (panel.instanceId !== onlyPanelId) return; }
+            else if (panel.muted) return;
+            if (!panel.steps[g % STEPS]) return;
+            VOICES[panel.typeKey](time, nodes[panel.instanceId].entry, panel);
+          });
+        }
+      } finally {
+        // restore live engine + node map BEFORE the pending startRendering() await
+        ctx = live.ctx; masterGain = live.masterGain; compressor = live.compressor;
+        reverbConvolver = live.reverbConvolver; reverbReturn = live.reverbReturn;
+        sharedDelay = live.sharedDelay; sharedDelayFeedback = live.sharedDelayFeedback;
+        sharedChorusDelay = live.sharedChorusDelay; sharedChorusLfo = live.sharedChorusLfo;
+        sharedChorusLfoGain = live.sharedChorusLfoGain;
+        pinkBuf = live.pinkBuf; whiteBuf = live.whiteBuf;
+        Object.keys(nodes).forEach(k => delete nodes[k]);
+        Object.assign(nodes, savedNodes);
+      }
+    }});
+  }
+
+  // Pattern → Standard MIDI File. Drums on GM channel 10; each melodic panel
+  // gets its own channel. One loop; DAWs loop it.
+  function multiToMidi(loops = 1) {
+    const total = STEPS * loops;
+    const notes = [];
+    const melodicChans = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15];
+    let mi = 0;
+    const panelChan = {};
+    panels.forEach(p => { if (p.type === 'melody') panelChan[p.instanceId] = melodicChans[mi++ % melodicChans.length]; });
+    for (let g = 0; g < total; g++) {
+      const beat = g / 4; // 16th steps → quarter-note beats
+      panels.forEach(panel => {
+        if (panel.muted || !panel.steps[g % STEPS]) return;
+        if (panel.type === 'drum') {
+          const note = GM_DRUM[panel.typeKey];
+          if (note != null) notes.push({ start: beat, dur: 0.25, note, vel: Math.round(127 * panel.volume), ch: 9 });
+        } else {
+          let note = noteNameToMidi(panel.note);
+          if (panel.typeKey === 'sub') note -= 12; // sub plays an octave below
+          notes.push({ start: beat, dur: 0.25, note, vel: Math.round(127 * panel.volume), ch: panelChan[panel.instanceId] });
+        }
+      });
+    }
+    return notesToMidi(notes, { bpm, ppq: 480, endBeats: total / 4 });
+  }
+
+  function exportTag() { return `beatlab-multibank-${bpm}bpm`; }
+
+  async function withBtnBusy(btn, busyText, fn) {
+    const orig = btn.textContent;
+    btn.textContent = busyText; btn.disabled = true;
+    try { await fn(); btn.textContent = '✓ Done'; }
+    catch (e) { btn.textContent = '⚠ Failed'; console.error(e); }
+    finally { setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1400); }
+  }
+
+  document.getElementById('export-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    const menu = document.getElementById('export-menu');
+    const opening = !menu.classList.contains('open');
+    closeAllDropdowns();
+    if (opening) { menu.classList.add('open'); positionDropdown(menu, e.currentTarget); }
+  });
+
+  document.getElementById('export-wav-btn').addEventListener('click', e => {
+    withBtnBusy(e.currentTarget, 'Rendering…', async () => {
+      const buf = await renderMulti(2);
+      if (buf) downloadBlob(audioBufferToWav(buf), exportTag() + '.wav');
+    });
+  });
+
+  document.getElementById('export-mid-btn').addEventListener('click', e => {
+    withBtnBusy(e.currentTarget, 'Writing…', async () => {
+      if (!panels.length) return;
+      downloadBlob(new Blob([multiToMidi(1)], { type: 'audio/midi' }), exportTag() + '.mid');
+    });
+  });
+
+  document.getElementById('export-stems-btn').addEventListener('click', e => {
+    withBtnBusy(e.currentTarget, 'Rendering…', async () => {
+      const files = [];
+      const used = {};
+      for (const panel of panels) {
+        if (!panel.steps.some(Boolean)) continue; // skip empty panels
+        const buf = await renderMulti(2, panel.instanceId);
+        if (!buf) continue;
+        let base = safeName(panel.name);
+        used[base] = (used[base] || 0) + 1;
+        if (used[base] > 1) base += '-' + used[base]; // disambiguate duplicate names
+        files.push({ name: base + '.wav', data: new Uint8Array(await audioBufferToWav(buf).arrayBuffer()) });
+      }
+      if (files.length) downloadBlob(makeZip(files), exportTag() + '-stems.zip');
+    });
   });
 
   // Master volume slider
