@@ -21,6 +21,14 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
   hammer-ons/pull-offs and vibrato, with Acoustic / Clean / Blues / Rock amp
   tones built on `core/audio.js`. Licks tab added to the Nectar topbar.
 
+### Added — Nectar (tunings)
+- **Guitar tunings** — a Tuning select on every Nectar page (Standard, Half step
+  down, Drop D, DADGAD, Open G, Open D), shared across pages. Strings relabel and
+  re-pitch; Scales, Chords and Identify re-render for the tuning. Licks can declare
+  a tuning (new "Drop D Chug" lick). Built on a new `INSTRUMENTS` definition in
+  `nectar/shared/theory.js` so other fretted instruments can follow
+  (`docs/nectar-instruments.md`).
+
 ### Changed — Nectar
 - **Shared guitar core** (ADR-010) — Scales, Chords, Identify and Licks now use one
   neck, synth, scheduler and audio setup from `nectar/shared/` instead of three

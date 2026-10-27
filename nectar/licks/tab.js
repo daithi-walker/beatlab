@@ -1,4 +1,4 @@
-import { STRING_NAMES } from '../shared/theory.js';
+import { STRINGS, STRING_NAMES } from '../shared/theory.js';
 
 // Renders a parsed song as SVG tablature, with beat counts underneath and a play cursor.
 
@@ -8,7 +8,6 @@ export const Tab = (() => {
   const PAD = 14;      // gap between a bar line and the first note
   const TOP = 34;      // room above the top string for bend labels
   const GAP = 19;      // distance between strings
-  const HEIGHT = TOP + GAP * 5 + 34;
 
   function el(name, attrs, parent) {
     const e = document.createElementNS(SVGNS, name);
@@ -27,6 +26,7 @@ export const Tab = (() => {
   const BEND_LABEL = { 1: '½', 2: 'full', 3: '1½', 4: '2' };
 
   function render(container, song, onNoteClick) {
+    const HEIGHT = stringY(STRINGS.length) + 34;
     container.innerHTML = '';
     const width = Math.max(320, container.clientWidth);
     const usable = width - GUTTER - 10;
@@ -51,13 +51,13 @@ export const Tab = (() => {
       const bars = Math.min(barsPerRow, barsTotal - r * barsPerRow);
       const right = GUTTER + bars * 4 * ppb;
 
-      for (let s = 1; s <= 6; s++) {
+      for (const s of STRINGS) {
         el('line', { x1: GUTTER, x2: right, y1: stringY(s), y2: stringY(s), class: 'tline' }, svg);
         text(svg, 12, stringY(s) + 4, STRING_NAMES[s], 'tname');
       }
       for (let b = 0; b <= bars; b++) {
         const x = GUTTER + b * 4 * ppb;
-        el('line', { x1: x, x2: x, y1: stringY(1), y2: stringY(6), class: 'tbar' }, svg);
+        el('line', { x1: x, x2: x, y1: stringY(1), y2: stringY(STRINGS.length), class: 'tbar' }, svg);
       }
 
       // Beat counts: "1 & 2 &" or "1 trip let" for triplet licks.
@@ -66,11 +66,11 @@ export const Tab = (() => {
       for (let k = 0; k < bars * 4 * sub; k++) {
         const b = k / sub;
         const main = k % sub === 0;
-        text(svg, xOf(b), stringY(6) + 26, main ? String((Math.round(b) % 4) + 1) : subLabels[k % sub],
+        text(svg, xOf(b), stringY(STRINGS.length) + 26, main ? String((Math.round(b) % 4) + 1) : subLabels[k % sub],
           main ? 'tcount' : 'tcount sub');
       }
 
-      const cursor = el('line', { x1: 0, x2: 0, y1: stringY(1) - 12, y2: stringY(6) + 12, class: 'tcursor' }, svg);
+      const cursor = el('line', { x1: 0, x2: 0, y1: stringY(1) - 12, y2: stringY(STRINGS.length) + 12, class: 'tcursor' }, svg);
       layout.rows.push({ svg, cursor });
     }
 

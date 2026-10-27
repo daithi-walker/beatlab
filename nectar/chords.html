@@ -283,6 +283,7 @@
         <button id="play-btn">&#9654; Play</button>
       </div>
       <div class="topbar-right">
+        <select id="tuning-select"></select>
         <select id="tone-select"></select>
         <span class="vol-label">Vol</span>
         <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.8">
@@ -298,8 +299,9 @@
 
   <script type="module">
     // Chords: chord explorer on the shared Nectar neck + synth (see nectar/shared/).
-    import { NOTE_NAMES, ROOT_MIDI, STRINGS, OPEN_MIDI, FRET_COUNT, INTERVAL_COLORS, midiAt, degree, positionsInScale } from './shared/theory.js';
+    import { NOTE_NAMES, ROOT_MIDI, OPEN_MIDI, STRING_NAMES, TUNING, FRET_COUNT, INTERVAL_COLORS, midiAt, degree, positionsInScale, stringsLowToHigh, onTuningChange } from './shared/theory.js';
     import { setupAudio } from './shared/audio-ui.js';
+    import { setupTuning } from './shared/tuning-ui.js';
     import { Neck, ghostDots } from './shared/neck.js';
 
     // ─── Chord Data ───────────────────────────────────────────────────────────
@@ -370,14 +372,16 @@
 
     // ─── Voicing Computation ──────────────────────────────────────────────────
 
-    // anchor: 6 = E-shape (root on low E), 5 = A-shape (root on A, low E muted).
-    // Returns one entry per string, low E first: { string, fret, interval } or { string, muted: true }.
-    function computeVoicing(chordKey, rootMidi, anchor) {
+    // shape 0 = root on the lowest string (E-shape in standard), 1 = root on the next one up
+    // (A-shape; strings below it muted). Returns one entry per string, lowest first:
+    // { string, fret, interval } or { string, muted: true }.
+    function computeVoicing(chordKey, rootMidi, shape) {
       const { intervals } = CHORDS[chordKey];
+      const anchor = stringsLowToHigh()[shape];
       const rootFret = degree(rootMidi, OPEN_MIDI[anchor]);
       const voicing = [];
-      for (const string of [...STRINGS].reverse()) {
-        if (string > anchor) { voicing.push({ string, muted: true }); continue; }
+      for (const string of stringsLowToHigh()) {
+        if (OPEN_MIDI[string] < OPEN_MIDI[anchor]) { voicing.push({ string, muted: true }); continue; }
         let found = null;
         for (let fret = rootFret; fret <= Math.min(rootFret + 4, FRET_COUNT); fret++) {
           const interval = degree(midiAt(string, fret), rootMidi);
@@ -423,7 +427,7 @@
 
     let currentChord = 'major';
     let currentRoot  = 69; // A
-    let anchor       = 6;  // 6 = E-shape, 5 = A-shape
+    let shape        = 0;  // 0 = E-shape, 1 = A-shape (see computeVoicing)
 
     const synth = setupAudio();
     const neck = new Neck(document.getElementById('fretboard-container'), {
@@ -437,7 +441,7 @@
 
     function rerender() {
       const { intervals } = CHORDS[currentChord];
-      const voicing = computeVoicing(currentChord, currentRoot, anchor);
+      const voicing = computeVoicing(currentChord, currentRoot, shape);
       const voiced = new Set(voicing.filter((v) => !v.muted).map((v) => `${v.string}:${v.fret}`));
       const tones = positionsInScale(currentRoot, intervals);
       const toneKeys = new Set(tones.map((t) => `${t.string}:${t.fret}`));
@@ -467,14 +471,21 @@
 
     const btnE = document.getElementById('btn-e');
     const btnA = document.getElementById('btn-a');
-    function setAnchor(a) {
-      anchor = a;
-      btnE.classList.toggle('active', a === 6);
-      btnA.classList.toggle('active', a === 5);
+    function setShape(sh) {
+      shape = sh;
+      btnE.classList.toggle('active', sh === 0);
+      btnA.classList.toggle('active', sh === 1);
       rerender();
     }
-    btnE.addEventListener('click', () => setAnchor(6));
-    btnA.addEventListener('click', () => setAnchor(5));
+    btnE.addEventListener('click', () => setShape(0));
+    btnA.addEventListener('click', () => setShape(1));
+
+    // "E-shape"/"A-shape" only mean something in standard tuning.
+    function labelShapes() {
+      const [low, next] = stringsLowToHigh();
+      btnE.textContent = TUNING.id === 'standard' ? 'E-shape' : `Root on ${STRING_NAMES[low]}`;
+      btnA.textContent = TUNING.id === 'standard' ? 'A-shape' : `Root on ${STRING_NAMES[next]}`;
+    }
 
     function setRoot(i) {
       rootSelect.value = i;
@@ -487,7 +498,7 @@
     // Down-strum: voiced notes low E → high e, 60ms apart.
     const playBtn = document.getElementById('play-btn');
     function playChord() {
-      const notes = computeVoicing(currentChord, currentRoot, anchor).filter((v) => !v.muted);
+      const notes = computeVoicing(currentChord, currentRoot, shape).filter((v) => !v.muted);
       const delays = synth.audition(notes, 0.06);
       playBtn.classList.add('playing');
       notes.forEach((n, i) => setTimeout(() => neck.flash(n), delays[i]));
@@ -502,6 +513,9 @@
       if (e.code === 'ArrowLeft') setRoot((ROOT_MIDI.indexOf(currentRoot) + 11) % 12);
     });
 
+    setupTuning();
+    onTuningChange(() => { labelShapes(); rerender(); });
+    labelShapes();
     rerender();
   </script>
 

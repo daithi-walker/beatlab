@@ -12,16 +12,20 @@ from playwright.async_api import async_playwright
 BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8767/nectar/").rstrip("/") + "/"
 SPY = """async () => {
   const m = await import('/nectar/shared/synth.js');
+  const t = await import('/nectar/shared/theory.js');
   if (m.GuitarSynth.prototype.__spied) return;
   const orig = m.GuitarSynth.prototype.pluck;
-  window.__plucks = [];
-  m.GuitarSynth.prototype.pluck = function (bus, note, ...r) { window.__plucks.push(note.string + ':' + note.fret); return orig.call(this, bus, note, ...r); };
+  window.__plucks = []; window.__midis = [];
+  m.GuitarSynth.prototype.pluck = function (bus, note, ...r) {
+    window.__plucks.push(note.string + ':' + note.fret); window.__midis.push(t.midiOf(note));
+    return orig.call(this, bus, note, ...r);
+  };
   m.GuitarSynth.prototype.__spied = true;
 }"""
 # screen coords of every (string, fret), asked from the page's Neck
 POS = """() => {
   const svg = document.querySelector('svg.nk'), neck = svg.neck, ctm = svg.getScreenCTM(), out = {};
-  for (let s = 1; s <= 6; s++) for (let f = 0; f <= neck.frets; f++) {
+  for (let s = 1; s <= svg.querySelectorAll('.sname').length; s++) for (let f = 0; f <= neck.frets; f++) {
     const p = svg.createSVGPoint(); p.x = neck.noteX(f); p.y = neck.stringY(s); const q = p.matrixTransform(ctm);
     out[s + ':' + f] = [q.x, q.y];
   }
@@ -71,6 +75,19 @@ async def main():
         r = await pg.evaluate("[...document.querySelectorAll('.layer-scale > g circle')].filter(c => c.getAttribute('fill') === '#ff9d3d').length")
         check("scales: changing root redraws roots", r > 0, f"{r} E roots")
 
+        # ---------------- Tunings (Scales)
+        await pg.select_option("#tuning-select", "dropD"); await pg.wait_for_timeout(100)
+        check("tuning: drop D relabels strings", await pg.evaluate("[...document.querySelectorAll('svg.nk .sname')].map(t => t.textContent).join('')") == "EBGDAD", await pg.evaluate("[...document.querySelectorAll('svg.nk .sname')].map(t => t.textContent).join('')"))
+        await pg.evaluate("window.__plucks.length = 0; window.__midis.length = 0")
+        pos = await pg.evaluate(POS); x, y = pos["6:0"]; await pg.mouse.click(x, y); await pg.wait_for_timeout(100)
+        check("tuning: drop D open 6th string plays D2 (MIDI 38)", await pg.evaluate("window.__midis.slice()") == [38], str(await pg.evaluate("window.__midis.slice()")))
+        await pg.select_option("#tuning-select", "dadgad"); await pg.wait_for_timeout(100)
+        check("tuning: DADGAD labels (top string lowercase)", await pg.evaluate("[...document.querySelectorAll('svg.nk .sname')].map(t => t.textContent).join('')") == "dAGDAD", await pg.evaluate("[...document.querySelectorAll('svg.nk .sname')].map(t => t.textContent).join('')"))
+        await pg.goto(BASE + "chords.html"); await pg.wait_for_timeout(300)
+        check("tuning: carries across pages", await pg.input_value("#tuning-select") == "dadgad")
+        check("tuning: chord shapes relabelled outside standard", await pg.text_content("#btn-e") == "Root on D", await pg.text_content("#btn-e"))
+        await pg.select_option("#tuning-select", "standard"); await pg.wait_for_timeout(100)
+
         # ---------------- Chords
         await pg.goto(BASE + "chords.html"); await pg.wait_for_timeout(400); await pg.evaluate(SPY)
         voicing = await pg.evaluate("""() => [...document.querySelectorAll('.layer-main > g')].map(g => g.querySelector('text').textContent)""")
@@ -119,7 +136,21 @@ async def main():
         check("licks: active + next notes shown", await pg.evaluate("document.querySelectorAll('.layer-active circle, .layer-next circle').length") >= 2)
         await pg.click("#play")
         n = await pg.evaluate("() => { let c = 0; for (const b of document.querySelectorAll('.lick-item')) { b.click(); c++; } return c; }")
-        check("licks: all licks render", n == 13)
+        check("licks: all licks render", n == 14, f"{n} licks")
+
+        # lick tunings: the Licks page follows the lick's tuning without changing the saved one
+        await pg.click("button.lick-item[data-id='drop-d-chug']"); await pg.wait_for_timeout(200)
+        locked = await pg.evaluate("[document.querySelector('#tuning-select').value, document.querySelector('#tuning-select').disabled]")
+        check("licks: drop-D lick locks tuning to Drop D", locked == ["dropD", True], str(locked))
+        tab_names = await pg.evaluate("[...document.querySelectorAll('.tab-row')][0].querySelectorAll('.tname')[5].textContent")
+        check("licks: tab shows D on string 6", tab_names == "D", tab_names)
+        await pg.evaluate(SPY); await pg.evaluate("window.__midis.length = 0")
+        await pg.evaluate("document.querySelector('.tev:not(:empty)').dispatchEvent(new MouseEvent('click', {bubbles: true}))"); await pg.wait_for_timeout(100)
+        check("licks: drop-D lick plays low D", 38 in await pg.evaluate("window.__midis.slice()"), str(await pg.evaluate("window.__midis.slice()")))
+        await pg.click("button.lick-item[data-id='am-box1']"); await pg.wait_for_timeout(100)
+        check("licks: standard lick switches back", await pg.input_value("#tuning-select") == "standard")
+        await pg.goto(BASE + "index.html"); await pg.wait_for_timeout(300)
+        check("licks: lick tuning is not saved as the user's tuning", await pg.input_value("#tuning-select") == "standard")
 
         await pg.evaluate("localStorage.clear()")
         check("no console/page errors", not errs, "; ".join(errs[:5]))
