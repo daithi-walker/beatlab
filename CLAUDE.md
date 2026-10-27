@@ -27,6 +27,9 @@ persistence. GitHub Pages deploys on push to `main` via `.github/workflows/pages
 2. **Read the relevant `features.md`** for the app you're touching — it documents
    non-obvious implementation details (scheduler, state format, encoding schema).
 3. **Check `CHANGELOG.md`** for the current version and what's already shipped.
+4. **Look for shared code before writing any.** Check `core/` (cross-app) and the
+   app's own shared folder (e.g. `nectar/shared/`) for an engine, renderer or
+   helper that already does the job. See "Reuse before you write" below.
 
 ## Mobile & cross-browser requirements
 
@@ -63,11 +66,24 @@ The Drums share-link encoding is versioned. **If you change the bit layout in
 `encodeState()` / `decodeV1()` you must bump `SHARE_VERSION` and add a new
 `decodeVN()` function.** Never modify an existing decoder. See `docs/share-encoding.md`.
 
-### One HTML file per app
-Apps are single `.html` files with inline `<style>` and `<script>`. Do not
-introduce a build step, bundler, or external JS dependencies unless there is
-a very strong reason and it's discussed first. `core/storage.js` is the only
-shared module.
+### Reuse before you write
+Duplicated engines across pages are a bug, not a shortcut. Before adding audio,
+rendering, scheduling or music-theory code to a page:
+- Use what exists in `core/` or the app's shared folder.
+- If it doesn't quite fit, **extend the shared module** (new option, layer or
+  method, backwards compatible) instead of copying it into the page.
+- If you find a second copy of something, consolidate it, or flag it in
+  `docs/BACKLOG.md` if it's out of scope.
+- Code used by more than one page of an app belongs in that app's shared folder.
+  Code used by more than one app belongs in `core/`.
+
+### Native ES modules, no build step
+Pages may be a single `.html` file with inline `<style>`/`<script>`, or an
+`.html` file that loads native ES modules (e.g. `nectar/licks.html` +
+`nectar/licks/*.js`). Code shared across apps lives in `core/`; code shared
+across pages of one app lives in that app's folder. Do not introduce a build
+step, bundler, or npm runtime dependencies unless it's discussed first. See
+`docs/adr-009-multi-file-modules.md` for when to revisit (Vite).
 
 ### No samples
 All sound is synthesised via Web Audio API. Do not add audio sample files.
@@ -95,9 +111,31 @@ Prefix commits with the app name: `Drums:`, `Nectar:`, `Multibank:`,
 - Kit order in `KITS` object is fixed — share-encoding depends on it
 
 ### Nectar (`nectar/`)
-- Three pages: `index.html` (Scales), `chords.html`, `identify.html`
-- Karplus-Strong synthesis in an inline AudioWorklet blob
-- Consistent topbar pattern across all three pages (see `nectar/FEATURES.md`)
+- Four pages: `index.html` (Scales), `chords.html`, `identify.html`, `licks.html`.
+- **All pages must use the shared guitar core in `nectar/shared/`** (ADR-010).
+  Never draw a fretboard, synthesise a note, or schedule notes inside a page:
+
+  | Need | Use |
+  |---|---|
+  | Tuning, note names, scales, interval colours/symbols | `shared/theory.js` (add new scales here, not in a page) |
+  | A fretboard (dots, box, muted strings, playing/next notes, strum/tap) | `Neck` from `shared/neck.js` |
+  | Any sound | `GuitarSynth` from `shared/synth.js` (via `setupAudio()`) |
+  | Timed playback (runs, licks, strums longer than a chord) | `Player` from `shared/player.js` (no `setTimeout` note sequencing) |
+  | Volume / Tone controls, iOS audio unlock | `setupAudio()` from `shared/audio-ui.js` (needs `#vol-slider` + `#tone-select` in the topbar) |
+
+- **String convention:** notes are `{ string, fret }` with string 1 = high e ...
+  6 = low E (tab order) everywhere. No 0-indexed low-E arrays.
+- New page? Copy the structure of `index.html`: topbar with the Nectar tabs
+  (add the new tab to every page), `#tone-select` + `#vol-slider`, a
+  `#fretboard-container` passed to `new Neck(...)`, and a `<script type="module">`
+  that imports from `./shared/`.
+- Licks: page code in `nectar/licks/`. Licks are authored in a text tab notation
+  documented at the top of `nectar/licks/notation.js`.
+- **After touching `nectar/shared/` or any Nectar page, run the smoke test:**
+  `python3 nectar/tests/smoke.py` (needs the nectar container up and
+  `pip install playwright && playwright install chromium`). It drives every page
+  and records the notes the synth plays.
+- Consistent topbar pattern across all pages (see `nectar/FEATURES.md`).
 
 ### Multibank (`multibank/index.html`)
 - Multi-voice step sequencer with per-channel sound shaping
