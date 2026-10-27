@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Licks · Nectar — BeatLab</title>
+  <link rel="icon" type="image/png" href="../icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="licks/licks.css">
+</head>
+<body>
+  <header id="top-bar">
+    <a href="index.html" class="nectar-tab">Scales</a>
+    <a href="chords.html" class="nectar-tab">Chords</a>
+    <a href="identify.html" class="nectar-tab">Identify</a>
+    <a href="licks.html" class="nectar-tab active">Licks</a>
+    <div class="topbar-right">
+      <span class="keys"><kbd>Space</kbd> play <kbd>L</kbd> loop <kbd>←</kbd><kbd>→</kbd> speed</span>
+      <select id="tone-select"></select>
+      <span class="vol-label">Vol</span>
+      <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.8">
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="library" id="library"></aside>
+
+    <main class="main">
+      <section class="lick-head">
+        <div class="eyebrow" id="lick-style"></div>
+        <h1 id="lick-title"></h1>
+        <div class="chips" id="lick-chips"></div>
+      </section>
+
+      <section class="transport">
+        <button class="play" id="play"><span class="icon">▶</span><span class="lbl">Play</span></button>
+        <div class="speed">
+          <label for="speed">Speed</label>
+          <input id="speed" type="range" min="40" max="120" step="5">
+          <output id="speed-out"></output>
+        </div>
+        <div class="toggles">
+          <label class="tog"><input type="checkbox" id="loop"><span>Loop</span></label>
+          <label class="tog"><input type="checkbox" id="countin"><span>Count-in</span></label>
+          <label class="tog"><input type="checkbox" id="metro"><span>Click</span></label>
+          <label class="tog" title="Starts at 70% and speeds up 5% every loop until 100%"><input type="checkbox" id="trainer"><span>Speed trainer</span></label>
+        </div>
+        <div class="status"><span id="count" class="count"></span><span id="loop-count"></span></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Tab</h2>
+          <span class="muted">Click any note to hear it. Counts underneath show the rhythm.</span>
+        </div>
+        <div class="tab" id="tab"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Fretboard</h2>
+          <div class="seg" id="neck-mode">
+            <button data-v="box">This position</button>
+            <button data-v="all">Whole neck</button>
+          </div>
+          <div class="seg" id="label-mode">
+            <button data-v="notes">Notes</button>
+            <button data-v="intervals">Intervals</button>
+            <button data-v="off">Frets</button>
+          </div>
+        </div>
+        <div class="fretboard" id="fretboard"></div>
+        <div class="legend">
+          <span><i class="lg root"></i>Root (home note)</span>
+          <span><i class="lg deg"></i>Scale note</span>
+          <span><i class="lg foot"></i>Used in this lick</span>
+          <span><i class="lg act"></i>Playing now</span>
+          <span><i class="lg next"></i>Next note</span>
+        </div>
+      </section>
+
+      <section class="cards">
+        <article class="card"><h3>What it is</h3><p id="lick-about"></p></article>
+        <article class="card"><h3>Why it works</h3><p id="lick-theory"></p></article>
+        <article class="card"><h3>How to practise</h3><p id="lick-practice"></p></article>
+      </section>
+    </main>
+  </div>
+
+<script type="module" src="licks/app.js"></script>
+<script type="module">
+import { initTopnav } from '../core/topnav.js';
+initTopnav({ current: 'nectar', root: '../', label: 'Nectar' });
+</script>
+</body>
+</html>

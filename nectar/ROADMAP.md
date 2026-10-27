@@ -8,7 +8,7 @@ Ideas and options explored but not yet implemented.
 
 ### Current: Karplus-Strong synthesis
 
-All notes are produced by an inline AudioWorklet. A delay buffer is filled with noise and fed back through a low-pass filter; the buffer length encodes frequency, the filter coefficient controls damping. No sample files. Zero latency. Sounds like a generic plucked string — passable but not strongly differentiated by instrument type.
+*Updated (ADR-010):* all pages now use the shared `GuitarSynth` (`nectar/shared/synth.js`): per-note Karplus-Strong buffers pitched with `playbackRate` (so bends/slides/vibrato work) through an amp/cab stage with Acoustic / Clean / Blues / Rock tones. Option 1 below is effectively done. No sample files. Still sounds synthetic next to a recording; see the "Nectar — Licks" backlog for the performance-realism work.
 
 Per-string damping values (0.493–0.498) give marginally different decay rates. Pluck width controls the attack brightness.
 

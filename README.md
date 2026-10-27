@@ -8,7 +8,7 @@ A suite of browser-based music tools. No build step, no dependencies — open an
 |---|---|---|
 | [Drums](drums/) | 12-track TR-style drum machine with pads, kits, polymeter, Euclidean fills | Working |
 | [Multibank](multibank/) | Multi-voice step sequencer with per-channel sound shaping | Working |
-| [Nectar](nectar/) | Guitar theory suite — scales, chords, chord identifier | Early |
+| [Nectar](nectar/) | Guitar theory suite — scales, chords, chord identifier, lick trainer | Early |
 | [Synth](synth/) | Polyphonic keyboard synth with arp, LFO, ADSR, XY pad | In progress |
 
 Live at **[daithi-walker.github.io/beatlab](https://daithi-walker.github.io/beatlab)**

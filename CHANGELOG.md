@@ -12,6 +12,33 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
 
 ## [Unreleased]
 
+### Added — Nectar
+- **Licks page** (`nectar/licks.html`) — a lick trainer with 13 original licks.
+  Tab with beat counts and a playback cursor, a fretboard showing the scale box,
+  the playing note and the next note (position or whole-neck view, note or
+  interval labels), and play-along playback with swing, loop, count-in, click,
+  speed 40-120% and a speed trainer. Synthesised guitar supports bends, slides,
+  hammer-ons/pull-offs and vibrato, with Acoustic / Clean / Blues / Rock amp
+  tones built on `core/audio.js`. Licks tab added to the Nectar topbar.
+
+### Changed — Nectar
+- **Shared guitar core** (ADR-010) — Scales, Chords, Identify and Licks now use one
+  neck, synth, scheduler and audio setup from `nectar/shared/` instead of three
+  copy-pasted canvas renderers and worklet synths. Visible changes: an SVG neck
+  with real fret spacing and on-neck inlays; Tone (Acoustic / Clean / Blues / Rock)
+  and Volume in every topbar, shared across pages; the Scales run is scheduled on
+  the audio clock; the Licks neck is now playable. Each older page shrank by
+  ~500-600 lines.
+- **Nectar smoke test** — `nectar/tests/smoke.py` (Playwright) drives every page
+  and checks the notes the synth plays.
+
+### Changed — Platform
+- **"Reuse before you write" rule** in `CLAUDE.md`: extend shared modules instead
+  of copying engines into pages.
+- **Multi-file ES modules allowed per page** (ADR-009). The "one HTML file per
+  app" rule in `CLAUDE.md` is replaced: pages may load native ES modules, still
+  with no build step or bundler.
+
 ### Added — Drums
 - **Scene launcher (groovebox)** — a third view mode (View ▾ → Scenes) alongside
   Sequencer and Pads: a grid of big pattern slots. Tap a slot to launch it —

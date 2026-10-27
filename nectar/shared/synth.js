@@ -1,0 +1,240 @@
+// Nectar shared guitar synth: Karplus-Strong strings + amp/cab tone stage.
+// Every Nectar page plays notes through this. Notes are { string, fret } (string 1 = high e),
+// optionally with tech ('h' | 'p' | '/'), bend (semitones) and vibrato (bool).
+
+import { makeImpulse, distCurve } from '../../core/audio.js';
+import { midiOf } from './theory.js';
+
+// Amp presets. The signal path is:
+//   strings -> highpass -> body -> mid hump -> waveshaper -> cab lowpass -> presence -> level
+// drive: core distCurve amount, 0-1 (0 = bypass, clean). sustain: multiplies string ring time.
+export const TONES = {
+  acoustic: { label: 'Acoustic', drive: 0, body: 4, mid: 0, midFreq: 800, cab: 5500, presence: 0, level: 1.4, reverb: 0.22, sustain: 1 },
+  clean: { label: 'Clean', drive: 0.008, body: 1, mid: 2, midFreq: 900, cab: 5000, presence: 2, level: 0.75, reverb: 0.2, sustain: 1.6 },
+  blues: { label: 'Blues', drive: 0.08, body: 2, mid: 6, midFreq: 750, cab: 3800, presence: 3, level: 0.29, reverb: 0.16, sustain: 2.2 },
+  rock: { label: 'Rock', drive: 0.33, body: 3, mid: 4, midFreq: 650, cab: 3400, presence: 4, level: 0.19, reverb: 0.12, sustain: 2.6 },
+};
+
+export class GuitarSynth {
+  constructor() {
+    this.ctx = null;
+    this.cache = new Map();
+    this.tone = 'blues';
+    this.volumeLevel = 0.8;
+  }
+
+  ensure() {
+    if (!this.ctx) {
+      const ctx = (this.ctx = new AudioContext());
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -16;
+      comp.ratio.value = 4;
+      this.volume = ctx.createGain();
+      this.volume.gain.value = this.volumeLevel;
+      comp.connect(this.volume).connect(ctx.destination);
+
+      const filter = (type, freq, q = 0.7) => {
+        const f = ctx.createBiquadFilter();
+        f.type = type;
+        f.frequency.value = freq;
+        f.Q.value = q;
+        return f;
+      };
+      const amp = (this.amp = {
+        highpass: filter('highpass', 75),
+        body: filter('peaking', 180, 1),
+        mid: filter('peaking', 800, 0.9),
+        shaper: ctx.createWaveShaper(),
+        cab: filter('lowpass', 5000, 0.9),
+        presence: filter('peaking', 2400, 1.2),
+        level: ctx.createGain(),
+        send: ctx.createGain(),
+      });
+      amp.shaper.oversample = '4x';
+
+      this.input = ctx.createGain();
+      this.input
+        .connect(amp.highpass).connect(amp.body).connect(amp.mid)
+        .connect(amp.shaper)
+        .connect(amp.cab).connect(amp.presence).connect(amp.level)
+        .connect(comp);
+
+      // Heavy buffer work is deferred so the unlocking gesture handler returns fast (iOS).
+      const reverb = ctx.createConvolver();
+      setTimeout(() => { reverb.buffer = makeImpulse(ctx, 1.6, 3); }, 0);
+      amp.level.connect(amp.send).connect(reverb).connect(comp);
+
+      this.applyTone();
+      this.auditionBus = this.newBus();
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    return this.ctx;
+  }
+
+  setVolume(v) {
+    this.volumeLevel = v;
+    if (this.ctx) this.volume.gain.setTargetAtTime(v, this.ctx.currentTime, 0.02);
+  }
+
+  setTone(name) {
+    this.tone = name;
+    if (this.ctx) this.applyTone();
+  }
+
+  applyTone() {
+    const p = TONES[this.tone];
+    const a = this.amp;
+    const t = this.ctx.currentTime;
+    a.body.gain.setTargetAtTime(p.body, t, 0.02);
+    a.mid.frequency.setTargetAtTime(p.midFreq, t, 0.02);
+    a.mid.gain.setTargetAtTime(p.mid, t, 0.02);
+    a.shaper.curve = distCurve(p.drive);
+    a.cab.frequency.setTargetAtTime(p.cab, t, 0.02);
+    a.presence.gain.setTargetAtTime(p.presence, t, 0.02);
+    a.level.gain.setTargetAtTime(p.level, t, 0.02);
+    a.send.gain.setTargetAtTime(p.reverb, t, 0.02);
+  }
+
+  // Each play session gets its own bus so stopping can silence everything already scheduled.
+  newBus() {
+    const g = this.ctx.createGain();
+    g.connect(this.input);
+    g.voices = {};
+    return g;
+  }
+
+  releaseBus(bus) {
+    const t = this.ctx.currentTime;
+    bus.gain.cancelScheduledValues(t);
+    bus.gain.setValueAtTime(bus.gain.value, t);
+    bus.gain.linearRampToValueAtTime(0, t + 0.06);
+    setTimeout(() => bus.disconnect(), 250);
+  }
+
+  // Karplus-Strong buffer. The delay line length is an integer, so the true pitch is
+  // corrected with playbackRate (returned as `rate`).
+  buffer(midi) {
+    const sustain = TONES[this.tone].sustain;
+    const key = `${midi}:${sustain}`;
+    if (this.cache.has(key)) return this.cache.get(key);
+    const sr = this.ctx.sampleRate;
+    const f = 440 * Math.pow(2, (midi - 69) / 12);
+    const N = Math.max(2, Math.floor(sr / f - 0.5));
+    const f0 = sr / (N + 0.5);
+    const t60 = Math.min(4, Math.max(1.1, 4 - (midi - 40) * 0.07)) * sustain;
+    const decay = Math.pow(0.001, 1 / (f0 * t60));
+    const len = Math.floor(sr * Math.min(6, t60 + 0.5));
+    const out = new Float32Array(len);
+
+    // Excitation: softened noise with a pick-position comb.
+    const noise = new Float32Array(N);
+    let lp = 0;
+    for (let i = 0; i < N; i++) {
+      lp += 0.55 * (Math.random() * 2 - 1 - lp);
+      noise[i] = lp;
+    }
+    const pick = Math.max(1, Math.round(N * 0.13));
+    let mean = 0;
+    for (let i = 0; i < N; i++) {
+      out[i] = noise[i] - (i >= pick ? noise[i - pick] : 0);
+      mean += out[i] / N;
+    }
+    let peak = 0;
+    for (let i = 0; i < N; i++) {
+      out[i] -= mean;
+      peak = Math.max(peak, Math.abs(out[i]));
+    }
+    for (let i = 0; i < N; i++) out[i] *= 0.5 / (peak || 1);
+
+    for (let i = N; i < len; i++) {
+      out[i] = decay * 0.5 * (out[i - N] + (i - N - 1 >= 0 ? out[i - N - 1] : 0));
+    }
+    const fadeLen = Math.floor(sr * 0.3);
+    for (let i = 0; i < fadeLen; i++) out[len - 1 - i] *= i / fadeLen;
+
+    const buf = this.ctx.createBuffer(1, len, sr);
+    buf.copyToChannel(out, 0);
+    const entry = { buf, rate: f / f0 };
+    this.cache.set(key, entry);
+    return entry;
+  }
+
+  // Play one note. `dur` is the note's notated length in seconds (used to time bends/slides).
+  pluck(bus, note, t, dur, prevMidi = null) {
+    const ctx = this.ctx;
+    const midi = midiOf(note);
+    const { buf, rate } = this.buffer(midi);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const g = ctx.createGain();
+    const legato = note.tech === 'h' || note.tech === 'p' || note.tech === '/';
+    const vel = legato ? 0.5 : 0.9;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vel, t + 0.004);
+
+    const pr = src.playbackRate;
+    if (note.tech === '/' && prevMidi != null && prevMidi !== midi) {
+      pr.setValueAtTime(rate * Math.pow(2, (prevMidi - midi) / 12), t);
+      pr.linearRampToValueAtTime(rate, t + Math.min(0.09, dur * 0.5));
+    } else {
+      pr.setValueAtTime(rate, t);
+    }
+    const target = rate * Math.pow(2, note.bend / 12);
+    if (note.bend) {
+      const bs = t + Math.min(0.06, dur * 0.15);
+      pr.setValueAtTime(rate, bs);
+      pr.linearRampToValueAtTime(target, bs + Math.min(0.2, dur * 0.45));
+    }
+    if (note.vibrato) {
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 5.5;
+      const depth = ctx.createGain();
+      const vs = t + Math.min(0.35, dur * 0.3);
+      depth.gain.setValueAtTime(0, t);
+      depth.gain.setValueAtTime(0, vs);
+      depth.gain.linearRampToValueAtTime(target * 0.014, vs + 0.25);
+      lfo.connect(depth).connect(pr);
+      lfo.start(t);
+      lfo.stop(t + buf.duration);
+    }
+
+    // One sounding note per string: a new note mutes the previous one.
+    this.mute(bus, note.string, t);
+    src.connect(g).connect(bus);
+    src.start(t);
+    src.stop(t + buf.duration + 0.1);
+    bus.voices[note.string] = g;
+  }
+
+  mute(bus, string, t) {
+    const prev = bus.voices[string];
+    if (!prev) return;
+    prev.gain.cancelScheduledValues(t);
+    prev.gain.setTargetAtTime(0, t, 0.012);
+    delete bus.voices[string];
+  }
+
+  muteAll(bus, t) {
+    for (const s of Object.keys(bus.voices)) this.mute(bus, +s, t);
+  }
+
+  click(bus, t, accent) {
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.frequency.value = accent ? 1700 : 1150;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(accent ? 0.5 : 0.3, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    osc.connect(g).connect(bus);
+    osc.start(t);
+    osc.stop(t + 0.06);
+  }
+
+  // Play notes now, outside any sequence. gap = seconds between notes (0.012 = chord, 0.06 = strum).
+  audition(notes, gap = 0.012) {
+    this.ensure();
+    const t = this.ctx.currentTime + 0.02;
+    notes.forEach((n, k) => this.pluck(this.auditionBus, { ...n, tech: null }, t + k * gap, 0.6));
+    return notes.map((_, k) => (t - this.ctx.currentTime + k * gap) * 1000); // ms until each note
+  }
+}

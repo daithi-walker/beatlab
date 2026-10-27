@@ -4,39 +4,50 @@ All features currently implemented in the app.
 
 ---
 
-## Signal Chain
+## Shared Guitar Core (`nectar/shared/`)
+
+Every page uses the same neck, synth and scheduler (ADR-010):
+
+| Module | What it does |
+|---|---|
+| `theory.js` | Tuning, note names, the 10 scales, interval colours/symbols, `positionsInScale()` |
+| `neck.js` | `Neck`: SVG fretboard with dot layers, box frame, mute markers, playing/next notes, pluck flash; strum or tap interaction |
+| `synth.js` | `GuitarSynth`: Karplus-Strong strings + amp tones |
+| `player.js` | `Player`: audio-clock look-ahead scheduler (runs, licks) |
+| `audio-ui.js` | `setupAudio()`: topbar Volume + Tone (shared across pages via localStorage `nectar-audio`), iOS unlock |
+
+Notes are `{ string, fret }`, string 1 = high e ... 6 = low E (tab order).
+
+### Signal chain
 
 ```
-fretboard click / strum gesture
+neck tap / strum / Player event
     │
     ▼
-AudioWorklet (Karplus-Strong synthesis, inline blob)
-    │   delay buffer (length = sample rate / frequency)
-    │   feedback loop → BiquadFilterNode (lowpass, per-string damping)
-    │   noise burst seeds the buffer on each new note
-    │
+AudioBufferSourceNode per note (Karplus-Strong buffer, cached per pitch + tone)
+    │   playbackRate: exact pitch, plus slide / bend / vibrato automation
+    │   one sounding note per string (a new note mutes the last)
     ▼
-GainNode (per-string output)
-    │
+amp: highpass → body → mid hump → distCurve waveshaper → cab lowpass → presence → level
+    │                                                        └─ reverb send (makeImpulse)
     ▼
-GainNode (master)
-    │
-    ▼
-AudioContext.destination
+compressor → volume → destination
 ```
 
-Each string pluck is a separate AudioWorkletNode. The worklet holds its own ring buffer — no OscillatorNode is used. Damping coefficients (0.493–0.498) are tuned per string so lower strings decay more slowly, matching physical behaviour.
+**Tone** (topbar select, every page): Acoustic / Clean / Blues / Rock set the
+drive, mid hump, cab cutoff, reverb and string sustain.
 
 ---
 
 ## Guitar Neck
 
-- Full 21-fret neck in standard EADGBE tuning
-- String labels (e B G D A E) on the left, bold and clearly separated from note circles
-- Fret position dots at 3, 5, 7, 9 (single), 12 (double), 15, 17, 19, 21
-- Fret numbers shown at landmark positions
+- One SVG neck component on every page, standard EADGBE tuning, high e on top
+- 21 frets on Scales/Chords/Identify, 17 on Licks; real (tapered) fret spacing
+- String labels (e B G D A E) on the left; inlays at 3, 5, 7, 9, 12 (double), 15, 17, 19, 21
+- All fret numbers shown, landmark frets emphasised
 - String gauge thicknesses — low E visually thicker than high e
-- Rosewood neck background with gold nut
+- Rosewood gradient with gold nut
+- On touch screens the neck is wider than the screen and scrolls sideways
 
 ---
 
@@ -71,7 +82,7 @@ Each string pluck is a separate AudioWorkletNode. The worklet holds its own ring
 
 ## Playing Notes
 
-**Click or tap** any position on the neck to pluck that note — scale or non-scale, any string, any fret.
+**Click or tap** any position on the neck to pluck that note — scale or non-scale, any string, any fret. Works on Scales, Chords and Licks (Identify uses taps to select notes).
 
 **Strum** — hold the mouse button (or touch) and drag:
 - Dragging vertically across strings plays each string as you cross it
@@ -79,7 +90,7 @@ Each string pluck is a separate AudioWorkletNode. The worklet holds its own ring
 - Release or lift to stop strumming
 - A tap without dragging snaps to the nearest fret and plays one note
 
-All notes use **Karplus-Strong synthesis** — a physical string model running in an AudioWorklet. A delay buffer filled with noise feeds back through a low-pass filter; buffer length encodes frequency, damping coefficient controls decay. Per-string damping values give lower strings slightly longer sustain. Zero sample files, fully algorithmic.
+All notes use the shared `GuitarSynth` (see Shared Guitar Core above). Zero sample files, fully algorithmic.
 
 ---
 
@@ -90,7 +101,7 @@ Pressing **Play** runs an ascending then descending scale run:
 - **Box mode OFF** — plays every unique pitch across the neck (frets 0–12), one occurrence per pitch, lowest string preferred. Gives a full two-octave ascending sweep.
 - **Box mode ON** — plays only notes within the 4-fret box position. Clean 2-notes-per-string pattern, the standard guitar scale exercise.
 
-**BPM** control (40–200, default 80) — eighth-note timing.
+**BPM** control (40–200, default 80) — eighth-note timing, scheduled on the audio clock by the shared `Player`.
 
 **Keyboard shortcuts:**
 - `Space` — play / stop
@@ -196,8 +207,8 @@ Separate page reachable via "Identify →" from the scale explorer or chord expl
 
 ## Navigation & UI
 
-- **Consistent topbar across all pages** — BeatLab home link | Nectar wordmark | Scales / Chords / Identify tab strip (active tab highlighted in amber) | page-specific controls | Vol slider
-- **Volume slider** — present on all three pages (Scales, Chords, Identify), wired to masterGain
+- **Consistent topbar across all pages** — BeatLab home link | Nectar wordmark | Scales / Chords / Identify / Licks tab strip (active tab highlighted in amber) | page-specific controls | Tone select | Vol slider
+- **Tone + Volume** — on every page, shared across pages (`setupAudio()`)
 
 ---
 
@@ -205,6 +216,38 @@ Separate page reachable via "Identify →" from the scale explorer or chord expl
 
 ### Chord Identifier
 - **Show voicing variations** — given a matched chord, show alternative fingerings on the neck (similar to Chord Explorer's E-shape / A-shape toggle, but for the identified chord type). Would let you identify a shape and instantly see other ways to play it.
+
+---
+
+## Licks (licks.html)
+
+A lick trainer: learn short riffs from tab, see them on the neck, and play along.
+Code lives in `nectar/licks/` as native ES modules (ADR-009).
+
+**Library** — 13 original licks grouped Foundation / Blues / Rock / Country /
+Melody / Technique, each with a level, key, scale, position and target tempo,
+plus three plain-English cards: What it is, Why it works, How to practise.
+
+**Tab** — SVG tablature rendered from a compact text notation
+(`3-7:q`, `h3-7`, `/3-9`, `2-8b2`, `4-7~`, `5-0+4-2`, `r`; full spec at the top
+of `licks/notation.js`). Beat counts under the staff ("1 & 2 &" or "1 tri let").
+Playback cursor + current-note highlight. Click a note to hear it.
+
+**Fretboard** — same orientation as the tab (high e on top). Scale dots with
+roots in amber, rings on every position the lick uses, the playing note in gold
+and the next note as a teal ring. "This position" / "Whole neck" shows how the
+box connects to the rest of the neck; labels switch between Notes / Intervals / Frets.
+
+**Playback** — look-ahead scheduler (same pattern as ADR-003) with swing, loop,
+1-bar count-in, click track, speed 40-120% (defaults to 100% so you hear the
+lick as intended) and a Speed trainer that starts at 70% and adds 5% per loop.
+
+**Sound** — the shared `GuitarSynth`; the lick's techniques (bends, slides,
+hammer-ons/pull-offs, vibrato) are performed by `playbackRate` automation.
+The neck is playable too (tap or strum).
+
+**Keys** — `Space` play/stop, `L` loop, `←` / `→` speed. Settings persist in
+localStorage (`nectar-licks`).
 
 ---
 
