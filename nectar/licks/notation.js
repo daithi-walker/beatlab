@@ -8,8 +8,10 @@ const DURATIONS = {
 
 /*
  * Tab notation, whitespace separated:
- *   3-7        string 3, fret 7
+ *   3-7        string 3, fret 7 (string 1 = top line of tab)
  *   3-7:q      ...as a quarter note (duration sticks for following notes)
+ *   3-5:g      grace note: takes no time on the grid; sounds on the beat and the next note
+ *              follows ~200 ms later (Grace slider on the Licks page) (e.g. "3-5:g h3-7:q" = quick hammer-on into a quarter)
  *   h3-7 p3-5  hammer-on / pull-off into this note
  *   /3-9       slide into this note from the previous note on that string
  *   2-8b2      bend up 2 semitones (b1 = half step)
@@ -18,7 +20,7 @@ const DURATIONS = {
  *   r          rest
  *   |          bar line (ignored, just for readability)
  */
-const NOTE_RE = /^([hp/])?([1-6])-(\d{1,2})(?:b(\d))?(~)?$/;
+const NOTE_RE = /^([hp/])?([1-9])-(\d{1,2})(?:b(\d))?(~)?$/;
 
 function parseNote(tok) {
   const m = NOTE_RE.exec(tok);
@@ -43,11 +45,15 @@ function parseTab(src) {
     const [rawBody, d0] = raw.split(':');
     const body = trailingVib ? `${rawBody}~` : rawBody;
     const d = trailingVib ? d0.slice(0, -1) : d0;
+    const notes = body === 'r' ? [] : body.split('+').map(parseNote);
+    if (d === 'g') {
+      events.push({ beat, dur: 0, notes, grace: true }); // doesn't move the beat or the sticky duration
+      continue;
+    }
     if (d !== undefined) {
       if (!(d in DURATIONS)) throw new Error(`Bad duration "${d}" in "${raw}"`);
       dur = DURATIONS[d];
     }
-    const notes = body === 'r' ? [] : body.split('+').map(parseNote);
     events.push({ beat, dur, notes });
     beat += dur;
   }

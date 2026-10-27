@@ -15,9 +15,9 @@ SPY = """async () => {
   const t = await import('/nectar/shared/theory.js');
   if (m.GuitarSynth.prototype.__spied) return;
   const orig = m.GuitarSynth.prototype.pluck;
-  window.__plucks = []; window.__midis = [];
+  window.__plucks = []; window.__midis = []; window.__times = [];
   m.GuitarSynth.prototype.pluck = function (bus, note, ...r) {
-    window.__plucks.push(note.string + ':' + note.fret); window.__midis.push(t.midiOf(note));
+    window.__plucks.push(note.string + ':' + note.fret); window.__midis.push(t.midiOf(note)); window.__times.push(r[0]);
     return orig.call(this, bus, note, ...r);
   };
   m.GuitarSynth.prototype.__spied = true;
@@ -30,6 +30,28 @@ POS = """() => {
     out[s + ':' + f] = [q.x, q.y];
   }
   return out;
+}"""
+LEGATO = """async () => {
+  const { GuitarSynth } = await import('/nectar/shared/synth.js');
+  const t = await import('/nectar/shared/theory.js');
+  t.setInstrument('guitar');
+  async function render(seq) {
+    const s = new GuitarSynth(); s.setTone('acoustic');
+    const real = window.AudioContext;
+    window.AudioContext = function () { return new OfflineAudioContext(1, 48000, 48000); };
+    OfflineAudioContext.prototype.resume = () => Promise.resolve();
+    s.ensure(); window.AudioContext = real;
+    await new Promise(r => setTimeout(r, 50));
+    const bus = s.newBus();
+    for (const [fret, tech, at] of seq) { s.pluck(bus, { string: 3, fret, tech, bend: 0, vibrato: false }, at, 0.3); }
+    return (await s.ctx.startRendering()).getChannelData(0);
+  }
+  // peak in the 12 ms after `at` divided by peak in the 12 ms before
+  const jump = (d, at) => { const i = Math.floor(at * 48000), w = 576; let a = 0, b = 0;
+    for (let k = 0; k < w; k++) { b = Math.max(b, Math.abs(d[i - w + k])); a = Math.max(a, Math.abs(d[i + k])); } return (a / b).toFixed(2); };
+  const leg = await render([[5, null, 0.05], [7, 'h', 0.35]]);
+  const pick = await render([[5, null, 0.05], [7, null, 0.35]]);
+  return [+jump(leg, 0.35), +jump(pick, 0.35)];
 }"""
 results = []
 def check(name, ok, detail=""):
@@ -84,7 +106,6 @@ async def main():
         await pg.select_option("#tuning-select", "dadgad"); await pg.wait_for_timeout(100)
         check("tuning: DADGAD labels (top string lowercase)", await pg.evaluate("[...document.querySelectorAll('svg.nk .sname')].map(t => t.textContent).join('')") == "dAGDAD", await pg.evaluate("[...document.querySelectorAll('svg.nk .sname')].map(t => t.textContent).join('')"))
         await pg.goto(BASE + "chords.html"); await pg.wait_for_timeout(300)
-        check("tuning: carries across pages", await pg.input_value("#tuning-select") == "dadgad")
         check("tuning: chord shapes relabelled outside standard", await pg.text_content("#btn-e") == "Root on D", await pg.text_content("#btn-e"))
         await pg.select_option("#tuning-select", "standard"); await pg.wait_for_timeout(100)
 
@@ -123,6 +144,41 @@ async def main():
         await pg.keyboard.press("Escape")
         check("identify: Escape clears", await pg.evaluate("document.querySelectorAll('.layer-main > g').length") == 0)
 
+        # ---------------- Instruments
+        await pg.goto(BASE + "index.html"); await pg.wait_for_timeout(300); await pg.evaluate(SPY)
+        await pg.select_option("#instrument-select", "bass"); await pg.wait_for_timeout(100)
+        check("instrument: bass draws 4 strings G D A E", await pg.evaluate("[...document.querySelectorAll('svg.nk .sname')].map(t => t.textContent).join('')") == "GDAE", await pg.evaluate("[...document.querySelectorAll('svg.nk .sname')].map(t => t.textContent).join('')"))
+        check("instrument: bass neck has 20 frets", await pg.evaluate("document.querySelectorAll('svg.nk .fnum').length") == 20)
+        opts = await pg.evaluate("[...document.querySelectorAll('#tuning-select option')].map(o => o.value)")
+        check("instrument: tuning list follows instrument", opts == ["standard", "dropD"], str(opts))
+        await pg.evaluate("window.__midis.length = 0")
+        pos = await pg.evaluate(POS); x, y = pos["4:0"]; await pg.mouse.click(x, y); await pg.wait_for_timeout(100)
+        check("instrument: bass open E plays E1 (MIDI 28)", await pg.evaluate("window.__midis.slice()") == [28], str(await pg.evaluate("window.__midis.slice()")))
+        await pg.select_option("#instrument-select", "guitar7"); await pg.wait_for_timeout(100)
+        check("instrument: 7-string labels e B G D A E B", await pg.evaluate("[...document.querySelectorAll('svg.nk .sname')].map(t => t.textContent).join('')") == "eBGDAEB", await pg.evaluate("[...document.querySelectorAll('svg.nk .sname')].map(t => t.textContent).join('')"))
+        await pg.select_option("#instrument-select", "guitar12"); await pg.wait_for_timeout(100)
+        n_lines = await pg.evaluate("document.querySelectorAll('svg.nk .string').length")
+        check("instrument: 12-string draws 6 paired courses (12 lines)", n_lines == 12 and await pg.evaluate("[...document.querySelectorAll('svg.nk .sname')].map(t => t.textContent).join('')") == "eBGDAE", f"{n_lines} lines")
+        await pg.select_option("#instrument-select", "mandolin"); await pg.wait_for_timeout(100)
+        check("instrument: mandolin draws 4 paired courses (8 lines)", await pg.evaluate("document.querySelectorAll('svg.nk .string').length") == 8)
+        await pg.select_option("#instrument-select", "ukulele"); await pg.wait_for_timeout(100)
+        check("instrument: ukulele labels A E C G, 15 frets", [await pg.evaluate("[...document.querySelectorAll('svg.nk .sname')].map(t => t.textContent).join('')"), await pg.evaluate("document.querySelectorAll('svg.nk .fnum').length")] == ["AECG", 15])
+        await pg.goto(BASE + "chords.html"); await pg.wait_for_timeout(300)
+        check("instrument: carries across pages", await pg.input_value("#instrument-select") == "ukulele")
+        await pg.select_option("#root-select", "0"); await pg.wait_for_timeout(100)
+        n_voiced = await pg.evaluate("document.querySelectorAll('.layer-main > g').length")
+        check("instrument: ukulele C chord voiced, shapes relabelled", n_voiced >= 3 and await pg.text_content("#btn-e") == "Root on C", f"{n_voiced} notes, {await pg.text_content('#btn-e')}")
+        await pg.goto(BASE + "identify.html"); await pg.wait_for_timeout(300)
+        pos = await pg.evaluate(POS)
+        for k in ["4:0", "3:0", "2:0", "1:3"]:
+            x, y = pos[k]; await pg.mouse.click(x, y); await pg.wait_for_timeout(40)
+        check("instrument: ukulele 0003 identified as C", await pg.text_content("#match-symbol") == "C", await pg.text_content("#match-symbol"))
+        await pg.select_option("#instrument-select", "guitar"); await pg.wait_for_timeout(100)
+
+        # ---------------- legato: a hammer-on continues the ringing note, it doesn't re-pick
+        ham, pick = await pg.evaluate(LEGATO)
+        check("synth: hammer-on has no new pick attack", ham < 1.5 < pick, f"attack jump hammer {ham} vs pick {pick}")
+
         # ---------------- tone + volume shared across pages
         await pg.select_option("#tone-select", "rock")
         await pg.goto(BASE + "licks.html"); await pg.wait_for_timeout(400)
@@ -136,9 +192,26 @@ async def main():
         check("licks: active + next notes shown", await pg.evaluate("document.querySelectorAll('.layer-active circle, .layer-next circle').length") >= 2)
         await pg.click("#play")
         n = await pg.evaluate("() => { let c = 0; for (const b of document.querySelectorAll('.lick-item')) { b.click(); c++; } return c; }")
-        check("licks: all licks render", n == 14, f"{n} licks")
+        check("licks: library shows the guitar licks", n == 16, f"{n} licks")
+        check("licks: instrument select is usable, tuning is set by the lick",
+              await pg.evaluate("[document.querySelector('#instrument-select').disabled, document.querySelector('#tuning-select').disabled]") == [False, True])
 
         # lick tunings: the Licks page follows the lick's tuning without changing the saved one
+        # grace notes: "4-2:g h4-4:q" sounds 4-2 on the beat and 4-4 ~200 ms later
+        await pg.click("button.lick-item[data-id='major-pent-country']"); await pg.wait_for_timeout(200)
+        await pg.evaluate(SPY); await pg.evaluate("window.__plucks.length = 0; window.__times.length = 0")
+        await pg.click("#play"); await pg.wait_for_timeout(3700); await pg.click("#play")
+        gap = await pg.evaluate("(() => { const p = window.__plucks, t = window.__times, i = p.indexOf('4:2'); return i >= 0 && p[i + 1] === '4:4' ? Math.round((t[i + 1] - t[i]) * 1000) : null; })()")
+        check("licks: grace note sounds ~200 ms before its main note", gap is not None and 190 <= gap <= 210, f"{gap} ms")
+        check("licks: grace notes drawn small in the tab", await pg.evaluate("document.querySelectorAll('.tnum.grace').length") == 4)
+        await pg.evaluate("(() => { const g = document.querySelector('#grace'); g.value = 350; g.dispatchEvent(new Event('input')); })()")
+        await pg.evaluate("window.__plucks.length = 0; window.__times.length = 0")
+        await pg.click("#play"); await pg.wait_for_timeout(3700); await pg.click("#play")
+        gap = await pg.evaluate("(() => { const p = window.__plucks, t = window.__times, i = p.indexOf('4:2'); return i >= 0 && p[i + 1] === '4:4' ? Math.round((t[i + 1] - t[i]) * 1000) : null; })()")
+        check("licks: Grace slider sets the grace length (350 ms)", gap is not None and 340 <= gap <= 360, f"{gap} ms")
+        hidden = await pg.evaluate("(() => { document.querySelector(\"button.lick-item[data-id='am-box1']\").click(); return document.querySelector('#grace-ctl').hidden; })()")
+        check("licks: Grace slider hidden for licks without grace notes", hidden is True)
+
         await pg.click("button.lick-item[data-id='drop-d-chug']"); await pg.wait_for_timeout(200)
         locked = await pg.evaluate("[document.querySelector('#tuning-select').value, document.querySelector('#tuning-select').disabled]")
         check("licks: drop-D lick locks tuning to Drop D", locked == ["dropD", True], str(locked))
@@ -147,10 +220,20 @@ async def main():
         await pg.evaluate(SPY); await pg.evaluate("window.__midis.length = 0")
         await pg.evaluate("document.querySelector('.tev:not(:empty)').dispatchEvent(new MouseEvent('click', {bubbles: true}))"); await pg.wait_for_timeout(100)
         check("licks: drop-D lick plays low D", 38 in await pg.evaluate("window.__midis.slice()"), str(await pg.evaluate("window.__midis.slice()")))
-        await pg.click("button.lick-item[data-id='am-box1']"); await pg.wait_for_timeout(100)
-        check("licks: standard lick switches back", await pg.input_value("#tuning-select") == "standard")
+        await pg.select_option("#instrument-select", "bass"); await pg.wait_for_timeout(200)
+        lk = await pg.evaluate("[document.querySelectorAll('.lick-item').length, document.querySelector('.lick-item.active').dataset.id, document.querySelector('.tab-row').querySelectorAll('.tname').length]")
+        check("licks: Bass filters library to bass licks, 4-line tab", lk == [1, "bass-walk", 4], str(lk))
+        await pg.select_option("#instrument-select", "mandolin"); await pg.wait_for_timeout(200)
+        check("licks: instrument without licks shows empty state", "No Mandolin licks yet" in await pg.text_content("#lick-title"))
+        await pg.select_option("#instrument-select", "ukulele"); await pg.wait_for_timeout(200)
+        await pg.evaluate("window.__midis.length = 0")
+        await pg.evaluate("document.querySelector('.tev:not(:empty)').dispatchEvent(new MouseEvent('click', {bubbles: true}))"); await pg.wait_for_timeout(100)
+        check("licks: uke C chord plays re-entrant g C E c (67 60 64 72)", sorted(await pg.evaluate("window.__midis.slice()")) == [60, 64, 67, 72], str(await pg.evaluate("window.__midis.slice()")))
+        await pg.select_option("#instrument-select", "guitar"); await pg.wait_for_timeout(200)
+        check("licks: back to guitar picks a guitar lick in standard", [await pg.input_value("#instrument-select"), await pg.input_value("#tuning-select")] == ["guitar", "standard"])
         await pg.goto(BASE + "index.html"); await pg.wait_for_timeout(300)
         check("licks: lick tuning is not saved as the user's tuning", await pg.input_value("#tuning-select") == "standard")
+        check("licks: instrument chosen on Licks carries to other pages", await pg.input_value("#instrument-select") == "guitar")
 
         await pg.evaluate("localStorage.clear()")
         check("no console/page errors", not errs, "; ".join(errs[:5]))

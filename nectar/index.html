@@ -299,6 +299,7 @@
       <label class="bpm-label"><span>BPM</span><input id="bpm-input" type="number" min="40" max="200" value="80"></label>
       <label class="box-label"><input id="box-check" type="checkbox"><span>Box</span></label>
       <div class="topbar-right">
+        <select id="instrument-select"></select>
         <select id="tuning-select"></select>
         <select id="tone-select"></select>
         <span class="vol-label">Vol</span>
@@ -323,7 +324,7 @@
     // Scales: scale explorer on the shared Nectar neck + synth (see nectar/shared/).
     import { SCALES, NOTE_NAMES, ROOT_MIDI, OPEN_MIDI, FRET_COUNT, midiAt, degree, positionsInScale, stringsLowToHigh, onTuningChange } from './shared/theory.js';
     import { setupAudio } from './shared/audio-ui.js';
-    import { setupTuning } from './shared/tuning-ui.js';
+    import { setupInstrument } from './shared/instrument-ui.js';
     import { Player } from './shared/player.js';
     import { Neck, ghostDots } from './shared/neck.js';
 
@@ -337,7 +338,6 @@
     let clearTimer = null;
 
     const neck = new Neck(document.getElementById('fretboard-container'), {
-      frets: FRET_COUNT,
       interaction: 'strum',
       onPluck: (note) => {
         synth.audition([note]);
@@ -365,7 +365,7 @@
       const [lo, hi] = getBoxRange();
       const inScale = positionsInScale(currentRoot, intervals);
       const scaleKeys = new Set(inScale.map((p) => `${p.string}:${p.fret}`));
-      neck.setLayer('ghost', ghostDots().filter((d) => !scaleKeys.has(`${d.string}:${d.fret}`)));
+      neck.setLayer('ghost', ghostDots(neck.frets).filter((d) => !scaleKeys.has(`${d.string}:${d.fret}`)));
       neck.setLayer('scale', inScale.map((p) => {
         const root = p.degree === 0;
         return {
@@ -481,7 +481,7 @@
       if (e.code === 'ArrowLeft') setRoot((ROOT_MIDI.indexOf(currentRoot) + 11) % 12);
     });
 
-    setupTuning();
+    setupInstrument();
     onTuningChange(() => { player.stop(); renderAll(); });
     renderAll();
   </script>

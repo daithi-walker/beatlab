@@ -1,26 +1,34 @@
-// Nectar shared tuning control: fills #tuning-select from the current instrument's tunings
-// and switches tuning (persisted across Nectar pages). Pages re-render via onTuningChange().
+// Nectar shared instrument + tuning controls: fills #instrument-select and #tuning-select and
+// switches them (persisted across Nectar pages). Pages re-render via onTuningChange().
 //
-//   const tuning = setupTuning();     // expects #tuning-select in the topbar
-//   tuning.lock('dropD');             // Licks: show + use the lick's tuning, not editable
+//   const instrument = setupInstrument();        // expects both selects in the topbar
+//   instrument.lockTuning('dropD');               // Licks: the lick sets the tuning, not editable
 
-import { INSTRUMENT, TUNING, setTuning } from './theory.js';
+import { INSTRUMENTS, INSTRUMENT, TUNING, setInstrument, setTuning, onTuningChange } from './theory.js';
 
-export function setupTuning(selector = '#tuning-select') {
-  const select = document.querySelector(selector);
-  select.title = 'Tuning';
-  for (const [id, t] of Object.entries(INSTRUMENT.tunings)) select.appendChild(new Option(t.name, id, false, id === TUNING.id));
-  select.addEventListener('change', (e) => {
-    setTuning(e.target.value);
-    e.target.blur();
-  });
+export function setupInstrument({ instrument = '#instrument-select', tuning = '#tuning-select' } = {}) {
+  const instSel = document.querySelector(instrument);
+  const tuneSel = document.querySelector(tuning);
+  instSel.title = 'Instrument';
+  tuneSel.title = 'Tuning';
+  for (const [id, i] of Object.entries(INSTRUMENTS)) instSel.appendChild(new Option(i.name, id));
+
+  // Tuning options depend on the instrument, so refill them on every change.
+  const sync = () => {
+    instSel.value = INSTRUMENT.id;
+    tuneSel.replaceChildren(...Object.entries(INSTRUMENT.tunings).map(([id, t]) => new Option(t.name, id, false, id === TUNING.id)));
+  };
+  sync();
+  onTuningChange(sync);
+
+  instSel.addEventListener('change', (e) => { setInstrument(e.target.value); e.target.blur(); });
+  tuneSel.addEventListener('change', (e) => { setTuning(e.target.value); e.target.blur(); });
 
   return {
-    lock(id) {
-      select.value = id;
-      select.disabled = true;
-      select.title = 'This lick is written for this tuning';
-      if (TUNING.id !== id) setTuning(id, { persist: false });
+    lockTuning(tuningId) {
+      tuneSel.disabled = true;
+      tuneSel.title = 'Set by the lick: each lick is written for one tuning';
+      if (TUNING.id !== tuningId) setTuning(tuningId, { persist: false });
     },
   };
 }

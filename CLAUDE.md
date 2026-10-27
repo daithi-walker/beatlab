@@ -58,6 +58,7 @@ Always consider these when writing or reviewing any code:
 ### ES Modules
 - All apps use `<script type="module">` — supported on iOS 10.3+ and Android Chrome 61+. Safe for our audience.
 - Module imports only work over HTTP(S), not `file://`. Always test via the local server or GitHub Pages.
+- The local nginx serves with `Cache-Control: no-cache` (`nginx-dev.conf`), so a normal refresh loads edited modules. If a change "doesn't show up", check the container was recreated after that file was added, then hard-refresh.
 
 ## Rules
 
@@ -122,20 +123,23 @@ Prefix commits with the app name: `Drums:`, `Nectar:`, `Multibank:`,
   | Any sound | `GuitarSynth` from `shared/synth.js` (via `setupAudio()`) |
   | Timed playback (runs, licks, strums longer than a chord) | `Player` from `shared/player.js` (no `setTimeout` note sequencing) |
   | Volume / Tone controls, iOS audio unlock | `setupAudio()` from `shared/audio-ui.js` (needs `#vol-slider` + `#tone-select` in the topbar) |
-  | Tuning control | `setupTuning()` from `shared/tuning-ui.js` (needs `#tuning-select`); re-render in `onTuningChange()` |
+  | Instrument + tuning controls | `setupInstrument()` from `shared/instrument-ui.js` (needs `#instrument-select` + `#tuning-select`); re-render in `onTuningChange()` |
 
 - **String convention:** notes are `{ string, fret }` with string 1 = the top line
   of tab (high e in standard) and the last string = the bottom line. No 0-indexed
-  arrays. Never assume 6 strings or a pitch: use `STRINGS`, `OPEN_MIDI`,
-  `midiAt()`, `stringsLowToHigh()`. They are live bindings that
-  follow the current tuning (see `docs/nectar-instruments.md`).
+  arrays. Never assume 6 strings, a fret count, or that the last string is the
+  lowest: use `STRINGS`, `OPEN_MIDI`, `FRET_COUNT`/`neck.frets`, `midiAt()`,
+  `stringsLowToHigh()`. They are live bindings that follow the current
+  instrument + tuning (see `docs/nectar-instruments.md`).
 - New page? Copy the structure of `index.html`: topbar with the Nectar tabs
-  (add the new tab to every page), `#tuning-select` + `#tone-select` + `#vol-slider`, a
+  (add the new tab to every page), `#instrument-select` + `#tuning-select` +
+  `#tone-select` + `#vol-slider`, a
   `#fretboard-container` passed to `new Neck(...)`, and a `<script type="module">`
   that imports from `./shared/`.
 - Licks: page code in `nectar/licks/`. Licks are authored in a text tab notation
-  documented at the top of `nectar/licks/notation.js`; a lick's `tuning` field
-  locks the page to that tuning (not saved as the user's choice).
+  documented at the top of `nectar/licks/notation.js`. A lick's `instrument`
+  decides which library it appears in (the Instrument select filters it); its
+  `tuning` is applied while it's shown (not saved as the user's choice).
 - **After touching `nectar/shared/` or any Nectar page, run the smoke test:**
   `python3 nectar/tests/smoke.py` (needs the nectar container up and
   `pip install playwright && playwright install chromium`). It drives every page
