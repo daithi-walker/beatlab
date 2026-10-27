@@ -127,6 +127,17 @@ code sketches, and implementation order. All four phases live in `drums/index.ht
 
 ---
 
+## Nectar — Licks
+
+- **Life in the playing** — per-pluck fresh excitation (no identical repeats),
+  velocity-dependent brightness, timing/velocity humanisation, true legato
+  (hammer-ons continue the same string), shaped bends and drifting vibrato,
+  strum spread on chords.
+- **Better electric tone** — pickup-position comb filter, string stiffness,
+  pick/fret noises, palm mute; optionally a cabinet impulse response (small
+  file; needs a decision against the "no samples" rule).
+- **Backing tracks** — drive a Drums/Multibank groove under a lick.
+
 ## Nectar — Tab Viewer
 
 Tab viewer (`tab.html`) is a proof-of-concept using AlphaTab. See

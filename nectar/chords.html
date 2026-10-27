@@ -207,22 +207,8 @@
     }
 
     #fretboard-container {
-      height: clamp(180px, 28vh, 260px);
-      position: relative;
-      overflow-x: auto;
-      overflow-y: hidden;
       flex-shrink: 0;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    #fretboard {
-      position: absolute;
-      left: 0; top: 0; bottom: 0;
-      height: 100%;
-    }
-
-    @media (pointer: coarse) {
-      #fretboard-container { touch-action: pan-x; }
+      background: #1a1208;
     }
 
     #chord-card {
@@ -285,6 +271,7 @@
       <a href="index.html" class="nectar-tab">Scales</a>
       <a href="chords.html" class="nectar-tab active">Chords</a>
       <a href="identify.html" class="nectar-tab">Identify</a>
+      <a href="licks.html" class="nectar-tab">Licks</a>
       <div class="topbar-divider"></div>
       <div class="controls">
         <select id="root-select"></select>
@@ -296,13 +283,12 @@
         <button id="play-btn">&#9654; Play</button>
       </div>
       <div class="topbar-right">
+        <select id="tone-select"></select>
         <span class="vol-label">Vol</span>
         <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.8">
       </div>
     </header>
-    <div id="fretboard-container">
-      <canvas id="fretboard"></canvas>
-    </div>
+    <div id="fretboard-container"></div>
     <div id="chord-card">
       <div id="chord-title"></div>
       <div id="chord-intervals"></div>
@@ -310,59 +296,13 @@
     </div>
   </div>
 
-  <script>
-    // ─── Note & String Constants ──────────────────────────────────────────────
-
-    const ROOT_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-    const ROOT_MIDI  = [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71];
-
-    // Standard EADGBE — MIDI note numbers for open strings
-    // index 0 = low E, index 5 = high e
-    const STRING_MIDI    = [40, 45, 50, 55, 59, 64];
-    const STRING_NAMES   = ['E','A','D','G','B','e'];
-    // Lower damping = slower decay = more sustain
-    const STRING_DAMPING = [0.498, 0.497, 0.496, 0.495, 0.494, 0.493];
-
-    const FRET_COUNT = 21;
-
-    // ─── Fret Math Helpers ────────────────────────────────────────────────────
-
-    function midiAtFret(stringIdx, fret) {
-      return STRING_MIDI[stringIdx] + fret;
-    }
-
-    function freqFromMidi(midi) {
-      return 440 * Math.pow(2, (midi - 69) / 12);
-    }
-
-    function scaleDegree(midi, rootMidi) {
-      return ((midi - rootMidi) % 12 + 12) % 12;
-    }
-
-    function isInScale(midi, rootMidi, intervals) {
-      return intervals.includes(scaleDegree(midi, rootMidi));
-    }
-
-    function isRoot(midi, rootMidi) {
-      return scaleDegree(midi, rootMidi) === 0;
-    }
+  <script type="module">
+    // Chords: chord explorer on the shared Nectar neck + synth (see nectar/shared/).
+    import { NOTE_NAMES, ROOT_MIDI, STRINGS, OPEN_MIDI, FRET_COUNT, INTERVAL_COLORS, midiAt, degree, positionsInScale } from './shared/theory.js';
+    import { setupAudio } from './shared/audio-ui.js';
+    import { Neck, ghostDots } from './shared/neck.js';
 
     // ─── Chord Data ───────────────────────────────────────────────────────────
-
-    const INTERVAL_COLORS = {
-      0:  '#ff9d3d',  // Root — amber
-      2:  '#e8c96b',  // Maj 2nd / 9th — gold
-      3:  '#6ba3ff',  // Min 3rd — blue
-      4:  '#4fc3f7',  // Maj 3rd — cyan
-      5:  '#81c784',  // Perf 4th — green
-      6:  '#ff7043',  // Dim 5th / tritone — orange-red
-      7:  '#4db6ac',  // Perf 5th — teal
-      8:  '#ff8a65',  // Aug 5th — light orange
-      9:  '#ce93d8',  // Dim 7th — lavender
-      10: '#ba68c8',  // Min 7th — purple
-      11: '#a5d6a7',  // Maj 7th — light green
-      14: '#e8c96b',  // Maj 9th (same as 2) — gold
-    };
 
     const INTERVAL_LABELS = {
       0: 'R', 2: '9', 3: 'm3', 4: '3', 5: '4',
@@ -430,677 +370,139 @@
 
     // ─── Voicing Computation ──────────────────────────────────────────────────
 
-    // anchorString: 0 = E-shape (root on low E), 1 = A-shape (root on A, string 0 muted)
-    function computeVoicing(chordKey, rootMidi, anchorString) {
+    // anchor: 6 = E-shape (root on low E), 5 = A-shape (root on A, low E muted).
+    // Returns one entry per string, low E first: { string, fret, interval } or { string, muted: true }.
+    function computeVoicing(chordKey, rootMidi, anchor) {
       const { intervals } = CHORDS[chordKey];
-      // Find what fret the root falls on the anchor string
-      const rootFret = ((rootMidi - STRING_MIDI[anchorString]) % 12 + 12) % 12;
-      const winMin = rootFret;
-      const winMax = rootFret + 4;
+      const rootFret = degree(rootMidi, OPEN_MIDI[anchor]);
       const voicing = [];
-      for (let s = 0; s < 6; s++) {
-        if (s < anchorString) { voicing.push(null); continue; } // mute
+      for (const string of [...STRINGS].reverse()) {
+        if (string > anchor) { voicing.push({ string, muted: true }); continue; }
         let found = null;
-        for (let f = winMin; f <= Math.min(winMax, FRET_COUNT); f++) {
-          const midi = midiAtFret(s, f);
-          const deg = ((midi - rootMidi) % 12 + 12) % 12;
-          if (intervals.includes(deg)) {
-            found = { stringIdx: s, fret: f, midi, interval: deg };
-            break;
-          }
+        for (let fret = rootFret; fret <= Math.min(rootFret + 4, FRET_COUNT); fret++) {
+          const interval = degree(midiAt(string, fret), rootMidi);
+          if (intervals.includes(interval)) { found = { string, fret, interval }; break; }
         }
-        voicing.push(found); // null = muted
+        voicing.push(found || { string, muted: true });
       }
       return voicing;
-    }
-
-    function getAllChordTones(chordKey, rootMidi) {
-      const { intervals } = CHORDS[chordKey];
-      const tones = [];
-      for (let s = 0; s < 6; s++) {
-        for (let f = 0; f <= FRET_COUNT; f++) {
-          const midi = midiAtFret(s, f);
-          const deg = ((midi - rootMidi) % 12 + 12) % 12;
-          if (intervals.includes(deg)) {
-            tones.push({ stringIdx: s, fret: f, midi, interval: deg });
-          }
-        }
-      }
-      return tones;
-    }
-
-    // ─── Karplus-Strong AudioWorklet ──────────────────────────────────────────
-
-    const KS_CODE = `
-class KSProcessor extends AudioWorkletProcessor {
-  constructor(opts) {
-    super();
-    const { frequency, damping, pluckWidth = 0.5 } = opts.processorOptions;
-    const len = Math.max(2, Math.round(sampleRate / frequency));
-    this.buf = new Float32Array(len);
-    const end = Math.floor(pluckWidth * len);
-    for (let i = 0; i < end; i++) this.buf[i] = Math.random() * 2 - 1;
-    this.idx = 0;
-    this.d = damping;
-  }
-  process(inputs, outputs) {
-    const out = outputs[0][0];
-    for (let i = 0; i < out.length; i++) {
-      const curr = this.buf[this.idx];
-      const nxt = (this.idx + 1) % this.buf.length;
-      this.buf[this.idx] = this.d * (curr + this.buf[nxt]);
-      out[i] = curr;
-      this.idx = nxt;
-    }
-    let e = 0;
-    for (let i = 0; i < this.buf.length; i++) e += this.buf[i] * this.buf[i];
-    return e / this.buf.length > 1e-9;
-  }
-}
-registerProcessor('ks', KSProcessor);
-`;
-
-    let audioCtx    = null;
-    let masterGain  = null;
-    let workletReady = false;
-
-    async function initAudio() {
-      if (audioCtx) return;
-      audioCtx = new AudioContext();
-      masterGain = audioCtx.createGain();
-      masterGain.gain.value = 0.8;
-      masterGain.connect(audioCtx.destination);
-      const blob = new Blob([KS_CODE], { type: 'application/javascript' });
-      const url = URL.createObjectURL(blob);
-      await audioCtx.audioWorklet.addModule(url);
-      URL.revokeObjectURL(url);
-      workletReady = true;
-    }
-
-    function pluck(midi, stringIdx) {
-      if (!workletReady || !audioCtx) return;
-      const freq = freqFromMidi(midi);
-      const damping = STRING_DAMPING[stringIdx];
-      const node = new AudioWorkletNode(audioCtx, 'ks', {
-        processorOptions: { frequency: freq, damping }
-      });
-      node.connect(masterGain);
-    }
-
-    // ─── FretboardRenderer ────────────────────────────────────────────────────
-
-    class FretboardRenderer {
-      constructor(canvas) {
-        this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
-        this.activeRings = [];
-        this.lastChordParams = null;
-        this.resize();
-      }
-
-      resize() {
-        this.canvas.height = this.canvas.offsetHeight;
-        this._calcLayout(); // sets canvas.width based on device type
-        if (this.lastChordParams) {
-          const { chordKey, rootMidi, voicing, allTones } = this.lastChordParams;
-          this.renderChord(chordKey, rootMidi, voicing, allTones);
-        }
-      }
-
-      _calcLayout() {
-        this.leftPad   = 64;
-        this.rightPad  = 16;
-        this.topPad    = 20;
-        this.bottomPad = 24;
-        this.nutWidth  = 6;
-
-        const isTouch = navigator.maxTouchPoints > 0;
-        const container = this.canvas.parentElement;
-        const containerW = container ? container.clientWidth : window.innerWidth;
-        const h = this.canvas.height;
-
-        if (isTouch) {
-          const visibleFretW = Math.floor((containerW - this.leftPad - this.rightPad - this.nutWidth) / 7);
-          this.fretWidth = Math.max(visibleFretW, 44);
-          const totalW = this.leftPad + this.nutWidth + FRET_COUNT * this.fretWidth + this.rightPad;
-          this.canvas.style.width  = totalW + 'px';
-          this.canvas.width        = totalW;
-        } else {
-          this.fretWidth = (containerW - this.leftPad - this.rightPad - this.nutWidth) / FRET_COUNT;
-          this.canvas.style.width = '100%';
-          this.canvas.width       = this.canvas.offsetWidth;
-        }
-
-        this.stringSpacing = (h - this.topPad - this.bottomPad) / 5;
-      }
-
-      // Display order: string 5 (high e) at top, string 0 (low E) at bottom
-      stringY(stringIdx) {
-        const displayIdx = 5 - stringIdx;
-        return this.topPad + displayIdx * this.stringSpacing;
-      }
-
-      // X centre of a fret cell. Fret 0 = open string (before nut).
-      fretX(fret) {
-        if (fret === 0) {
-          return this.leftPad - this.nutWidth / 2 - 4;
-        }
-        return this.leftPad + this.nutWidth + (fret - 1) * this.fretWidth + this.fretWidth / 2;
-      }
-
-      drawNeck() {
-        const ctx = this.ctx;
-        ctx.fillStyle = '#1a1208';
-        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-      }
-
-      drawFrets() {
-        const ctx = this.ctx;
-        const { leftPad, nutWidth, topPad, bottomPad, fretWidth } = this;
-        const h = this.canvas.height;
-        const drawTop    = topPad;
-        const drawBottom = h - bottomPad;
-
-        // Nut
-        ctx.beginPath();
-        ctx.strokeStyle = '#c8a84b';
-        ctx.lineWidth = 4;
-        ctx.moveTo(leftPad + nutWidth / 2, drawTop);
-        ctx.lineTo(leftPad + nutWidth / 2, drawBottom);
-        ctx.stroke();
-
-        // Fret lines
-        ctx.strokeStyle = '#3a3020';
-        ctx.lineWidth = 1;
-        for (let i = 1; i <= FRET_COUNT; i++) {
-          const x = leftPad + nutWidth + i * fretWidth;
-          ctx.beginPath();
-          ctx.moveTo(x, drawTop);
-          ctx.lineTo(x, drawBottom);
-          ctx.stroke();
-        }
-      }
-
-      drawStrings() {
-        const ctx = this.ctx;
-        const w = this.canvas.width;
-        const thicknesses = [2.5, 2.0, 1.6, 1.3, 1.0, 0.8];
-
-        for (let s = 0; s < 6; s++) {
-          const y = this.stringY(s);
-          ctx.beginPath();
-          ctx.strokeStyle = '#7a6040';
-          ctx.lineWidth = thicknesses[s];
-          ctx.moveTo(0, y);
-          ctx.lineTo(w, y);
-          ctx.stroke();
-        }
-      }
-
-      drawPositionDots() {
-        const ctx = this.ctx;
-        const singleFrets = [3, 5, 7, 9, 15, 17, 19, 21];
-        const doubleFret  = 12;
-
-        const baseY = this.stringY(0) + 14;
-
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
-
-        for (const fret of singleFrets) {
-          const x = this.fretX(fret);
-          ctx.beginPath();
-          ctx.arc(x, baseY, 4, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        const x12 = this.fretX(doubleFret);
-        const offset = this.stringSpacing * 0.4;
-        ctx.beginPath();
-        ctx.arc(x12 - offset, baseY, 4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(x12 + offset, baseY, 4, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      drawStringLabels() {
-        const ctx = this.ctx;
-        const displayNames = ['e','B','G','D','A','E'];
-        ctx.font = 'bold 14px Inter, system-ui, sans-serif';
-        ctx.fillStyle = '#d8d4c8';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        for (let s = 0; s < 6; s++) {
-          const y = this.stringY(s);
-          ctx.fillText(displayNames[5 - s], this.leftPad / 2, y);
-        }
-      }
-
-      drawFretNumbers() {
-        const ctx = this.ctx;
-        const showFrets = [0, 3, 5, 7, 9, 12, 15, 17, 19, 21];
-        const baseY = this.stringY(0) + this.bottomPad - 6;
-
-        ctx.font = '10px Inter, system-ui, sans-serif';
-        ctx.fillStyle = '#7a7060';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        for (const fret of showFrets) {
-          const x = this.fretX(fret);
-          const label = fret === 0 ? 'O' : String(fret);
-          ctx.fillText(label, x, baseY);
-        }
-      }
-
-      fretAtX(x) {
-        if (x < this.leftPad + this.nutWidth) return 0;
-        const f = Math.floor((x - this.leftPad - this.nutWidth) / this.fretWidth) + 1;
-        return Math.min(Math.max(f, 1), FRET_COUNT);
-      }
-
-      stringAtY(y) {
-        let best = null, bestDist = this.stringSpacing * 0.75;
-        for (let s = 0; s < 6; s++) {
-          const dist = Math.abs(y - this.stringY(s));
-          if (dist < bestDist) { bestDist = dist; best = s; }
-        }
-        return best;
-      }
-
-      hitTest(x, y) {
-        let best = null;
-        let bestDist = 14;
-        for (let s = 0; s < 6; s++) {
-          for (let f = 0; f <= FRET_COUNT; f++) {
-            const cx = this.fretX(f);
-            const cy = this.stringY(s);
-            const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
-            if (dist < bestDist) {
-              bestDist = dist;
-              best = { stringIdx: s, fret: f, midi: midiAtFret(s, f) };
-            }
-          }
-        }
-        return best;
-      }
-
-      drawChordCircles(voicing, allTones) {
-        const ctx = this.ctx;
-
-        // 1. Draw all chord tone positions across full neck (dim, with label)
-        for (const tone of allTones) {
-          const isVoiced = voicing.some(v => v && v.stringIdx === tone.stringIdx && v.fret === tone.fret);
-          if (isVoiced) continue; // drawn in step 2
-          const cx = this.fretX(tone.fret);
-          const cy = this.stringY(tone.stringIdx);
-          const color = INTERVAL_COLORS[tone.interval] || '#fff';
-          ctx.globalAlpha = 0.28;
-          ctx.beginPath();
-          ctx.fillStyle = color;
-          ctx.arc(cx, cy, 7, 0, Math.PI * 2);
-          ctx.fill();
-          // label
-          ctx.globalAlpha = 0.5;
-          ctx.fillStyle = '#fff';
-          ctx.font = 'bold 7px Inter, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(INTERVAL_LABELS[tone.interval] || '', cx, cy);
-          ctx.globalAlpha = 1;
-        }
-
-        // 2. Draw voicing notes (large, bright, with label)
-        for (const note of voicing) {
-          if (!note) continue;
-          const cx = this.fretX(note.fret);
-          const cy = this.stringY(note.stringIdx);
-          const color = INTERVAL_COLORS[note.interval] || '#fff';
-          ctx.globalAlpha = 1;
-          ctx.shadowBlur = 16;
-          ctx.shadowColor = color;
-          ctx.beginPath();
-          ctx.fillStyle = color;
-          ctx.arc(cx, cy, 12, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.shadowBlur = 0;
-          // label inside
-          ctx.fillStyle = '#07080d';
-          ctx.font = 'bold 9px Inter, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(INTERVAL_LABELS[note.interval] || '', cx, cy);
-        }
-
-        // 3. Draw mute markers (X) on muted strings, to left of nut
-        for (let s = 0; s < voicing.length; s++) {
-          if (voicing[s] !== null) continue;
-          const cx = this.leftPad / 2;
-          const cy = this.stringY(s);
-          ctx.strokeStyle = '#7a7060';
-          ctx.lineWidth = 1.5;
-          const r = 5;
-          ctx.beginPath(); ctx.moveTo(cx - r, cy - r); ctx.lineTo(cx + r, cy + r); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(cx + r, cy - r); ctx.lineTo(cx - r, cy + r); ctx.stroke();
-        }
-      }
-
-      drawActiveRings() {
-        const ctx = this.ctx;
-        this.activeRings = this.activeRings.filter(ring => ring.alpha > 0.01);
-        for (const ring of this.activeRings) {
-          ctx.beginPath();
-          ctx.strokeStyle = `rgba(255, 207, 107, ${ring.alpha})`;
-          ctx.lineWidth = 1.5;
-          ctx.arc(ring.cx, ring.cy, ring.r, 0, Math.PI * 2);
-          ctx.stroke();
-          ring.r += 1.2;
-          ring.alpha *= 0.88;
-        }
-      }
-
-      renderChord(chordKey, rootMidi, voicing, allTones) {
-        this.lastChordParams = { chordKey, rootMidi, voicing, allTones };
-        const ctx = this.ctx;
-        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        this.drawNeck();
-        this.drawFrets();
-        this.drawStrings();
-        this.drawPositionDots();
-        this.drawStringLabels();
-        this.drawFretNumbers();
-
-        // Draw subtle non-chord dots
-        for (let s = 0; s < 6; s++) {
-          for (let f = 0; f <= FRET_COUNT; f++) {
-            const midi = midiAtFret(s, f);
-            const deg = ((midi - rootMidi) % 12 + 12) % 12;
-            if (!CHORDS[chordKey].intervals.includes(deg)) {
-              const cx = this.fretX(f);
-              const cy = this.stringY(s);
-              ctx.globalAlpha = 0.12;
-              ctx.beginPath();
-              ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-              ctx.lineWidth = 1;
-              ctx.arc(cx, cy, 3, 0, Math.PI * 2);
-              ctx.stroke();
-              ctx.globalAlpha = 1;
-            }
-          }
-        }
-
-        this.drawChordCircles(voicing, allTones);
-        this.drawActiveRings();
-      }
     }
 
     // ─── Chord Card ───────────────────────────────────────────────────────────
 
     function updateChordCard(chordKey, rootMidi) {
       const chord = CHORDS[chordKey];
-      const rootName = ROOT_NAMES[rootMidi % 12];
+      const rootName = NOTE_NAMES[rootMidi % 12];
       const symbol = chord.symbol;
-      const title = symbol
+      document.getElementById('chord-title').textContent = symbol
         ? `${rootName}${symbol} — ${rootName} ${chord.name}`
         : `${rootName} — ${rootName} ${chord.name}`;
-
-      document.getElementById('chord-title').textContent = title;
       document.getElementById('chord-theory').textContent = chord.theory;
 
       const container = document.getElementById('chord-intervals');
       container.innerHTML = '';
       for (const interval of chord.intervals) {
-        const noteMidi = rootMidi + interval;
-        const noteName = ROOT_NAMES[noteMidi % 12];
         const color = INTERVAL_COLORS[interval] || '#fff';
-        const label = INTERVAL_NAMES[interval] || '';
-
         const chip = document.createElement('div');
         chip.className = 'interval-chip';
         chip.style.borderColor = color + '55';
-
         const noteEl = document.createElement('div');
         noteEl.className = 'note-name';
         noteEl.style.color = color;
-        noteEl.textContent = noteName;
-
+        noteEl.textContent = NOTE_NAMES[(rootMidi + interval) % 12];
         const nameEl = document.createElement('div');
         nameEl.className = 'int-name';
-        nameEl.textContent = label;
-
+        nameEl.textContent = INTERVAL_NAMES[interval] || '';
         chip.appendChild(noteEl);
         chip.appendChild(nameEl);
         container.appendChild(chip);
       }
     }
 
-    // ─── UI Init ──────────────────────────────────────────────────────────────
+    // ─── UI ───────────────────────────────────────────────────────────────────
 
-    (function init() {
-      let currentChord  = 'major';
-      let currentRoot   = 69; // A
-      let anchorString  = 0;  // 0 = E-shape, 1 = A-shape
+    let currentChord = 'major';
+    let currentRoot  = 69; // A
+    let anchor       = 6;  // 6 = E-shape, 5 = A-shape
 
-      const canvas   = document.getElementById('fretboard');
-      const renderer = new FretboardRenderer(canvas);
+    const synth = setupAudio();
+    const neck = new Neck(document.getElementById('fretboard-container'), {
+      frets: FRET_COUNT,
+      interaction: 'strum',
+      onPluck: (note) => {
+        synth.audition([note]);
+        neck.flash(note);
+      },
+    });
 
-      function rerender() {
-        const voicing  = computeVoicing(currentChord, currentRoot, anchorString);
-        const allTones = getAllChordTones(currentChord, currentRoot);
-        renderer.renderChord(currentChord, currentRoot, voicing, allTones);
-        updateChordCard(currentChord, currentRoot);
-      }
+    function rerender() {
+      const { intervals } = CHORDS[currentChord];
+      const voicing = computeVoicing(currentChord, currentRoot, anchor);
+      const voiced = new Set(voicing.filter((v) => !v.muted).map((v) => `${v.string}:${v.fret}`));
+      const tones = positionsInScale(currentRoot, intervals);
+      const toneKeys = new Set(tones.map((t) => `${t.string}:${t.fret}`));
 
-      // Populate root select
-      const rootSelect = document.getElementById('root-select');
-      ROOT_NAMES.forEach((name, i) => {
-        const opt = new Option(name, i);
-        if (ROOT_MIDI[i] === currentRoot) opt.selected = true;
-        rootSelect.appendChild(opt);
-      });
+      const muted = voicing.filter((v) => v.muted).map((v) => v.string);
+      neck.setLayer('ghost', ghostDots(FRET_COUNT, 0.12).filter((d) =>
+        !toneKeys.has(`${d.string}:${d.fret}`) && !(d.fret === 0 && muted.includes(d.string))));
+      // Every chord tone across the neck: small and dim, labelled by interval.
+      // (On muted strings the open position shows only the X.)
+      neck.setLayer('scale', tones.filter((t) => !voiced.has(`${t.string}:${t.fret}`) && !(t.fret === 0 && muted.includes(t.string))).map((t) => ({
+        ...t, size: 'sm', fill: INTERVAL_COLORS[t.degree] || '#fff', opacity: 0.4,
+        label: INTERVAL_LABELS[t.degree] || '', labelColor: '#fff', labelSize: 7,
+      })));
+      // The voicing itself: large, bright, glowing.
+      neck.setLayer('main', voicing.filter((v) => !v.muted).map((v) => ({
+        ...v, size: 12, fill: INTERVAL_COLORS[v.interval] || '#fff', glow: true, label: INTERVAL_LABELS[v.interval] || '',
+      })));
+      neck.setMuted(muted);
+      updateChordCard(currentChord, currentRoot);
+    }
 
-      // Populate chord select
-      const chordSelect = document.getElementById('chord-select');
-      Object.entries(CHORDS).forEach(([key, c]) => {
-        const opt = new Option(c.name, key);
-        if (key === currentChord) opt.selected = true;
-        chordSelect.appendChild(opt);
-      });
+    const rootSelect = document.getElementById('root-select');
+    NOTE_NAMES.forEach((name, i) => rootSelect.appendChild(new Option(name, i, false, ROOT_MIDI[i] === currentRoot)));
 
-      // Volume slider
-      document.getElementById('vol-slider').addEventListener('input', e => {
-        if (masterGain) masterGain.gain.value = parseFloat(e.target.value);
-      });
+    const chordSelect = document.getElementById('chord-select');
+    Object.entries(CHORDS).forEach(([key, c]) => chordSelect.appendChild(new Option(c.name, key, false, key === currentChord)));
 
-      // Voicing toggle
-      const btnE = document.getElementById('btn-e');
-      const btnA = document.getElementById('btn-a');
-
-      btnE.addEventListener('click', () => {
-        anchorString = 0;
-        btnE.classList.add('active');
-        btnA.classList.remove('active');
-        renderer.activeRings = [];
-        rerender();
-      });
-
-      btnA.addEventListener('click', () => {
-        anchorString = 1;
-        btnA.classList.add('active');
-        btnE.classList.remove('active');
-        renderer.activeRings = [];
-        rerender();
-      });
-
-      rootSelect.addEventListener('change', e => {
-        currentRoot = ROOT_MIDI[parseInt(e.target.value)];
-        renderer.activeRings = [];
-        rerender();
-      });
-
-      chordSelect.addEventListener('change', e => {
-        currentChord = e.target.value;
-        renderer.activeRings = [];
-        rerender();
-      });
-
-      // Chord strum — plays voiced notes low→high with 60ms gap (like a down-strum)
-      const playBtn = document.getElementById('play-btn');
-      let strumTimeout = null;
-
-      async function playChord() {
-        await initAudio();
-        if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
-        const voicing = computeVoicing(currentChord, currentRoot, anchorString);
-        const notes = voicing.filter(n => n !== null); // low E → high e order
-        clearTimeout(strumTimeout);
-        playBtn.classList.add('playing');
-        notes.forEach((note, i) => {
-          strumTimeout = setTimeout(() => {
-            pluck(note.midi, note.stringIdx);
-            const cx = renderer.fretX(note.fret);
-            const cy = renderer.stringY(note.stringIdx);
-            renderer.activeRings.push({ s: note.stringIdx, f: note.fret, cx, cy, r: 12, alpha: 0.8 });
-            if (i === notes.length - 1) {
-              setTimeout(() => playBtn.classList.remove('playing'), 400);
-            }
-          }, i * 60);
-        });
-      }
-
-      playBtn.addEventListener('click', playChord);
-
-      // Keyboard: left/right cycles root
-      window.addEventListener('keydown', e => {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-        if (e.code === 'Space') { e.preventDefault(); playChord(); return; }
-        if (e.code === 'ArrowRight') {
-          const i = (ROOT_MIDI.indexOf(currentRoot) + 1) % 12;
-          rootSelect.value = i;
-          currentRoot = ROOT_MIDI[i];
-          renderer.activeRings = [];
-          rerender();
-        }
-        if (e.code === 'ArrowLeft') {
-          const i = (ROOT_MIDI.indexOf(currentRoot) + 11) % 12;
-          rootSelect.value = i;
-          currentRoot = ROOT_MIDI[i];
-          renderer.activeRings = [];
-          rerender();
-        }
-      });
-
-      // Strum / tap interaction
-      let isStrumming    = false;
-      let lastStrumString = null;
-      let lastStrumFret   = null;
-      let strumMoved      = false;
-
-      async function beginInteraction() {
-        await initAudio();
-        if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
-        isStrumming     = true;
-        strumMoved      = false;
-        lastStrumString = null;
-        lastStrumFret   = null;
-      }
-
-      function handleStrumPoint(x, y) {
-        const s = renderer.stringAtY(y);
-        const f = renderer.fretAtX(x);
-        if (s === null || f === null) return;
-        if (s !== lastStrumString || f !== lastStrumFret) {
-          lastStrumString = s;
-          lastStrumFret   = f;
-          strumMoved = true;
-          const midi = midiAtFret(s, f);
-          pluck(midi, s);
-          // Add active ring
-          const cx = renderer.fretX(f);
-          const cy = renderer.stringY(s);
-          renderer.activeRings.push({ s, f, cx, cy, r: 12, alpha: 0.8 });
-        }
-      }
-
-      function endInteraction(x, y) {
-        if (!strumMoved && x !== undefined) {
-          const hit = renderer.hitTest(x, y);
-          if (hit) {
-            pluck(hit.midi, hit.stringIdx);
-            const cx = renderer.fretX(hit.fret);
-            const cy = renderer.stringY(hit.stringIdx);
-            renderer.activeRings.push({ s: hit.stringIdx, f: hit.fret, cx, cy, r: 12, alpha: 0.8 });
-          }
-        }
-        isStrumming     = false;
-        lastStrumString = null;
-      }
-
-      canvas.addEventListener('mousedown', async e => {
-        await beginInteraction();
-        const rect = canvas.getBoundingClientRect();
-        handleStrumPoint(e.clientX - rect.left, e.clientY - rect.top);
-      });
-
-      canvas.addEventListener('mousemove', e => {
-        if (!isStrumming) return;
-        const rect = canvas.getBoundingClientRect();
-        handleStrumPoint(e.clientX - rect.left, e.clientY - rect.top);
-      });
-
-      canvas.addEventListener('mouseup', e => {
-        const rect = canvas.getBoundingClientRect();
-        endInteraction(e.clientX - rect.left, e.clientY - rect.top);
-      });
-
-      canvas.addEventListener('mouseleave', () => {
-        isStrumming     = false;
-        lastStrumString = null;
-        lastStrumFret   = null;
-      });
-
-      canvas.addEventListener('touchstart', async e => {
-        e.preventDefault();
-        await beginInteraction();
-        const rect = canvas.getBoundingClientRect();
-        const t = e.touches[0];
-        handleStrumPoint(t.clientX - rect.left, t.clientY - rect.top);
-      }, { passive: false });
-
-      canvas.addEventListener('touchmove', e => {
-        e.preventDefault();
-        if (!isStrumming) return;
-        const rect = canvas.getBoundingClientRect();
-        const t = e.touches[0];
-        handleStrumPoint(t.clientX - rect.left, t.clientY - rect.top);
-      }, { passive: false });
-
-      canvas.addEventListener('touchend', e => {
-        const rect = canvas.getBoundingClientRect();
-        const t = e.changedTouches[0];
-        endInteraction(t.clientX - rect.left, t.clientY - rect.top);
-      });
-
-      // Resize handler
-      window.addEventListener('resize', () => {
-        renderer.resize();
-        rerender();
-      });
-
-      // Animation loop — drives active ring animation
-      function animLoop() {
-        if (renderer.lastChordParams) {
-          const { chordKey, rootMidi, voicing, allTones } = renderer.lastChordParams;
-          renderer.renderChord(chordKey, rootMidi, voicing, allTones);
-        }
-        requestAnimationFrame(animLoop);
-      }
-      requestAnimationFrame(animLoop);
-
-      // Initial render
+    const btnE = document.getElementById('btn-e');
+    const btnA = document.getElementById('btn-a');
+    function setAnchor(a) {
+      anchor = a;
+      btnE.classList.toggle('active', a === 6);
+      btnA.classList.toggle('active', a === 5);
       rerender();
-    })();
+    }
+    btnE.addEventListener('click', () => setAnchor(6));
+    btnA.addEventListener('click', () => setAnchor(5));
+
+    function setRoot(i) {
+      rootSelect.value = i;
+      currentRoot = ROOT_MIDI[i];
+      rerender();
+    }
+    rootSelect.addEventListener('change', (e) => setRoot(parseInt(e.target.value)));
+    chordSelect.addEventListener('change', (e) => { currentChord = e.target.value; rerender(); });
+
+    // Down-strum: voiced notes low E → high e, 60ms apart.
+    const playBtn = document.getElementById('play-btn');
+    function playChord() {
+      const notes = computeVoicing(currentChord, currentRoot, anchor).filter((v) => !v.muted);
+      const delays = synth.audition(notes, 0.06);
+      playBtn.classList.add('playing');
+      notes.forEach((n, i) => setTimeout(() => neck.flash(n), delays[i]));
+      setTimeout(() => playBtn.classList.remove('playing'), delays[delays.length - 1] + 400);
+    }
+    playBtn.addEventListener('click', playChord);
+
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      if (e.code === 'Space') { e.preventDefault(); playChord(); return; }
+      if (e.code === 'ArrowRight') setRoot((ROOT_MIDI.indexOf(currentRoot) + 1) % 12);
+      if (e.code === 'ArrowLeft') setRoot((ROOT_MIDI.indexOf(currentRoot) + 11) % 12);
+    });
+
+    rerender();
   </script>
 
   <style>
