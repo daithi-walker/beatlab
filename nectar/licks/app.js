@@ -1,8 +1,8 @@
 // Nectar Licks: wires the library, transport, tab and fretboard together.
 
-import { NOTE_NAMES, SCALES, INSTRUMENT, INTERVAL_SYMBOLS, midiOf, noteName, degree, positionsInScale, onTuningChange } from '../shared/theory.js';
+import { NOTE_NAMES, SCALES, INSTRUMENT, TUNING, INSTRUMENTS, INTERVAL_SYMBOLS, midiOf, noteName, degree, positionsInScale, onTuningChange } from '../shared/theory.js';
 import { setupAudio } from '../shared/audio-ui.js';
-import { setupTuning } from '../shared/tuning-ui.js';
+import { setupInstrument } from '../shared/instrument-ui.js';
 import { Player } from '../shared/player.js';
 import { Neck } from '../shared/neck.js';
 import { buildSong } from './notation.js';
@@ -11,22 +11,22 @@ import { Tab } from './tab.js';
 
 {
   const $ = (id) => document.getElementById(id);
-  const STYLE_ORDER = ['Foundation', 'Blues', 'Rock', 'Country', 'Melody', 'Technique'];
+  const STYLE_ORDER = ['Foundation', 'Blues', 'Rock', 'Country', 'Melody', 'Technique', 'Bass', 'Ukulele'];
   const LEVELS = ['', 'Beginner', 'Intermediate', 'Advanced'];
 
   const defaults = {
     lickId: LICKS[0].id, speed: 100, loop: true, countIn: true, metro: false,
-    trainer: false, neck: 'box', labels: 'notes',
+    trainer: false, neck: 'box', labels: 'notes', graceLen: 200,
   };
   const state = { ...defaults, ...JSON.parse(localStorage.getItem('nectar-licks') || '{}') };
   const save = () => localStorage.setItem('nectar-licks', JSON.stringify(state));
 
-  const FRETS = 17;
   const synth = setupAudio();
-  const tuning = setupTuning();
+  const instrument = setupInstrument();
   const player = new Player(synth);
+  player.graceSec = state.graceLen / 1000;
   const neck = new Neck($('fretboard'), {
-    frets: FRETS,
+    maxFrets: 17,
     interaction: 'strum',
     onPluck: (note) => {
       synth.audition([note]);
@@ -42,11 +42,22 @@ import { Tab } from './tab.js';
     return lo === 0 ? `open position, frets 0-${hi}` : `frets ${lo}-${hi}`;
   }
 
+  // The topbar Instrument select filters the library; a lick's own field picks its tuning.
+  const lickInstrument = (l) => l.instrument || 'guitar';
+  const licksForInstrument = () => LICKS.filter((l) => lickInstrument(l) === INSTRUMENT.id);
+
   function renderLibrary() {
     const lib = $('library');
     lib.innerHTML = '';
+    const mine = licksForInstrument();
+    if (!mine.length) {
+      const p = document.createElement('p');
+      p.className = 'lib-empty';
+      p.textContent = `No ${INSTRUMENT.name} licks yet.`;
+      lib.appendChild(p);
+    }
     for (const style of STYLE_ORDER) {
-      const items = LICKS.filter((l) => l.style === style);
+      const items = mine.filter((l) => l.style === style);
       if (!items.length) continue;
       const h = document.createElement('h4');
       h.textContent = style;
@@ -64,13 +75,26 @@ import { Tab } from './tab.js';
     }
   }
 
+  // Empty state for instruments that have no licks yet.
+  function showNoLicks() {
+    lick = song = null;
+    $('main').classList.add('no-licks');
+    $('lick-style').textContent = 'Licks';
+    $('lick-title').textContent = `No ${INSTRUMENT.name} licks yet`;
+    const others = Object.keys(INSTRUMENTS).filter((id) => LICKS.some((l) => lickInstrument(l) === id));
+    $('lick-chips').textContent = `Try ${others.map((id) => INSTRUMENTS[id].name).join(', ')} from the Instrument menu.`;
+  }
+
   function selectLick(id) {
     player.stop();
-    lick = LICKS.find((l) => l.id === id) || LICKS[0];
+    const mine = licksForInstrument();
+    if (!mine.length) return showNoLicks();
+    $('main').classList.remove('no-licks');
+    lick = mine.find((l) => l.id === id) || mine[0];
     state.lickId = lick.id;
     save();
     song = null; // the tuning switch below re-renders; skip that until the new song is built
-    tuning.lock(lick.tuning || 'standard');
+    instrument.lockTuning(lick.tuning || 'standard');
     song = buildSong(lick);
     player.load(song);
 
@@ -83,7 +107,8 @@ import { Tab } from './tab.js';
       positionLabel(lick),
       `${lick.bpm} BPM target`,
     ];
-    if (lick.tuning && lick.tuning !== 'standard') chips.push(`${INSTRUMENT.tunings[lick.tuning].name} tuning`);
+    if (INSTRUMENT.id !== 'guitar') chips.push(INSTRUMENT.name);
+    if (TUNING.id !== 'standard') chips.push(`${TUNING.name} tuning`);
     if (lick.swing) chips.push('Swing feel');
     $('lick-chips').innerHTML = '';
     for (const c of chips) {
@@ -97,6 +122,7 @@ import { Tab } from './tab.js';
     $('lick-practice').textContent = lick.practice;
 
     syncSpeed();
+    $('grace-ctl').hidden = !song.events.some((e) => e.grace);
     renderTab();
     renderBoard();
   }
@@ -116,7 +142,7 @@ import { Tab } from './tab.js';
   function renderBoard() {
     const [lo, hi] = lick.position;
     const box = state.neck === 'box';
-    const dots = positionsInScale(lick.root, SCALES[lick.scale].intervals, FRETS)
+    const dots = positionsInScale(lick.root, SCALES[lick.scale].intervals, neck.frets)
       .filter((p) => !box || (p.fret >= lo && p.fret <= hi))
       .map((p) => ({
         ...p,
@@ -199,6 +225,7 @@ import { Tab } from './tab.js';
   };
 
   function togglePlay() {
+    if (!song) return;
     if (player.playing) {
       player.stop();
       return;
@@ -220,6 +247,15 @@ import { Tab } from './tab.js';
     syncSpeed();
     player.setBpm(bpm());
   }
+
+  $('grace').value = state.graceLen;
+  $('grace-out').textContent = `${state.graceLen} ms`;
+  $('grace').addEventListener('input', (e) => {
+    state.graceLen = +e.target.value;
+    player.graceSec = state.graceLen / 1000;
+    $('grace-out').textContent = `${state.graceLen} ms`;
+    save();
+  });
 
   $('play').addEventListener('click', togglePlay);
   $('speed').addEventListener('input', (e) => setSpeed(+e.target.value));
@@ -277,10 +313,16 @@ import { Tab } from './tab.js';
     }, 120);
   });
 
+  let shownInstrument = INSTRUMENT.id;
   onTuningChange(() => {
-    if (!song) return;
-    renderTab();
-    renderBoard();
+    if (INSTRUMENT.id !== shownInstrument) {
+      shownInstrument = INSTRUMENT.id;
+      renderLibrary();
+      selectLick(state.lickId);
+    } else if (song) {
+      renderTab();
+      renderBoard();
+    }
   });
 
   renderLibrary();

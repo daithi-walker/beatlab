@@ -283,6 +283,7 @@
         <button id="play-btn">&#9654; Play</button>
       </div>
       <div class="topbar-right">
+        <select id="instrument-select"></select>
         <select id="tuning-select"></select>
         <select id="tone-select"></select>
         <span class="vol-label">Vol</span>
@@ -299,9 +300,9 @@
 
   <script type="module">
     // Chords: chord explorer on the shared Nectar neck + synth (see nectar/shared/).
-    import { NOTE_NAMES, ROOT_MIDI, OPEN_MIDI, STRING_NAMES, TUNING, FRET_COUNT, INTERVAL_COLORS, midiAt, degree, positionsInScale, stringsLowToHigh, onTuningChange } from './shared/theory.js';
+    import { NOTE_NAMES, ROOT_MIDI, OPEN_MIDI, STRING_NAMES, INSTRUMENT, TUNING, FRET_COUNT, INTERVAL_COLORS, midiAt, degree, positionsInScale, stringsLowToHigh, onTuningChange } from './shared/theory.js';
     import { setupAudio } from './shared/audio-ui.js';
-    import { setupTuning } from './shared/tuning-ui.js';
+    import { setupInstrument } from './shared/instrument-ui.js';
     import { Neck, ghostDots } from './shared/neck.js';
 
     // ─── Chord Data ───────────────────────────────────────────────────────────
@@ -431,7 +432,6 @@
 
     const synth = setupAudio();
     const neck = new Neck(document.getElementById('fretboard-container'), {
-      frets: FRET_COUNT,
       interaction: 'strum',
       onPluck: (note) => {
         synth.audition([note]);
@@ -447,7 +447,7 @@
       const toneKeys = new Set(tones.map((t) => `${t.string}:${t.fret}`));
 
       const muted = voicing.filter((v) => v.muted).map((v) => v.string);
-      neck.setLayer('ghost', ghostDots(FRET_COUNT, 0.12).filter((d) =>
+      neck.setLayer('ghost', ghostDots(neck.frets, 0.12).filter((d) =>
         !toneKeys.has(`${d.string}:${d.fret}`) && !(d.fret === 0 && muted.includes(d.string))));
       // Every chord tone across the neck: small and dim, labelled by interval.
       // (On muted strings the open position shows only the X.)
@@ -480,11 +480,12 @@
     btnE.addEventListener('click', () => setShape(0));
     btnA.addEventListener('click', () => setShape(1));
 
-    // "E-shape"/"A-shape" only mean something in standard tuning.
+    // "E-shape"/"A-shape" only mean something on a standard-tuned guitar.
     function labelShapes() {
       const [low, next] = stringsLowToHigh();
-      btnE.textContent = TUNING.id === 'standard' ? 'E-shape' : `Root on ${STRING_NAMES[low]}`;
-      btnA.textContent = TUNING.id === 'standard' ? 'A-shape' : `Root on ${STRING_NAMES[next]}`;
+      const standardGuitar = INSTRUMENT.id === 'guitar' && TUNING.id === 'standard';
+      btnE.textContent = standardGuitar ? 'E-shape' : `Root on ${STRING_NAMES[low]}`;
+      btnA.textContent = standardGuitar ? 'A-shape' : `Root on ${STRING_NAMES[next]}`;
     }
 
     function setRoot(i) {
@@ -513,7 +514,7 @@
       if (e.code === 'ArrowLeft') setRoot((ROOT_MIDI.indexOf(currentRoot) + 11) % 12);
     });
 
-    setupTuning();
+    setupInstrument();
     onTuningChange(() => { labelShapes(); rerender(); });
     labelShapes();
     rerender();

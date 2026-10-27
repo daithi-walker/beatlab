@@ -35,19 +35,25 @@ guitar: {
 }
 ```
 
-- Tunings are written low → high, the way players say them. String 1 is the
-  last (highest) note: the top line of tab, as now.
+- Tunings list open notes from the bottom line of tab to the top: low → high on
+  guitar and bass (the way players say them); ukulele's re-entrant high g comes
+  first. String 1 is the last note: the top line of tab, as now.
 - `theory.js` keeps one current instrument + tuning and exposes `STRINGS`,
   `OPEN_MIDI`, `STRING_NAMES`, `FRET_COUNT` as **live ES-module bindings**, so
   existing imports keep working and update when the tuning changes.
 - `setTuning(id)` persists to localStorage (`nectar-instrument`) and notifies
   subscribers (`onTuningChange`). The neck redraws itself; pages re-render.
-- A `#tuning-select` in every topbar (via `setupTuning()`), shared across pages
-  like Tone.
-- Licks carry a `tuning` field. The Licks page switches to the lick's tuning
-  (without saving it) and shows the select as locked.
-- String labels are note names; if the top and bottom strings share a name,
-  the top one is lowercase (e … E, d … D).
+- `#instrument-select` + `#tuning-select` in every topbar (via
+  `setupInstrument()` in `shared/instrument-ui.js`), shared across pages like
+  Tone. The neck takes its fret count from the instrument (a page may cap it).
+- Licks carry `instrument` and `tuning` fields. On the Licks page the
+  Instrument select filters the library; the lick sets the tuning (not saved)
+  and the Tuning select is shown locked.
+- `courses` (per string, string 1 first): the second string's interval for
+  paired-string instruments, 0 = unison (mandolin), 12 = octave (12-string's
+  low four courses). Tab and fingering stay one string per course.
+- String labels are note names; if another string shares the top string's
+  name, the top one is lowercase (e … E, d … D).
 
 ## Phases
 
@@ -74,7 +80,13 @@ fretless and bowed instruments (no frets, different synthesis).
 ## Status
 
 - Phase 1: done (branch `nectar-licks`). `INSTRUMENTS` + live tuning bindings in
-  `theory.js`, `setupTuning()` in `shared/tuning-ui.js`, neck and Licks tab sized
+  `theory.js`, a tuning select (now `shared/instrument-ui.js`), neck and Licks tab sized
   from the string count, six guitar tunings, the Drop D Chug lick, 11 tuning
   checks in `nectar/tests/smoke.py`.
-- Phases 2-3: not started.
+- Phase 2: done (branch `nectar-licks`). Guitar, 7-string, 12-string, 4/5-string
+  bass, ukulele (gCEA / low G), mandolin, each with strings, frets, inlays,
+  tunings and a `sound` profile (sustain, pick position, softness), plus
+  paired-string `courses` for mandolin and 12-string;
+  Instrument select; Walking Blues Bass and Four-Chord Uke Strum licks; 12
+  instrument checks in the smoke test.
+- Phase 3: not started.

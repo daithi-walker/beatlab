@@ -1,6 +1,6 @@
 // The lick library. All licks are original practice material.
 // root = pitch class (C=0 ... A=9, B=11). position = fret window of the scale box shown.
-// tuning = a guitar tuning id from ../shared/theory.js (default 'standard').
+// instrument / tuning = ids from INSTRUMENTS in ../shared/theory.js (default 'guitar' / 'standard').
 // See notation.js for the tab notation. scale = a key of SCALES in ../shared/theory.js.
 
 export const LICKS = [
@@ -42,6 +42,18 @@ export const LICKS = [
     about: 'A classic phrase: bend, hit the root, then walk down the box and land on A with vibrato.',
     theory: 'The B string 8th fret is G. Bending it up a whole step (2 frets) turns it into A, the root. Bending into the root is one of the most "vocal" moves on guitar. It sounds like a singer reaching for a note.',
     practice: 'Bend with your ring finger and put your middle and index fingers behind it on the same string to help push. Play 2-10 first to hear the target note, then bend 2-8 until it matches.',
+  },
+  {
+    id: 'blues-grace-hammer',
+    title: 'Minor-to-Major Grace Hammer',
+    style: 'Blues',
+    level: 1,
+    root: 9, scale: 'blues', position: [5, 8], bpm: 84, swing: true,
+    tab: `3-5:g h3-6:q 2-5:e 3-6 3-5 4-7:q~ r:e |
+          3-5:g h3-6:q 2-5:e 1-5 2-5 3-6 3-5 4-7`,
+    about: 'A quick hammer-on from C to C# (the minor 3rd to the major 3rd), then down to the root. You hear it in almost every blues solo.',
+    theory: 'The C is the minor 3rd from A minor pentatonic; C# is the major 3rd of the A chord. Flicking from one to the other in a split second is the sound of blues: it sits between minor and major. The small 5 in the tab is a grace note: pick it and hammer on almost at once, so the C# gets the beat.',
+    practice: 'Index finger on the G string 5th fret, middle finger hammers the 6th fret. Pick and hammer nearly together: it should sound like one slightly smeared note, not two. Then try slowing the speed: the grace note stays quick, only the beat slows down.',
   },
   {
     id: 'double-stops',
@@ -148,10 +160,10 @@ export const LICKS = [
     style: 'Country',
     level: 2,
     root: 9, scale: 'major-pentatonic', position: [2, 5], bpm: 100,
-    tab: `5-4:e 4-2 h4-4 3-2 h3-4 2-2 2-5 1-2 | 1-5:q 1-2:e 2-5 p2-2 3-4 p3-2 4-4 | 4-2:q 5-4 6-5:h`,
+    tab: `5-4:e 4-2:g h4-4:q 3-2:g h3-4:q 2-2:e 2-5 1-2 | 1-5:q 2-5:g p2-2:q 3-4:g p3-2:q 4-4:q | 4-2:q 5-4 6-5:h`,
     about: 'A bright, happy run up and down the A major pentatonic, with hammer-ons going up and pull-offs coming down.',
     theory: 'Big secret: this is the exact same shape as box 1, just moved down 3 frets. Box 1 at fret 5 is A minor, and the same shape at fret 2 is A major. Same five shapes, different "home" note. Use "Intervals" to see that the root has moved.',
-    practice: 'Play the A minor box 1 lick, then this one, back to back. Hear the change from sad to happy. Keep hammer-ons firm so they are as loud as picked notes.',
+    practice: 'Play the A minor box 1 lick, then this one, back to back. Hear the change from sad to happy. The small numbers in the tab are grace notes: pick them and hammer or pull off almost immediately, so the note you land on gets the beat.',
   },
 
   {
@@ -175,8 +187,53 @@ export const LICKS = [
     root: 9, scale: 'minor-pentatonic', position: [5, 8], bpm: 80,
     tab: `6-5:e h6-8 5-5 h5-7 4-5 h4-7 3-5 h3-7 | 2-5 h2-8 1-5 h1-8 1-8 p1-5 2-8 p2-5 |
           3-7 p3-5 4-7 p4-5 5-7 p5-5 6-8 p6-5`,
-    about: 'Box 1, but you only pick the first note on each string. The second note is made with your fretting hand.',
-    theory: 'Hammer-ons (h) and pull-offs (p) are called "legato": smooth, connected notes. They are how players sound fast and fluid without picking every note.',
-    practice: 'Hammer-on: bring the finger down hard and fast like a little hammer. Pull-off: pull the finger slightly sideways as you lift, so it plucks the string. Aim for both notes to be equally loud.',
+    about: 'Box 1, but you only pick the first note on each string. The second note is made with your fretting hand. The timing is deliberately even: every note gets the same length.',
+    theory: 'Hammer-ons (h) and pull-offs (p) are called "legato": smooth, connected notes. They are how players sound fast and fluid without picking every note. In real playing they are often quick flicks (see the Grace-Note Flicks drill); this drill keeps them even because evenness is the hard part: most people rush the hammered note or play it quieter.',
+    practice: 'Hammer-on: bring the finger down hard and fast like a little hammer. Pull-off: pull the finger slightly sideways as you lift, so it plucks the string. Use the click and aim for every note to be the same length and the same volume.',
+  },
+
+  // ---------------------------------------------------------------- Bass
+  {
+    id: 'bass-walk',
+    title: 'Walking Blues Bass',
+    style: 'Bass',
+    level: 1,
+    instrument: 'bass',
+    root: 9, scale: 'mixolydian', position: [0, 5], bpm: 100, swing: true,
+    tab: `3-0:e 3-4 2-2 2-4 2-5 2-4 2-2 3-4 | 2-0 2-4 1-2 1-4 1-5 1-4 1-2 2-4 |
+          3-0 3-4 2-2 2-4 2-5 2-4 2-2 3-4 | 4-0 4-4 3-2 3-4 3-5 3-4 3-2 4-4`,
+    about: 'The classic walking bass line under a blues in A: up the chord and back down, moved to D and E.',
+    theory: 'Each bar walks root, 3rd, 5th, 6th, ♭7 and back down: the notes of a dominant 7 chord plus the 6th. Moving the same shape to D and E gives the I, IV and V chords of a blues. It is the boogie guitar riff, an octave lower and one note at a time.',
+    practice: 'Use one finger per fret: index on 2, middle on 3 (unused here), ring on 4, pinky on 5. Pluck with alternating index and middle fingers and keep the swing even. Mute the open strings you are not playing with your fretting hand.',
+  },
+
+  // ---------------------------------------------------------------- Ukulele
+  {
+    id: 'uke-four-chords',
+    title: 'Four-Chord Uke Strum',
+    style: 'Ukulele',
+    level: 1,
+    instrument: 'ukulele',
+    root: 0, scale: 'major', position: [0, 3], bpm: 96,
+    tab: `4-0+3-0+2-0+1-3:q 4-0+3-0+2-0+1-3:e 4-0+3-0+2-0+1-3 4-0+3-0+2-0+1-3:q 4-0+3-0+2-0+1-3:e 4-0+3-0+2-0+1-3 |
+          4-2+3-0+2-0+1-0:q 4-2+3-0+2-0+1-0:e 4-2+3-0+2-0+1-0 4-2+3-0+2-0+1-0:q 4-2+3-0+2-0+1-0:e 4-2+3-0+2-0+1-0 |
+          4-2+3-0+2-1+1-0:q 4-2+3-0+2-1+1-0:e 4-2+3-0+2-1+1-0 4-2+3-0+2-1+1-0:q 4-2+3-0+2-1+1-0:e 4-2+3-0+2-1+1-0 |
+          4-0+3-2+2-3+1-2:q 4-0+3-2+2-3+1-2:e 4-0+3-2+2-3+1-2 4-0+3-2+2-3+1-2:q 4-0+3-2+2-3+1-2:e 4-0+3-2+2-3+1-2`,
+    about: 'C, Am, F, G: the four chords behind hundreds of pop songs, with a down, down-up, down, down-up strum.',
+    theory: 'These are chords I, vi, IV and V in the key of C. Standard ukulele tuning is "re-entrant": the G string (bottom line of the tab) is tuned high, above the C string next to it, so open chords sound bright and close together.',
+    practice: 'Strum with the nail of your index finger: down on the beat, up on the "&". Change chord on beat 1 and keep the strumming hand moving even when you miss a chord. C and Am share fingers on the G and A strings, so that change is the easiest; practise F to G on its own.',
+  },
+  {
+    id: 'grace-flicks',
+    title: 'Grace-Note Flicks',
+    style: 'Technique',
+    level: 1,
+    root: 9, scale: 'minor-pentatonic', position: [5, 8], bpm: 80,
+    tab: `6-5:g h6-8:q 5-5:g h5-7:q 4-5:g h4-7:q 3-5:g h3-7:q |
+          2-5:g h2-8:q 1-5:g h1-8:q 1-8:g p1-5:q 2-8:g p2-5:q |
+          3-7:g p3-5:q 4-7:g p4-5:q 5-7:g p5-5:q 6-8:g p6-5:q`,
+    about: 'The same notes as the Hammer-On / Pull-Off Workout, played the way hammer-ons usually turn up in songs: a quick flick into a note that lands on the beat.',
+    theory: 'The small numbers are grace notes. They take no time of their own: you pick, and the hammer-on or pull-off follows almost instantly, so the note you land on gets the beat. This is the snappy, ornamental legato of blues and country, as opposed to the even legato of the workout.',
+    practice: 'Pick and hammer (or pull off) so close together they almost sound like one note with a "blip" at the start. Keep the landing notes exactly on the click. Then switch back to the even workout and feel the difference.',
   },
 ];

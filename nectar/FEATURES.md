@@ -18,15 +18,36 @@ Every page uses the same neck, synth and scheduler (ADR-010):
 
 Notes are `{ string, fret }`, string 1 = top line of tab (tab order).
 
-### Tunings
+### Instruments and tunings
 
-A **Tuning** select in every topbar: Standard, Half step down, Drop D, DADGAD,
-Open G, Open D. The choice is shared across pages (localStorage
-`nectar-instrument`). Changing it relabels the strings, re-pitches every note and
+**Instrument** and **Tuning** selects in every topbar, shared across pages
+(localStorage `nectar-instrument`):
+
+| Instrument | Tunings | Frets | Sound |
+|---|---|---|---|
+| Guitar | Standard, Half step down, Drop D, DADGAD, Open G, Open D | 21 | reference |
+| 7-string guitar | Standard (B), Drop A | 24 | as guitar |
+| 12-string guitar | Standard, Half step down | 20 | brighter; octave pairs on the low 4 courses, unison on B/e |
+| Bass (4-string) | Standard, Drop D | 20 | long sustain, soft, darker |
+| Bass (5-string) | Standard (B) | 24 | as bass |
+| Ukulele | Standard (re-entrant gCEA), Low G | 15 | short, soft |
+| Mandolin | Standard (GDAE) | 17 | short, bright, unison pairs |
+
+The neck takes its strings, frets and inlays from the instrument; the synth
+takes its sustain, pluck position and softness from it.
+
+**Paired strings (courses):** mandolin and 12-string have two strings per course,
+fretted together, so tab and fingering show one string per course. Each note
+plays both strings: the second at the pair's interval (unison, or an octave up),
+3 cents apart and 6 ms later. The neck draws each course as two lines (an octave
+string is the thin one).
+ Changing it relabels the strings, re-pitches every note and
 re-renders the page: Scales anchors its box on the lowest string, Chords labels
 its shapes "Root on D / Root on A" outside standard, Identify re-identifies the
-selected notes. Licks lock the page to the lick's own tuning (e.g. the Drop D
-Chug) without changing the saved choice. Design and roadmap (other instruments,
+selected notes. On Licks, the Instrument select filters the library (bass →
+Walking Blues Bass, ukulele → Four-Chord Uke Strum; instruments with no licks yet
+say so), and the Tuning select is set by the lick (e.g. Drop D Chug) without
+changing the saved choice. Design and roadmap (other instruments,
 generic voicings): `docs/nectar-instruments.md`.
 
 ### Signal chain
@@ -44,6 +65,12 @@ amp: highpass → body → mid hump → distCurve waveshaper → cab lowpass →
     ▼
 compressor → volume → destination
 ```
+
+**Legato:** hammer-ons, pull-offs and slides don't pick again. They retune the
+note already ringing on that string (instantly, or gliding for a slide), so the
+sound is continuous; a hammer adds a quiet, dull finger tap and a pull-off a
+slightly brighter flick. With nothing ringing on the string they fall back to a
+soft pick.
 
 **Tone** (topbar select, every page): Acoustic / Clean / Blues / Rock set the
 drive, mid hump, cab cutoff, reverb and string sustain.
@@ -235,12 +262,13 @@ Separate page reachable via "Identify →" from the scale explorer or chord expl
 A lick trainer: learn short riffs from tab, see them on the neck, and play along.
 Code lives in `nectar/licks/` as native ES modules (ADR-009).
 
-**Library** — 14 original licks (one in drop D) grouped Foundation / Blues / Rock / Country /
+**Library** — 18 original licks (one in drop D, one for bass, one for ukulele; three use grace notes) grouped Foundation / Blues / Rock / Country /
 Melody / Technique, each with a level, key, scale, position and target tempo,
 plus three plain-English cards: What it is, Why it works, How to practise.
 
 **Tab** — SVG tablature rendered from a compact text notation
-(`3-7:q`, `h3-7`, `/3-9`, `2-8b2`, `4-7~`, `5-0+4-2`, `r`; full spec at the top
+(`3-7:q`, `h3-7`, `/3-9`, `2-8b2`, `4-7~`, `5-0+4-2`, `r`, and grace notes `3-5:g`,
+which sound on the beat and push the next note ~200 ms later (Grace slider, 50-400 ms, at most 70% of the next note); full spec at the top
 of `licks/notation.js`). Beat counts under the staff ("1 & 2 &" or "1 tri let").
 Playback cursor + current-note highlight. Click a note to hear it.
 

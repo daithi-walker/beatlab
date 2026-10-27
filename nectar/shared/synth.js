@@ -3,7 +3,7 @@
 // optionally with tech ('h' | 'p' | '/'), bend (semitones) and vibrato (bool).
 
 import { makeImpulse, distCurve } from '../../core/audio.js';
-import { midiOf } from './theory.js';
+import { midiOf, INSTRUMENT } from './theory.js';
 
 // Amp presets. The signal path is:
 //   strings -> highpass -> body -> mid hump -> waveshaper -> cab lowpass -> presence -> level
@@ -114,8 +114,10 @@ export class GuitarSynth {
   // Karplus-Strong buffer. The delay line length is an integer, so the true pitch is
   // corrected with playbackRate (returned as `rate`).
   buffer(midi) {
-    const sustain = TONES[this.tone].sustain;
-    const key = `${midi}:${sustain}`;
+    // Ring time from the tone and the instrument; pluck position and softness from the instrument.
+    const snd = INSTRUMENT.sound;
+    const sustain = TONES[this.tone].sustain * snd.sustain;
+    const key = `${midi}:${sustain}:${snd.pick}:${snd.soft}`;
     if (this.cache.has(key)) return this.cache.get(key);
     const sr = this.ctx.sampleRate;
     const f = 440 * Math.pow(2, (midi - 69) / 12);
@@ -130,10 +132,10 @@ export class GuitarSynth {
     const noise = new Float32Array(N);
     let lp = 0;
     for (let i = 0; i < N; i++) {
-      lp += 0.55 * (Math.random() * 2 - 1 - lp);
+      lp += (0.9 - 0.6 * snd.soft) * (Math.random() * 2 - 1 - lp);
       noise[i] = lp;
     }
-    const pick = Math.max(1, Math.round(N * 0.13));
+    const pick = Math.max(1, Math.round(N * snd.pick));
     let mean = 0;
     for (let i = 0; i < N; i++) {
       out[i] = noise[i] - (i >= pick ? noise[i - pick] : 0);
@@ -160,57 +162,108 @@ export class GuitarSynth {
   }
 
   // Play one note. `dur` is the note's notated length in seconds (used to time bends/slides).
-  pluck(bus, note, t, dur, prevMidi = null) {
-    const ctx = this.ctx;
+  // Hammer-ons, pull-offs and slides continue the note already ringing on that string
+  // (see legato); everything else is a fresh pick.
+  pluck(bus, note, t, dur) {
     const midi = midiOf(note);
-    const { buf, rate } = this.buffer(midi);
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
+    const voice = bus.voices[note.string];
+    const tech = note.tech === 'h' || note.tech === 'p' || note.tech === '/';
+    if (tech && voice && t < voice.end) return this.legato(bus, voice, note, midi, t, dur);
+
+    const ctx = this.ctx;
     const g = ctx.createGain();
-    const legato = note.tech === 'h' || note.tech === 'p' || note.tech === '/';
-    const vel = legato ? 0.5 : 0.9;
+    // Paired strings sound as two plucks, slightly detuned and a few ms apart; the second is
+    // at the pair's interval (unison, or an octave up on 12-string low courses).
+    const pair = INSTRUMENT.courses?.[note.string - 1];
+    const courses = pair === undefined ? [[0, 0, 0]] : [[0, -3, 0], [pair, 3, 0.006]];
+    // A hammer-on/pull-off/slide with nothing ringing on the string is a soft pick.
+    const vel = (tech ? 0.5 : 0.9) / Math.sqrt(courses.length);
     g.gain.setValueAtTime(0, t);
     g.gain.linearRampToValueAtTime(vel, t + 0.004);
+    const srcs = courses.map(([semis, cents, delay]) => {
+      const { buf, rate: baseRate } = this.buffer(midi + semis);
+      const rate = baseRate * Math.pow(2, cents / 1200);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.playbackRate.setValueAtTime(rate, t);
+      src.connect(g);
+      src.start(t + delay);
+      src.stop(t + delay + buf.duration + 0.1);
+      return { pr: src.playbackRate, rate, end: t + delay + buf.duration };
+    });
 
-    const pr = src.playbackRate;
-    if (note.tech === '/' && prevMidi != null && prevMidi !== midi) {
-      pr.setValueAtTime(rate * Math.pow(2, (prevMidi - midi) / 12), t);
-      pr.linearRampToValueAtTime(rate, t + Math.min(0.09, dur * 0.5));
-    } else {
-      pr.setValueAtTime(rate, t);
+    // One sounding note per string: a new pick mutes the previous one.
+    this.mute(bus, note.string, t);
+    g.connect(bus);
+    const v = { g, srcs, midi, end: Math.min(...srcs.map((x) => x.end)) };
+    bus.voices[note.string] = v;
+    this.bendAndVibrato(v, note, t, dur);
+  }
+
+  // Hammer-on / pull-off / slide: the string keeps vibrating and only its length changes, so
+  // retune the ringing voice (instantly, or gliding for a slide) instead of picking again.
+  // A hammer adds a dull finger tap; a pull-off flicks the string, a little brighter.
+  legato(bus, voice, note, midi, t, dur) {
+    const ratio = Math.pow(2, (midi - voice.midi) / 12);
+    for (const v of voice.srcs) {
+      const to = v.rate * ratio;
+      v.pr.cancelScheduledValues(t);
+      v.pr.setValueAtTime(v.rate, t);
+      if (note.tech === '/') v.pr.linearRampToValueAtTime(to, t + Math.min(0.09, dur * 0.5));
+      else v.pr.setValueAtTime(to, t);
+      v.rate = to;
     }
-    const target = rate * Math.pow(2, note.bend / 12);
+    voice.midi = midi;
+    if (note.tech === 'h') this.fingerNoise(bus, midi, t, 0.1, 1400);
+    if (note.tech === 'p') this.fingerNoise(bus, midi, t, 0.13, 3200);
+    this.bendAndVibrato(voice, note, t, dur);
+  }
+
+  // A short, quiet pluck transient at the new pitch: the finger's contact with the string.
+  fingerNoise(bus, midi, t, level, cutoff) {
+    const ctx = this.ctx;
+    const src = ctx.createBufferSource();
+    const { buf, rate } = this.buffer(midi);
+    src.buffer = buf;
+    src.playbackRate.value = rate;
+    const lp = ctx.createBiquadFilter();
+    lp.frequency.value = cutoff;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(level, t);
+    g.gain.setTargetAtTime(0, t + 0.004, 0.025);
+    src.connect(lp).connect(g).connect(bus);
+    src.start(t);
+    src.stop(t + 0.2);
+  }
+
+  bendAndVibrato(voice, note, t, dur) {
     if (note.bend) {
       const bs = t + Math.min(0.06, dur * 0.15);
-      pr.setValueAtTime(rate, bs);
-      pr.linearRampToValueAtTime(target, bs + Math.min(0.2, dur * 0.45));
+      for (const v of voice.srcs) {
+        v.pr.setValueAtTime(v.rate, bs);
+        v.pr.linearRampToValueAtTime(v.rate * Math.pow(2, note.bend / 12), bs + Math.min(0.2, dur * 0.45));
+      }
     }
     if (note.vibrato) {
-      const lfo = ctx.createOscillator();
+      const lfo = this.ctx.createOscillator();
+      const depth = this.ctx.createGain();
       lfo.frequency.value = 5.5;
-      const depth = ctx.createGain();
       const vs = t + Math.min(0.35, dur * 0.3);
       depth.gain.setValueAtTime(0, t);
       depth.gain.setValueAtTime(0, vs);
-      depth.gain.linearRampToValueAtTime(target * 0.014, vs + 0.25);
-      lfo.connect(depth).connect(pr);
+      depth.gain.linearRampToValueAtTime(Math.pow(2, note.bend / 12) * 0.014, vs + 0.25);
+      lfo.connect(depth);
+      for (const v of voice.srcs) depth.connect(v.pr);
       lfo.start(t);
-      lfo.stop(t + buf.duration);
+      lfo.stop(voice.end);
     }
-
-    // One sounding note per string: a new note mutes the previous one.
-    this.mute(bus, note.string, t);
-    src.connect(g).connect(bus);
-    src.start(t);
-    src.stop(t + buf.duration + 0.1);
-    bus.voices[note.string] = g;
   }
 
   mute(bus, string, t) {
     const prev = bus.voices[string];
     if (!prev) return;
-    prev.gain.cancelScheduledValues(t);
-    prev.gain.setTargetAtTime(0, t, 0.012);
+    prev.g.gain.cancelScheduledValues(t);
+    prev.g.gain.setTargetAtTime(0, t, 0.012);
     delete bus.voices[string];
   }
 

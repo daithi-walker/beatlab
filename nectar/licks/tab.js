@@ -30,7 +30,7 @@ export const Tab = (() => {
     container.innerHTML = '';
     const width = Math.max(320, container.clientWidth);
     const usable = width - GUTTER - 10;
-    const minDur = Math.min(...song.events.map((e) => e.dur));
+    const minDur = Math.min(...song.events.filter((e) => !e.grace).map((e) => e.dur));
     const isWhole = (v) => Math.abs(v - Math.round(v)) < 1e-6;
     const triplets = song.events.some((e) => isWhole(e.dur * 3) && !isWhole(e.dur * 2));
 
@@ -77,7 +77,8 @@ export const Tab = (() => {
     const prev = {}; // string -> { x, row, fret }
     song.events.forEach((ev, i) => {
       const row = Math.floor(ev.beat / rowBeats + 1e-9);
-      const x = xOf(ev.beat - row * rowBeats);
+      // Grace notes sit small, just before their main note.
+      const x = xOf(ev.beat - row * rowBeats) - (ev.grace ? 17 : 0);
       const svg = layout.rows[row].svg;
       const g = el('g', { class: 'tev' }, svg);
       layout.events.push({ row, x, g, dur: ev.dur });
@@ -87,9 +88,9 @@ export const Tab = (() => {
       for (const n of ev.notes) {
         const y = stringY(n.string);
         const label = String(n.fret);
-        const w = label.length * 8 + 6;
+        const w = label.length * (ev.grace ? 6 : 8) + 6;
         el('rect', { x: x - w / 2, y: y - 8, width: w, height: 16, rx: 3, class: 'tbg' }, g);
-        text(g, x, y + 4.5, label, 'tnum');
+        text(g, x, y + 4, label, ev.grace ? 'tnum grace' : 'tnum');
 
         const p = prev[n.string];
         if (n.tech) {

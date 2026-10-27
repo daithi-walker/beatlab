@@ -17,6 +17,7 @@
     <a href="licks.html" class="nectar-tab active">Licks</a>
     <div class="topbar-right">
       <span class="keys"><kbd>Space</kbd> play <kbd>L</kbd> loop <kbd>←</kbd><kbd>→</kbd> speed</span>
+      <select id="instrument-select"></select>
       <select id="tuning-select"></select>
       <select id="tone-select"></select>
       <span class="vol-label">Vol</span>
@@ -27,7 +28,7 @@
   <div class="layout">
     <aside class="library" id="library"></aside>
 
-    <main class="main">
+    <main class="main" id="main">
       <section class="lick-head">
         <div class="eyebrow" id="lick-style"></div>
         <h1 id="lick-title"></h1>
@@ -40,6 +41,11 @@
           <label for="speed">Speed</label>
           <input id="speed" type="range" min="40" max="120" step="5">
           <output id="speed-out"></output>
+        </div>
+        <div class="speed" id="grace-ctl" title="How long a grace note sounds before the note it flicks into">
+          <label for="grace">Grace</label>
+          <input id="grace" type="range" min="50" max="400" step="10">
+          <output id="grace-out"></output>
         </div>
         <div class="toggles">
           <label class="tog"><input type="checkbox" id="loop"><span>Loop</span></label>

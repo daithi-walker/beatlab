@@ -1,8 +1,7 @@
 // Nectar shared look-ahead scheduler (ADR-003 pattern): plays a song on the audio clock.
 // song = { events: [{ beat, dur, notes: [{ string, fret, ... }] }], loopBeats, swing }
-// An event with no notes is a rest (mutes ringing strings).
-
-import { midiOf } from './theory.js';
+// An event with no notes is a rest (mutes ringing strings). A `grace` event (dur 0) sounds on
+// its beat for `player.graceSec` and pushes the following note back by that much.
 
 // Swing: the off-beat eighth is pushed late to 2/3 of the beat.
 const SWING_RATIO = 2 / 3;
@@ -20,6 +19,7 @@ export class Player {
     this.playing = false;
     this.loop = true;
     this.metronome = false;
+    this.graceSec = 0.2; // grace-note length; capped at 70% of the note it leads into
     this.onEvent = () => {};
     this.onFrame = () => {};
     this.onCount = () => {};
@@ -61,7 +61,7 @@ export class Player {
     this.nextClick = this.anchorBeat;
     this.iter = 0;
     this.idx = 0;
-    this.lastMidi = {};
+    this.graceShift = 0;
     this.finished = false;
     this.eventQueue = [];
     this.countQueue = [];
@@ -87,8 +87,7 @@ export class Player {
       return;
     }
     for (const n of ev.notes) {
-      this.synth.pluck(this.bus, n, t0, t1 - t0, this.lastMidi[n.string] ?? null);
-      this.lastMidi[n.string] = midiOf(n);
+      this.synth.pluck(this.bus, n, t0, t1 - t0);
     }
   }
 
@@ -100,11 +99,14 @@ export class Player {
     while (!this.finished) {
       const ev = s.events[this.idx];
       const base = this.iter * s.loopBeats;
-      const t0 = this.timeAt(base + swingBeat(ev.beat, s.swing));
+      const t0 = this.timeAt(base + swingBeat(ev.beat, s.swing)) + this.graceShift;
       if (t0 > horizon) break;
-      const t1 = this.timeAt(base + swingBeat(ev.beat + ev.dur, s.swing));
+      const next = s.events[this.idx + 1];
+      const grace = Math.min(this.graceSec, 0.7 * ((next?.dur ?? 1) * 60) / this.bpm);
+      const t1 = ev.grace ? t0 + grace : this.timeAt(base + swingBeat(ev.beat + ev.dur, s.swing));
       this.scheduleEvent(ev, t0, t1);
       this.eventQueue.push({ time: t0, end: t1, i: this.idx });
+      this.graceShift = ev.grace ? this.graceShift + grace : 0;
       if (++this.idx >= s.events.length) {
         if (this.loop) {
           this.idx = 0;

@@ -21,6 +21,34 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
   hammer-ons/pull-offs and vibrato, with Acoustic / Clean / Blues / Rock amp
   tones built on `core/audio.js`. Licks tab added to the Nectar topbar.
 
+### Changed — Nectar (sound)
+- **Real hammer-ons, pull-offs and slides** — legato notes now continue the
+  string that's already ringing (retuned instantly, or gliding for slides) with
+  a quiet finger tap/flick, instead of re-picking it more softly. Measured attack
+  jump at a hammer-on: ~1.0x (was ~2.9x, the same as a fresh pick).
+- **Grace notes** in the lick notation (`3-5:g h3-7:q`): a quick picked note on the
+  beat with the main note ~200 ms later (adjustable with a Grace slider, 50-400 ms,
+  never more than 70% of the next note; shown for licks that use grace notes), drawn small in the tab. The Major
+  Pentatonic Country Lick now uses grace hammer-ons and pull-offs; new
+  "Minor-to-Major Grace Hammer" blues lick and a "Grace-Note Flicks" drill (the
+  Hammer-On / Pull-Off Workout stays evenly timed, on purpose).
+
+### Changed — Platform
+- **Dev server sends `Cache-Control: no-cache`** (`nginx-dev.conf`, mounted by the
+  nectar/multibank/synth compose files) so a normal refresh picks up edited JS
+  modules instead of a stale cached copy. Recreate the container to apply:
+  `docker compose up -d`.
+
+### Added — Nectar (instruments)
+- **Instruments** — an Instrument select on every Nectar page: guitar, 7-string,
+  12-string, 4- and 5-string bass, ukulele (re-entrant gCEA or low G) and
+  mandolin. The neck takes strings, frets and inlays from the instrument; the
+  synth takes a sound profile (sustain, pluck position, softness). Mandolin and
+  12-string play paired strings (unison / octave courses) and draw them as
+  double lines. Chords and Identify work on every instrument. On Licks the
+  Instrument select filters the library. New licks: Walking Blues Bass,
+  Four-Chord Uke Strum.
+
 ### Added — Nectar (tunings)
 - **Guitar tunings** — a Tuning select on every Nectar page (Standard, Half step
   down, Drop D, DADGAD, Open G, Open D), shared across pages. Strings relabel and

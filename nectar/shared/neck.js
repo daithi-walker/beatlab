@@ -1,6 +1,6 @@
 // Nectar shared guitar neck (SVG). Every Nectar page draws its fretboard with this.
 //
-//   const neck = new Neck(container, { frets: 21, interaction: 'strum', onPluck: (note) => {...} });
+//   const neck = new Neck(container, { interaction: 'strum', onPluck: (note) => {...} });
 //   neck.setLayer('scale', dots);     // dots: [{ string, fret, size, fill, stroke, opacity, label, labelColor, labelSize, glow }]
 //   neck.setBox([5, 8]);              // dashed frame around a hand position (or null)
 //   neck.setMuted([6]);               // X markers left of the nut
@@ -11,7 +11,7 @@
 // Notes are { string, fret } with string 1 = the top line of tab (see theory.js), drawn on top. interaction: 'strum' (press/drag across strings plays each, tap plays nearest),
 // 'tap' (click plays/toggles nearest via onTap), or 'none'.
 
-import { STRINGS, STRING_NAMES, OPEN_MIDI, FRET_COUNT, INSTRUMENT, onTuningChange } from './theory.js';
+import { STRINGS, STRING_NAMES, OPEN_MIDI, INSTRUMENT, onTuningChange } from './theory.js';
 
 const SVGNS = 'http://www.w3.org/2000/svg';
 const W = 1240;
@@ -56,33 +56,30 @@ function text(parent, x, y, str, cls, fill) {
 }
 
 export class Neck {
-  constructor(container, { frets = FRET_COUNT, interaction = 'none', onPluck = null, onTap = null } = {}) {
+  // maxFrets caps the instrument's fret count (Licks shows fewer frets, bigger).
+  constructor(container, { maxFrets = Infinity, interaction = 'none', onPluck = null, onTap = null } = {}) {
     if (!document.getElementById('nk-css')) {
       const style = document.createElement('style');
       style.id = 'nk-css';
       style.textContent = CSS;
       document.head.appendChild(style);
     }
-    this.frets = frets;
+    this.maxFrets = maxFrets;
     this.onPluck = onPluck;
     this.onTap = onTap;
     this.id = 'nk'; // one neck per page
-
-    // Real fret spacing (each fret ~5.6% narrower), scaled to fit.
-    this.L = (RIGHT - NUT_X) / (1 - Math.pow(2, -frets / 12));
 
     const wrap = document.createElement('div');
     wrap.className = 'nk-wrap';
     container.appendChild(wrap);
     const svg = (this.svg = el('svg', { class: 'nk' }, wrap));
     svg.neck = this; // lets tests/devtools ask the neck for positions
-    svg.style.setProperty('--nk-touch-width', `${Math.round(frets * 52)}px`);
     this.drawDefs();
     this.base = el('g', {}, svg);
     this.layers = {};
     for (const name of LAYERS) this.layers[name] = el('g', { class: `layer-${name}` }, svg);
     this.drawBase();
-    // Tuning changes relabel the strings (and later may change their number). The page
+    // Instrument/tuning changes redraw the board (string count, frets, labels). The page
     // redraws its own dots via its own onTuningChange handler.
     onTuningChange(() => this.drawBase());
     if (interaction !== 'none') this.bindPointer(interaction);
@@ -92,6 +89,7 @@ export class Neck {
   noteX(f) { return f === 0 ? OPEN_X : (this.wireX(f - 1) + this.wireX(f)) / 2; }
   stringY(s) { return TOP + (s - 1) * GAP; }
 
+  get frets() { return Math.min(this.maxFrets, INSTRUMENT.frets); }
   get bottomY() { return this.stringY(STRINGS.length); }
   get boardH() { return GAP * (STRINGS.length - 1) + 30; }
 
@@ -113,6 +111,9 @@ export class Neck {
     const g = this.base;
     g.replaceChildren();
     this.svg.setAttribute('viewBox', `0 0 ${W} ${this.bottomY + 50}`);
+    this.svg.style.setProperty('--nk-touch-width', `${Math.round(this.frets * 52)}px`);
+    // Real fret spacing (each fret ~5.6% narrower), scaled to fit.
+    this.L = (RIGHT - NUT_X) / (1 - Math.pow(2, -this.frets / 12));
     el('rect', { x: NUT_X, y: TOP - 15, width: RIGHT - NUT_X, height: this.boardH, fill: `url(#${this.id}-wood)`, rx: 2 }, g);
     const inlays = INSTRUMENT.inlays.filter((f) => f <= this.frets);
     const doubles = INSTRUMENT.doubleInlays.filter((f) => f <= this.frets);
@@ -128,7 +129,17 @@ export class Neck {
     for (const s of STRINGS) {
       // Gauge by pitch: the lower the open note, the thicker the string.
       const thicker = STRINGS.filter((o) => OPEN_MIDI[o] > OPEN_MIDI[s]).length;
-      el('line', { x1: NUT_X - 50, x2: RIGHT, y1: this.stringY(s), y2: this.stringY(s), class: 'string', 'stroke-width': 0.9 + thicker * 0.42 }, g);
+      const width = 0.9 + thicker * 0.42;
+      const pair = INSTRUMENT.courses?.[s - 1];
+      if (pair === undefined) {
+        el('line', { x1: NUT_X - 50, x2: RIGHT, y1: this.stringY(s), y2: this.stringY(s), class: 'string', 'stroke-width': width }, g);
+      } else {
+        // Paired strings drawn as two close lines; an octave string is the thin one, on top.
+        [[-2.2, pair ? 0.8 : width * 0.7], [2.2, width * 0.7]].forEach(([dy, w]) => {
+          const y = this.stringY(s) + dy;
+          el('line', { x1: NUT_X - 50, x2: RIGHT, y1: y, y2: y, class: 'string', 'stroke-width': w }, g);
+        });
+      }
       text(g, 12, this.stringY(s) + 4.5, STRING_NAMES[s], 'sname');
     }
   }
@@ -268,7 +279,7 @@ export class Neck {
 // ---- dot builders shared by pages
 
 // Faint hollow dot on every position: signals "the whole neck is playable".
-export function ghostDots(frets = FRET_COUNT, opacity = 0.18) {
+export function ghostDots(frets, opacity = 0.18) {
   const out = [];
   for (const string of STRINGS) for (let fret = 0; fret <= frets; fret++) {
     out.push({ string, fret, size: 'xs', stroke: 'rgba(255,255,255,0.6)', strokeWidth: 1, opacity });

@@ -98,6 +98,9 @@ h1 { font: 650 30px/1.15 var(--serif); letter-spacing: -0.01em; margin: 4px 0 10
 .speed { display: flex; align-items: center; gap: 10px; }
 .speed label { color: var(--muted); font-size: 13px; }
 .speed output { font: 13px var(--mono); min-width: 120px; }
+#grace-ctl output { min-width: 52px; }
+#grace-ctl input { width: 110px; }
+#grace-ctl[hidden] { display: none; }
 input[type="range"] { accent-color: var(--accent); width: 180px; }
 .toggles { display: flex; gap: 6px; flex-wrap: wrap; }
 .tog { position: relative; }
@@ -133,6 +136,7 @@ input[type="range"] { accent-color: var(--accent); width: 180px; }
 .tname { fill: var(--muted); font: 12px var(--mono); text-anchor: middle; }
 .tbg { fill: var(--panel); }
 .tnum { fill: var(--text); font: 600 13.5px var(--mono); text-anchor: middle; }
+.tnum.grace { font-size: 10.5px; fill: #c9bfae; }
 .tev { cursor: pointer; }
 .tev:hover .tbg { fill: #3a2e22; }
 .tev.on .tbg { fill: var(--accent); }
@@ -175,3 +179,8 @@ input[type="range"] { accent-color: var(--accent); width: 180px; }
   .tog span, .seg button, .lick-item { min-height: 44px; display: inline-flex; align-items: center; }
   .lick-item { display: block; }
 }
+
+/* ---------- no licks for the selected instrument */
+.main.no-licks .transport, .main.no-licks .panel, .main.no-licks .cards { display: none; }
+.main.no-licks .chips { color: var(--muted); font-size: 14px; }
+.lib-empty { color: var(--muted); font-size: 13px; padding: 8px 10px; }

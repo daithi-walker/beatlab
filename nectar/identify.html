@@ -254,6 +254,7 @@
       <button id="play-btn" class="topbar-action-btn" disabled>&#9654; Play</button>
       <button id="clear-btn" class="topbar-action-btn">Clear</button>
       <div class="topbar-right">
+        <select id="instrument-select"></select>
         <select id="tuning-select"></select>
         <select id="tone-select"></select>
         <span class="vol-label">Vol</span>
@@ -285,9 +286,9 @@
 
   <script type="module">
     // Identify: chord identifier on the shared Nectar neck + synth (see nectar/shared/).
-    import { NOTE_NAMES, FRET_COUNT, INTERVAL_COLORS, midiAt, onTuningChange } from './shared/theory.js';
+    import { NOTE_NAMES, INTERVAL_COLORS, midiAt, onTuningChange } from './shared/theory.js';
     import { setupAudio } from './shared/audio-ui.js';
-    import { setupTuning } from './shared/tuning-ui.js';
+    import { setupInstrument } from './shared/instrument-ui.js';
     import { Neck, ghostDots } from './shared/neck.js';
 
     // ─── Chord Templates ──────────────────────────────────────────────────────
@@ -516,7 +517,6 @@
 
     const synth = setupAudio();
     const neck = new Neck(document.getElementById('fretboard-container'), {
-      frets: FRET_COUNT,
       interaction: 'tap',
       onTap: toggleNote,
     });
@@ -524,7 +524,7 @@
     // Selected notes coloured by interval from the best match's root, labelled by note name.
     function renderNeck() {
       const best = matches[0] || null;
-      neck.setLayer('ghost', ghostDots(FRET_COUNT, 0.1).filter((d) => !selectedKeys.has(`${d.string}:${d.fret}`)));
+      neck.setLayer('ghost', ghostDots(neck.frets, 0.1).filter((d) => !selectedKeys.has(`${d.string}:${d.fret}`)));
       neck.setLayer('main', [...selectedKeys].map((k) => {
         const [string, fret] = k.split(':').map(Number);
         const pc = midiAt(string, fret) % 12;
@@ -575,7 +575,7 @@
     document.getElementById('copy-btn').addEventListener('click', copyProgression);
     document.getElementById('prog-clear-btn').addEventListener('click', clearProgression);
 
-    setupTuning();
+    setupInstrument();
     onTuningChange(refresh); // same frets, new pitches: re-identify
     renderBottom();
     renderNeck();

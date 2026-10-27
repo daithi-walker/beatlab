@@ -4,11 +4,19 @@
 // top line of tab (high e on a standard guitar) and the last string is the bottom line.
 
 // ---- Instruments and tunings (docs/nectar-instruments.md)
-// Tunings are written low → high, as players say them. String 1 is the last (highest) note.
+// Tunings list the open notes from the bottom line of tab to the top (string 1 last): low → high
+// on guitar and bass; ukulele's re-entrant high g comes first.
+// sound: synth profile — sustain (× ring time), pick (pluck position, lower = brighter),
+// soft (0-1, softer attack: fingers/nylon).
+// courses: paired strings, one entry per string (string 1 first) giving the second string's
+// interval in semitones: 0 = unison pair (mandolin), 12 = octave pair (12-string low courses).
+const GUITAR_INLAYS = { inlays: [3, 5, 7, 9, 15, 17, 19, 21], doubleInlays: [12, 24] };
+const SMALL_INLAYS = { inlays: [5, 7, 10, 15], doubleInlays: [12] };
+
 export const INSTRUMENTS = {
   guitar: {
-    name: 'Guitar', frets: 21,
-    inlays: [3, 5, 7, 9, 15, 17, 19, 21], doubleInlays: [12],
+    name: 'Guitar', frets: 21, ...GUITAR_INLAYS,
+    sound: { sustain: 1, pick: 0.13, soft: 0.55 },
     tunings: {
       standard: { name: 'Standard', notes: ['E2', 'A2', 'D3', 'G3', 'B3', 'E4'] },
       halfDown: { name: 'Half step down', notes: ['D#2', 'G#2', 'C#3', 'F#3', 'A#3', 'D#4'] },
@@ -16,6 +24,54 @@ export const INSTRUMENTS = {
       dadgad: { name: 'DADGAD', notes: ['D2', 'A2', 'D3', 'G3', 'A3', 'D4'] },
       openG: { name: 'Open G', notes: ['D2', 'G2', 'D3', 'G3', 'B3', 'D4'] },
       openD: { name: 'Open D', notes: ['D2', 'A2', 'D3', 'F#3', 'A3', 'D4'] },
+    },
+  },
+  guitar7: {
+    name: '7-string guitar', frets: 24, ...GUITAR_INLAYS,
+    sound: { sustain: 1, pick: 0.13, soft: 0.55 },
+    tunings: {
+      standard: { name: 'Standard', notes: ['B1', 'E2', 'A2', 'D3', 'G3', 'B3', 'E4'] },
+      dropA: { name: 'Drop A', notes: ['A1', 'E2', 'A2', 'D3', 'G3', 'B3', 'E4'] },
+    },
+  },
+  guitar12: {
+    name: '12-string guitar', frets: 20, ...GUITAR_INLAYS,
+    sound: { sustain: 1.2, pick: 0.13, soft: 0.5 },
+    courses: [0, 0, 12, 12, 12, 12],
+    tunings: {
+      standard: { name: 'Standard', notes: ['E2', 'A2', 'D3', 'G3', 'B3', 'E4'] },
+      halfDown: { name: 'Half step down', notes: ['D#2', 'G#2', 'C#3', 'F#3', 'A#3', 'D#4'] },
+    },
+  },
+  bass: {
+    name: 'Bass (4-string)', frets: 20, ...GUITAR_INLAYS,
+    sound: { sustain: 1.5, pick: 0.22, soft: 0.75 },
+    tunings: {
+      standard: { name: 'Standard', notes: ['E1', 'A1', 'D2', 'G2'] },
+      dropD: { name: 'Drop D', notes: ['D1', 'A1', 'D2', 'G2'] },
+    },
+  },
+  bass5: {
+    name: 'Bass (5-string)', frets: 24, ...GUITAR_INLAYS,
+    sound: { sustain: 1.5, pick: 0.22, soft: 0.75 },
+    tunings: {
+      standard: { name: 'Standard', notes: ['B0', 'E1', 'A1', 'D2', 'G2'] },
+    },
+  },
+  ukulele: {
+    name: 'Ukulele', frets: 15, ...SMALL_INLAYS,
+    sound: { sustain: 0.5, pick: 0.2, soft: 0.8 },
+    tunings: {
+      standard: { name: 'Standard (gCEA)', notes: ['G4', 'C4', 'E4', 'A4'] },
+      lowG: { name: 'Low G', notes: ['G3', 'C4', 'E4', 'A4'] },
+    },
+  },
+  mandolin: {
+    name: 'Mandolin', frets: 17, ...SMALL_INLAYS,
+    sound: { sustain: 0.6, pick: 0.1, soft: 0.4 },
+    courses: [0, 0, 0, 0],
+    tunings: {
+      standard: { name: 'Standard (GDAE)', notes: ['G3', 'D4', 'A4', 'E5'] },
     },
   },
 };
@@ -148,6 +204,11 @@ function noteToMidi(n) {
   return NOTE_NAMES.indexOf(m[1]) + 12 * (+m[2] + 1);
 }
 
+// Switch instrument, using its first tuning.
+export function setInstrument(id) {
+  setTuning(Object.keys(INSTRUMENTS[id].tunings)[0], { instrument: id });
+}
+
 // Switch tuning, on the current instrument unless another is given.
 // persist=false for temporary switches (Licks).
 export function setTuning(tuningId, { instrument = INSTRUMENT.id, persist = true } = {}) {
@@ -158,7 +219,7 @@ export function setTuning(tuningId, { instrument = INSTRUMENT.id, persist = true
   STRINGS = midis.map((_, i) => i + 1);
   OPEN_MIDI = Object.fromEntries(midis.map((m, i) => [i + 1, m]));
   const names = midis.map(noteName);
-  if (names.length > 1 && names[0] === names[names.length - 1]) names[0] = names[0].toLowerCase();
+  if (names.slice(1).includes(names[0])) names[0] = names[0].toLowerCase(); // e … E
   STRING_NAMES = Object.fromEntries(names.map((n, i) => [i + 1, n]));
   FRET_COUNT = inst.frets;
   if (persist) localStorage.setItem(STORE, JSON.stringify({ instrument, tuning: tuningId }));
