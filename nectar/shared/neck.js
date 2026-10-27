@@ -8,14 +8,13 @@
 //   neck.setNext(notes);              // the note(s) coming next (teal ring)
 //   neck.flash(note);                 // expanding ring, e.g. when a note is plucked
 //
-// Notes are { string, fret } with string 1 = high e (see theory.js). High e is drawn on top,
-// like tab. interaction: 'strum' (press/drag across strings plays each, tap plays nearest),
+// Notes are { string, fret } with string 1 = the top line of tab (see theory.js), drawn on top. interaction: 'strum' (press/drag across strings plays each, tap plays nearest),
 // 'tap' (click plays/toggles nearest via onTap), or 'none'.
 
-import { STRINGS, STRING_NAMES, FRET_COUNT } from './theory.js';
+import { STRINGS, STRING_NAMES, OPEN_MIDI, FRET_COUNT, INSTRUMENT, onTuningChange } from './theory.js';
 
 const SVGNS = 'http://www.w3.org/2000/svg';
-const W = 1240, H = 236;
+const W = 1240;
 const NUT_X = 70, RIGHT = W - 16;
 const TOP = 36, GAP = 30;
 const OPEN_X = NUT_X - 30;
@@ -75,12 +74,17 @@ export class Neck {
     const wrap = document.createElement('div');
     wrap.className = 'nk-wrap';
     container.appendChild(wrap);
-    const svg = (this.svg = el('svg', { viewBox: `0 0 ${W} ${H}`, class: 'nk' }, wrap));
+    const svg = (this.svg = el('svg', { class: 'nk' }, wrap));
     svg.neck = this; // lets tests/devtools ask the neck for positions
     svg.style.setProperty('--nk-touch-width', `${Math.round(frets * 52)}px`);
-    this.drawBase();
+    this.drawDefs();
+    this.base = el('g', {}, svg);
     this.layers = {};
     for (const name of LAYERS) this.layers[name] = el('g', { class: `layer-${name}` }, svg);
+    this.drawBase();
+    // Tuning changes relabel the strings (and later may change their number). The page
+    // redraws its own dots via its own onTuningChange handler.
+    onTuningChange(() => this.drawBase());
     if (interaction !== 'none') this.bindPointer(interaction);
   }
 
@@ -88,9 +92,11 @@ export class Neck {
   noteX(f) { return f === 0 ? OPEN_X : (this.wireX(f - 1) + this.wireX(f)) / 2; }
   stringY(s) { return TOP + (s - 1) * GAP; }
 
-  drawBase() {
-    const svg = this.svg;
-    const defs = el('defs', {}, svg);
+  get bottomY() { return this.stringY(STRINGS.length); }
+  get boardH() { return GAP * (STRINGS.length - 1) + 30; }
+
+  drawDefs() {
+    const defs = el('defs', {}, this.svg);
     const grad = el('linearGradient', { id: `${this.id}-wood`, x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
     el('stop', { offset: '0%', 'stop-color': '#3a2414' }, grad);
     el('stop', { offset: '50%', 'stop-color': '#2c1b0d' }, grad);
@@ -100,24 +106,29 @@ export class Neck {
     const merge = el('feMerge', {}, glow);
     el('feMergeNode', { in: 'b' }, merge);
     el('feMergeNode', { in: 'SourceGraphic' }, merge);
+  }
 
-    const g = el('g', {}, svg);
-    el('rect', { x: NUT_X, y: TOP - 15, width: RIGHT - NUT_X, height: GAP * 5 + 30, fill: `url(#${this.id}-wood)`, rx: 2 }, g);
-    const marks = [3, 5, 7, 9, 15, 17, 19, 21].filter((f) => f <= this.frets);
-    const midY = (this.stringY(3) + this.stringY(4)) / 2;
-    for (const f of marks) el('circle', { cx: this.noteX(f), cy: midY, r: 6.5, class: 'inlay' }, g);
-    if (this.frets >= 12) {
-      el('circle', { cx: this.noteX(12), cy: (this.stringY(2) + this.stringY(3)) / 2, r: 6.5, class: 'inlay' }, g);
-      el('circle', { cx: this.noteX(12), cy: (this.stringY(4) + this.stringY(5)) / 2, r: 6.5, class: 'inlay' }, g);
-    }
+  // Wood, frets, inlays, strings and labels, sized from the current instrument + tuning.
+  drawBase() {
+    const g = this.base;
+    g.replaceChildren();
+    this.svg.setAttribute('viewBox', `0 0 ${W} ${this.bottomY + 50}`);
+    el('rect', { x: NUT_X, y: TOP - 15, width: RIGHT - NUT_X, height: this.boardH, fill: `url(#${this.id}-wood)`, rx: 2 }, g);
+    const inlays = INSTRUMENT.inlays.filter((f) => f <= this.frets);
+    const doubles = INSTRUMENT.doubleInlays.filter((f) => f <= this.frets);
+    const midY = (TOP + this.bottomY) / 2;
+    for (const f of inlays) el('circle', { cx: this.noteX(f), cy: midY, r: 6.5, class: 'inlay' }, g);
+    for (const f of doubles) for (const dy of [-GAP, GAP]) el('circle', { cx: this.noteX(f), cy: midY + dy, r: 6.5, class: 'inlay' }, g);
     for (let f = 1; f <= this.frets; f++) {
-      el('line', { x1: this.wireX(f), x2: this.wireX(f), y1: TOP - 15, y2: this.stringY(6) + 15, class: 'fret' }, g);
-      const marked = marks.includes(f) || f === 12;
-      text(g, this.noteX(f), this.stringY(6) + 36, String(f), marked ? 'fnum mark' : 'fnum');
+      el('line', { x1: this.wireX(f), x2: this.wireX(f), y1: TOP - 15, y2: this.bottomY + 15, class: 'fret' }, g);
+      const marked = inlays.includes(f) || doubles.includes(f);
+      text(g, this.noteX(f), this.bottomY + 36, String(f), marked ? 'fnum mark' : 'fnum');
     }
-    el('rect', { x: NUT_X - 5, y: TOP - 15, width: 7, height: GAP * 5 + 30, class: 'nut' }, g);
+    el('rect', { x: NUT_X - 5, y: TOP - 15, width: 7, height: this.boardH, class: 'nut' }, g);
     for (const s of STRINGS) {
-      el('line', { x1: NUT_X - 50, x2: RIGHT, y1: this.stringY(s), y2: this.stringY(s), class: 'string', 'stroke-width': 0.9 + (s - 1) * 0.42 }, g);
+      // Gauge by pitch: the lower the open note, the thicker the string.
+      const thicker = STRINGS.filter((o) => OPEN_MIDI[o] > OPEN_MIDI[s]).length;
+      el('line', { x1: NUT_X - 50, x2: RIGHT, y1: this.stringY(s), y2: this.stringY(s), class: 'string', 'stroke-width': 0.9 + thicker * 0.42 }, g);
       text(g, 12, this.stringY(s) + 4.5, STRING_NAMES[s], 'sname');
     }
   }
@@ -151,7 +162,7 @@ export class Neck {
     if (!range) return;
     const [lo, hi] = range;
     const left = (lo === 0 ? NUT_X - 50 : this.wireX(lo - 1)) + 2;
-    el('rect', { x: left, y: TOP - 20, width: this.wireX(hi) - left - 2, height: GAP * 5 + 40, rx: 10, class: 'boxframe' }, this.layers.box);
+    el('rect', { x: left, y: TOP - 20, width: this.wireX(hi) - left - 2, height: this.boardH + 10, rx: 10, class: 'boxframe' }, this.layers.box);
   }
 
   setMuted(strings) {
@@ -192,7 +203,7 @@ export class Neck {
 
   stringAt(y) {
     const s = Math.round((y - TOP) / GAP) + 1;
-    return s >= 1 && s <= 6 && Math.abs(y - this.stringY(s)) < GAP * 0.45 ? s : null;
+    return s >= 1 && s <= STRINGS.length && Math.abs(y - this.stringY(s)) < GAP * 0.45 ? s : null;
   }
 
   fretAt(x) {

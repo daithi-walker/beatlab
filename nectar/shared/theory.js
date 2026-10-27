@@ -1,12 +1,31 @@
 // Nectar shared theory: tuning, note names, scales, interval colours.
 //
-// String convention (all Nectar code): notes are { string, fret } where
-// string 1 = high e ... string 6 = low E, matching guitar tab.
+// String convention (all Nectar code): notes are { string, fret } where string 1 is the
+// top line of tab (high e on a standard guitar) and the last string is the bottom line.
 
-export const STRINGS = [1, 2, 3, 4, 5, 6];
-export const OPEN_MIDI = { 1: 64, 2: 59, 3: 55, 4: 50, 5: 45, 6: 40 };
-export const STRING_NAMES = { 1: 'e', 2: 'B', 3: 'G', 4: 'D', 5: 'A', 6: 'E' };
-export const FRET_COUNT = 21;
+// ---- Instruments and tunings (docs/nectar-instruments.md)
+// Tunings are written low → high, as players say them. String 1 is the last (highest) note.
+export const INSTRUMENTS = {
+  guitar: {
+    name: 'Guitar', frets: 21,
+    inlays: [3, 5, 7, 9, 15, 17, 19, 21], doubleInlays: [12],
+    tunings: {
+      standard: { name: 'Standard', notes: ['E2', 'A2', 'D3', 'G3', 'B3', 'E4'] },
+      halfDown: { name: 'Half step down', notes: ['D#2', 'G#2', 'C#3', 'F#3', 'A#3', 'D#4'] },
+      dropD: { name: 'Drop D', notes: ['D2', 'A2', 'D3', 'G3', 'B3', 'E4'] },
+      dadgad: { name: 'DADGAD', notes: ['D2', 'A2', 'D3', 'G3', 'A3', 'D4'] },
+      openG: { name: 'Open G', notes: ['D2', 'G2', 'D3', 'G3', 'B3', 'D4'] },
+      openD: { name: 'Open D', notes: ['D2', 'A2', 'D3', 'F#3', 'A3', 'D4'] },
+    },
+  },
+};
+
+// Current instrument + tuning. These are live bindings: importers see new values
+// after setTuning(). Subscribe with onTuningChange() to re-render.
+export let INSTRUMENT, TUNING, STRINGS, OPEN_MIDI, STRING_NAMES, FRET_COUNT;
+
+const STORE = 'nectar-instrument';
+const listeners = [];
 
 export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 // Root choices as MIDI in octave 4 (C4 = 60). Only the pitch class matters for theory.
@@ -121,4 +140,42 @@ export function positionsInScale(rootMidi, intervals, frets = FRET_COUNT) {
     }
   }
   return out;
+}
+
+// 'E2' → 40, 'D#4' → 63
+function noteToMidi(n) {
+  const m = /^([A-G]#?)(\d)$/.exec(n);
+  return NOTE_NAMES.indexOf(m[1]) + 12 * (+m[2] + 1);
+}
+
+// Switch tuning, on the current instrument unless another is given.
+// persist=false for temporary switches (Licks).
+export function setTuning(tuningId, { instrument = INSTRUMENT.id, persist = true } = {}) {
+  const inst = INSTRUMENTS[instrument];
+  const midis = inst.tunings[tuningId].notes.map(noteToMidi).reverse(); // string 1 first
+  INSTRUMENT = { id: instrument, ...inst };
+  TUNING = { id: tuningId, ...inst.tunings[tuningId] };
+  STRINGS = midis.map((_, i) => i + 1);
+  OPEN_MIDI = Object.fromEntries(midis.map((m, i) => [i + 1, m]));
+  const names = midis.map(noteName);
+  if (names.length > 1 && names[0] === names[names.length - 1]) names[0] = names[0].toLowerCase();
+  STRING_NAMES = Object.fromEntries(names.map((n, i) => [i + 1, n]));
+  FRET_COUNT = inst.frets;
+  if (persist) localStorage.setItem(STORE, JSON.stringify({ instrument, tuning: tuningId }));
+  for (const fn of listeners) fn();
+}
+
+export function onTuningChange(fn) {
+  listeners.push(fn);
+}
+
+// Strings ordered from lowest to highest open pitch (the last string isn't always the
+// lowest, e.g. re-entrant ukulele tuning).
+export function stringsLowToHigh() {
+  return [...STRINGS].sort((a, b) => OPEN_MIDI[a] - OPEN_MIDI[b]);
+}
+
+{
+  const saved = JSON.parse(localStorage.getItem(STORE) || '{}');
+  setTuning(saved.tuning ?? 'standard', { instrument: saved.instrument ?? 'guitar', persist: false });
 }

@@ -299,6 +299,7 @@
       <label class="bpm-label"><span>BPM</span><input id="bpm-input" type="number" min="40" max="200" value="80"></label>
       <label class="box-label"><input id="box-check" type="checkbox"><span>Box</span></label>
       <div class="topbar-right">
+        <select id="tuning-select"></select>
         <select id="tone-select"></select>
         <span class="vol-label">Vol</span>
         <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.8">
@@ -320,8 +321,9 @@
 
   <script type="module">
     // Scales: scale explorer on the shared Nectar neck + synth (see nectar/shared/).
-    import { SCALES, NOTE_NAMES, ROOT_MIDI, STRINGS, OPEN_MIDI, FRET_COUNT, midiAt, degree, positionsInScale } from './shared/theory.js';
+    import { SCALES, NOTE_NAMES, ROOT_MIDI, OPEN_MIDI, FRET_COUNT, midiAt, degree, positionsInScale, stringsLowToHigh, onTuningChange } from './shared/theory.js';
     import { setupAudio } from './shared/audio-ui.js';
+    import { setupTuning } from './shared/tuning-ui.js';
     import { Player } from './shared/player.js';
     import { Neck, ghostDots } from './shared/neck.js';
 
@@ -351,9 +353,9 @@
       if (ms) clearTimer = setTimeout(() => neck.setActive([]), ms);
     }
 
-    // 4-fret hand position anchored on the root's fret on the low E string.
+    // 4-fret hand position anchored on the root's fret on the lowest string.
     function getBoxRange() {
-      const rootFret = degree(currentRoot, OPEN_MIDI[6]);
+      const rootFret = degree(currentRoot, OPEN_MIDI[stringsLowToHigh()[0]]);
       const boxMin = Math.max(rootFret + (SCALES[currentScale].boxOffset || 0), 0);
       return [boxMin, Math.min(boxMin + 3, FRET_COUNT)];
     }
@@ -379,7 +381,7 @@
     // Notes for the Play run, low to high.
     function runNotes() {
       const intervals = SCALES[currentScale].intervals;
-      const lowToHigh = [...STRINGS].reverse();
+      const lowToHigh = stringsLowToHigh();
       const notes = [];
       if (boxMode) {
         // Every scale note inside the box.
@@ -479,6 +481,8 @@
       if (e.code === 'ArrowLeft') setRoot((ROOT_MIDI.indexOf(currentRoot) + 11) % 12);
     });
 
+    setupTuning();
+    onTuningChange(() => { player.stop(); renderAll(); });
     renderAll();
   </script>
 

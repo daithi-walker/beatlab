@@ -1,7 +1,8 @@
 // Nectar Licks: wires the library, transport, tab and fretboard together.
 
-import { NOTE_NAMES, SCALES, INTERVAL_SYMBOLS, midiOf, noteName, degree, positionsInScale } from '../shared/theory.js';
+import { NOTE_NAMES, SCALES, INSTRUMENT, INTERVAL_SYMBOLS, midiOf, noteName, degree, positionsInScale, onTuningChange } from '../shared/theory.js';
 import { setupAudio } from '../shared/audio-ui.js';
+import { setupTuning } from '../shared/tuning-ui.js';
 import { Player } from '../shared/player.js';
 import { Neck } from '../shared/neck.js';
 import { buildSong } from './notation.js';
@@ -22,6 +23,7 @@ import { Tab } from './tab.js';
 
   const FRETS = 17;
   const synth = setupAudio();
+  const tuning = setupTuning();
   const player = new Player(synth);
   const neck = new Neck($('fretboard'), {
     frets: FRETS,
@@ -67,6 +69,8 @@ import { Tab } from './tab.js';
     lick = LICKS.find((l) => l.id === id) || LICKS[0];
     state.lickId = lick.id;
     save();
+    song = null; // the tuning switch below re-renders; skip that until the new song is built
+    tuning.lock(lick.tuning || 'standard');
     song = buildSong(lick);
     player.load(song);
 
@@ -79,6 +83,7 @@ import { Tab } from './tab.js';
       positionLabel(lick),
       `${lick.bpm} BPM target`,
     ];
+    if (lick.tuning && lick.tuning !== 'standard') chips.push(`${INSTRUMENT.tunings[lick.tuning].name} tuning`);
     if (lick.swing) chips.push('Swing feel');
     $('lick-chips').innerHTML = '';
     for (const c of chips) {
@@ -270,6 +275,12 @@ import { Tab } from './tab.js';
       renderTab();
       if (i >= 0) Tab.highlight(layout, i);
     }, 120);
+  });
+
+  onTuningChange(() => {
+    if (!song) return;
+    renderTab();
+    renderBoard();
   });
 
   renderLibrary();

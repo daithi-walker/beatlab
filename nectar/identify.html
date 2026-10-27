@@ -254,6 +254,7 @@
       <button id="play-btn" class="topbar-action-btn" disabled>&#9654; Play</button>
       <button id="clear-btn" class="topbar-action-btn">Clear</button>
       <div class="topbar-right">
+        <select id="tuning-select"></select>
         <select id="tone-select"></select>
         <span class="vol-label">Vol</span>
         <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.8">
@@ -284,8 +285,9 @@
 
   <script type="module">
     // Identify: chord identifier on the shared Nectar neck + synth (see nectar/shared/).
-    import { NOTE_NAMES, FRET_COUNT, INTERVAL_COLORS, midiAt } from './shared/theory.js';
+    import { NOTE_NAMES, FRET_COUNT, INTERVAL_COLORS, midiAt, onTuningChange } from './shared/theory.js';
     import { setupAudio } from './shared/audio-ui.js';
+    import { setupTuning } from './shared/tuning-ui.js';
     import { Neck, ghostDots } from './shared/neck.js';
 
     // ─── Chord Templates ──────────────────────────────────────────────────────
@@ -573,6 +575,8 @@
     document.getElementById('copy-btn').addEventListener('click', copyProgression);
     document.getElementById('prog-clear-btn').addEventListener('click', clearProgression);
 
+    setupTuning();
+    onTuningChange(refresh); // same frets, new pitches: re-identify
     renderBottom();
     renderNeck();
   </script>

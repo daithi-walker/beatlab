@@ -117,20 +117,25 @@ Prefix commits with the app name: `Drums:`, `Nectar:`, `Multibank:`,
 
   | Need | Use |
   |---|---|
-  | Tuning, note names, scales, interval colours/symbols | `shared/theory.js` (add new scales here, not in a page) |
+  | Tuning, note names, scales, interval colours/symbols | `shared/theory.js` (add new scales, tunings and instruments here, not in a page) |
   | A fretboard (dots, box, muted strings, playing/next notes, strum/tap) | `Neck` from `shared/neck.js` |
   | Any sound | `GuitarSynth` from `shared/synth.js` (via `setupAudio()`) |
   | Timed playback (runs, licks, strums longer than a chord) | `Player` from `shared/player.js` (no `setTimeout` note sequencing) |
   | Volume / Tone controls, iOS audio unlock | `setupAudio()` from `shared/audio-ui.js` (needs `#vol-slider` + `#tone-select` in the topbar) |
+  | Tuning control | `setupTuning()` from `shared/tuning-ui.js` (needs `#tuning-select`); re-render in `onTuningChange()` |
 
-- **String convention:** notes are `{ string, fret }` with string 1 = high e ...
-  6 = low E (tab order) everywhere. No 0-indexed low-E arrays.
+- **String convention:** notes are `{ string, fret }` with string 1 = the top line
+  of tab (high e in standard) and the last string = the bottom line. No 0-indexed
+  arrays. Never assume 6 strings or a pitch: use `STRINGS`, `OPEN_MIDI`,
+  `midiAt()`, `stringsLowToHigh()`. They are live bindings that
+  follow the current tuning (see `docs/nectar-instruments.md`).
 - New page? Copy the structure of `index.html`: topbar with the Nectar tabs
-  (add the new tab to every page), `#tone-select` + `#vol-slider`, a
+  (add the new tab to every page), `#tuning-select` + `#tone-select` + `#vol-slider`, a
   `#fretboard-container` passed to `new Neck(...)`, and a `<script type="module">`
   that imports from `./shared/`.
 - Licks: page code in `nectar/licks/`. Licks are authored in a text tab notation
-  documented at the top of `nectar/licks/notation.js`.
+  documented at the top of `nectar/licks/notation.js`; a lick's `tuning` field
+  locks the page to that tuning (not saved as the user's choice).
 - **After touching `nectar/shared/` or any Nectar page, run the smoke test:**
   `python3 nectar/tests/smoke.py` (needs the nectar container up and
   `pip install playwright && playwright install chromium`). It drives every page

@@ -16,7 +16,18 @@ Every page uses the same neck, synth and scheduler (ADR-010):
 | `player.js` | `Player`: audio-clock look-ahead scheduler (runs, licks) |
 | `audio-ui.js` | `setupAudio()`: topbar Volume + Tone (shared across pages via localStorage `nectar-audio`), iOS unlock |
 
-Notes are `{ string, fret }`, string 1 = high e ... 6 = low E (tab order).
+Notes are `{ string, fret }`, string 1 = top line of tab (tab order).
+
+### Tunings
+
+A **Tuning** select in every topbar: Standard, Half step down, Drop D, DADGAD,
+Open G, Open D. The choice is shared across pages (localStorage
+`nectar-instrument`). Changing it relabels the strings, re-pitches every note and
+re-renders the page: Scales anchors its box on the lowest string, Chords labels
+its shapes "Root on D / Root on A" outside standard, Identify re-identifies the
+selected notes. Licks lock the page to the lick's own tuning (e.g. the Drop D
+Chug) without changing the saved choice. Design and roadmap (other instruments,
+generic voicings): `docs/nectar-instruments.md`.
 
 ### Signal chain
 
@@ -224,7 +235,7 @@ Separate page reachable via "Identify →" from the scale explorer or chord expl
 A lick trainer: learn short riffs from tab, see them on the neck, and play along.
 Code lives in `nectar/licks/` as native ES modules (ADR-009).
 
-**Library** — 13 original licks grouped Foundation / Blues / Rock / Country /
+**Library** — 14 original licks (one in drop D) grouped Foundation / Blues / Rock / Country /
 Melody / Technique, each with a level, key, scale, position and target tempo,
 plus three plain-English cards: What it is, Why it works, How to practise.
 

@@ -7,12 +7,13 @@ import { GuitarSynth, TONES } from './synth.js';
 
 const KEY = 'nectar-audio';
 const CSS = `
-  #tone-select {
+  #tone-select, #tuning-select {
     background: var(--surface-2, #161820); color: var(--text, #d8d4c8);
     border: 1px solid var(--border, rgba(255,160,60,0.15)); border-radius: 6px;
     font: 600 0.68rem Inter, system-ui, sans-serif; letter-spacing: 0.06em; padding: 4px 6px; cursor: pointer;
   }
-  #tone-select:hover, #tone-select:focus { border-color: var(--root-color, #ff9d3d); outline: none; }
+  #tone-select:hover, #tone-select:focus, #tuning-select:hover, #tuning-select:focus { border-color: var(--root-color, #ff9d3d); outline: none; }
+  #tuning-select:disabled { opacity: 0.6; cursor: default; }
 `;
 
 export function setupAudio({ volumeSlider = '#vol-slider', toneSelect = '#tone-select' } = {}) {

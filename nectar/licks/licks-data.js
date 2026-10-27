@@ -1,5 +1,6 @@
 // The lick library. All licks are original practice material.
 // root = pitch class (C=0 ... A=9, B=11). position = fret window of the scale box shown.
+// tuning = a guitar tuning id from ../shared/theory.js (default 'standard').
 // See notation.js for the tab notation. scale = a key of SCALES in ../shared/theory.js.
 
 export const LICKS = [
@@ -104,6 +105,18 @@ export const LICKS = [
     about: 'A chunky riff using three power chords: E5, G5 and A5.',
     theory: 'A power chord is a root plus the note 7 frets higher (the 5th). It has no major or minor sound, which is why it works with distortion. The roots E, G and A all come from E minor pentatonic, which is why the riff sounds "right".',
     practice: 'Index on the low E string, ring finger two frets up on the A string, and slide the shape. Rest your picking-hand palm lightly on the strings near the bridge for a tighter, chuggier sound.',
+  },
+  {
+    id: 'drop-d-chug',
+    title: 'Drop D Chug',
+    style: 'Rock',
+    level: 1,
+    root: 2, scale: 'minor-pentatonic', position: [0, 5], bpm: 120, tuning: 'dropD',
+    tab: `6-0:e 6-0 6-0+5-0+4-0:q 6-0:e 6-0 6-3+5-3+4-3:e 6-5+5-5+4-5 |
+          6-0:e 6-0 6-0+5-0+4-0:q 6-0:e 6-3+5-3+4-3 6-0+5-0+4-0:q`,
+    about: 'A heavy riff in drop D: chugging on the open low string, then one-finger power chords on F and G.',
+    theory: 'Tune the low E down to D and the bottom three strings at the same fret give root, 5th and octave: a power chord under one finger. D, F and G are all from D minor pentatonic, which is why it sounds heavy but "right".',
+    practice: 'Tune the low string down until it matches the open D string an octave lower. Barre the bottom three strings with your index finger and mute the rest with the side of it. Palm-mute the single open-string chugs.',
   },
   {
     id: 'em-open-riff',

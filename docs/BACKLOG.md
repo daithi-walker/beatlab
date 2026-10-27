@@ -127,6 +127,15 @@ code sketches, and implementation order. All four phases live in `drums/index.ht
 
 ---
 
+## Nectar — Instruments
+
+See `docs/nectar-instruments.md`. Phase 1 (guitar tunings) is done.
+
+- **Phase 2: other fretted instruments** — bass, 7-string, ukulele, mandolin;
+  per-instrument sound profile and inlays; instrument select.
+- **Phase 3: generic chord voicings** — voicing search replacing E/A-shape;
+  step through alternatives.
+
 ## Nectar — Licks
 
 - **Life in the playing** — per-pluck fresh excitation (no identical repeats),
