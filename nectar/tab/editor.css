@@ -32,6 +32,30 @@
 .toolbar button:hover { color: var(--text); background: var(--panel-2); }
 .toolbar button.on { color: var(--accent-ink); background: var(--accent); }
 .toolbar button:disabled { opacity: 0.35; cursor: default; }
+.chord-input {
+  background: none; border: 0; color: var(--text); font: 600 14px var(--sans); width: 120px; padding: 0 10px;
+}
+.chord-input:focus { outline: none; background: var(--panel-2); }
+#time-sig { padding: 6px 8px; }
+
+/* chord chart panel */
+.chart > summary { cursor: pointer; list-style: none; margin-bottom: 0; }
+.chart > summary::-webkit-details-marker { display: none; }
+.chart > summary h2::before { content: '▸ '; color: var(--muted); }
+.chart[open] > summary h2::before { content: '▾ '; }
+.chart[open] > summary { margin-bottom: 10px; }
+.chart-body { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
+.chart-body textarea {
+  width: 100%; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 12px; font: 14px/1.6 var(--mono); resize: vertical;
+}
+.chart-body textarea:focus { outline: none; border-color: var(--root); }
+.chart-side { display: flex; flex-direction: column; gap: 10px; }
+.chart-side label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--muted); }
+.chart-side .muted { margin: 0; font-size: 12px; }
+.field.mono { font-family: var(--mono); }
+.chart-actions { display: flex; gap: 8px; }
+.chart-error { color: #ff8f7a; font-size: 13px; margin: 0; min-height: 1em; }
 
 /* Phones: song details fold behind "Edit", and the toolbar is one scrolling row. */
 @media (max-width: 820px), (pointer: coarse) and (max-height: 520px) {
@@ -45,6 +69,7 @@
   .toolbar { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
   .toolbar .group { flex-shrink: 0; }
   .toolbar button { padding: 8px 10px; min-width: 40px; }
+  .chart-body { grid-template-columns: 1fr; }
 }
 @media (pointer: coarse) {
   .toolbar button, .btn { min-height: 44px; }

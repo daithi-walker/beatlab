@@ -266,7 +266,8 @@ Melody / Technique, each with a level, key, scale, position and target tempo,
 plus three plain-English cards: What it is, Why it works, How to practise.
 
 **Tab** — SVG tablature rendered from a compact text notation
-(`3-7:q`, `h3-7`, `/3-9`, `2-8b2`, `4-7~`, `5-0+4-2`, `r`, and grace notes `3-5:g`,
+(`3-7:q`, `h3-7`, `/3-9`, `2-8b2`, `4-7~`, `5-0+4-2`, `r`, chord strums `[Am]` / `[Am]u`,
+section markers `@Verse`, and grace notes `3-5:g`,
 which sound on the beat and push the next note ~200 ms later (Grace slider, 50-400 ms, at most 70% of the next note); full spec at the top
 of `licks/notation.js`). Beat counts under the staff ("1 & 2 &" or "1 tri let").
 Playback cursor + current-note highlight. Click a note to hear it.
@@ -310,6 +311,20 @@ downloads a plain-text file (`key: value` lines, then `tab:` in the lick notatio
   (full → half → off), `V` vibrato, `G` grace note, `R` rest.
 - `I` / "+ beat" inserts a beat, `Shift+Delete` / "− beat" removes one, `Delete` removes
   the note under the cursor; undo/redo with `Cmd/Ctrl+Z` / `Shift+Cmd/Ctrl+Z`.
+
+**Chords and chord charts** — for songs that are just chord names:
+- Type a chord name in the chord box and press `Enter` (or "place"): one strum of that
+  chord at the cursor, then the cursor moves on. `D`/`U` (or ↓/↑) set down/up strums;
+  the neck shows the shape at the cursor. Names: Am, F, G7, Cmaj7, Dsus4, Bm7, C/G, ...
+- **Chord chart** panel: type the chords from a chord sheet (`Am*2 F*2 G*2 Am*2`,
+  `(x2)` repeats, `[Verse]` marks a section), pick a strum pattern (Folk D-DU-UDU,
+  Waltz, Ballad... or your own, one character per eighth: D, U, -) and "Add to song"
+  writes the timed strums. Then adjust any strum in the tab.
+- Shapes come from `shared/chords.js`: hand-picked open/barre shapes on standard
+  guitar, a searched voicing for any other instrument or tuning. Playback strums them
+  string by string (down = low to high).
+- **Capo** (frets and shapes count from the capo; playback sounds higher) and **Time**
+  (2/4, 3/4, 4/4) per song. Section markers (`M`) show above the tab.
 
 **Playback** — the shared `Player` (loop, count-in, click), with the tab cursor and the
 neck following along. On phones the transport is pinned to the bottom, the song details

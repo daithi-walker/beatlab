@@ -1,7 +1,9 @@
 // Nectar shared look-ahead scheduler (ADR-003 pattern): plays a song on the audio clock.
-// song = { events: [{ beat, dur, notes: [{ string, fret, ... }] }], loopBeats, swing }
+// song = { events: [{ beat, dur, notes: [{ string, fret, ... }], strum? }], loopBeats, swing, beatsPerBar? }
 // An event with no notes is a rest (mutes ringing strings). A `grace` event (dur 0) sounds on
 // its beat for `player.graceSec` and pushes the following note back by that much.
+
+import { midiOf } from './theory.js';
 
 // Swing: the off-beat eighth is pushed late to 2/3 of the beat.
 const SWING_RATIO = 2 / 3;
@@ -32,6 +34,8 @@ export class Player {
     this.song = song;
   }
 
+  get beatsPerBar() { return this.song.beatsPerBar || 4; }
+
   timeAt(beat) {
     return this.anchorTime + ((beat - this.anchorBeat) * 60) / this.bpm;
   }
@@ -57,7 +61,7 @@ export class Player {
     this.metronome = metronome;
     this.bus = this.synth.newBus();
     this.anchorTime = ctx.currentTime + 0.15;
-    this.anchorBeat = countIn ? -4 : 0;
+    this.anchorBeat = countIn ? -this.beatsPerBar : 0;
     this.nextClick = this.anchorBeat;
     this.iter = 0;
     this.idx = 0;
@@ -86,9 +90,16 @@ export class Player {
       this.synth.muteAll(this.bus, t0);
       return;
     }
-    for (const n of ev.notes) {
-      this.synth.pluck(this.bus, n, t0, t1 - t0);
+    if (!ev.strum) {
+      for (const n of ev.notes) this.synth.pluck(this.bus, n, t0, t1 - t0);
+      return;
     }
+    // Strummed chord: one string after another, low to high on a down-strum (a touch slower),
+    // high to low on an up-strum.
+    const order = [...ev.notes].sort((a, b) => midiOf(a) - midiOf(b));
+    if (ev.strum === 'u') order.reverse();
+    const gap = ev.strum === 'u' ? 0.008 : 0.012;
+    order.forEach((n, k) => this.synth.pluck(this.bus, n, t0 + k * gap, t1 - t0));
   }
 
   tick() {
@@ -126,9 +137,9 @@ export class Player {
       const counting = this.nextClick < 0;
       const beforeEnd = !this.finished || t < this.endTime - 0.01;
       if (counting || (this.metronome && beforeEnd)) {
-        this.synth.click(this.bus, t, ((this.nextClick % 4) + 4) % 4 === 0);
+        this.synth.click(this.bus, t, ((this.nextClick % this.beatsPerBar) + this.beatsPerBar) % this.beatsPerBar === 0);
       }
-      if (counting) this.countQueue.push({ time: t, n: this.nextClick + 5 });
+      if (counting) this.countQueue.push({ time: t, n: this.nextClick + this.beatsPerBar + 1 });
       this.nextClick++;
     }
 

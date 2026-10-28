@@ -26,6 +26,10 @@ const CSS = `
 .tcursor.show { opacity: 0.55; }
 .tab-row.editable { cursor: crosshair; }
 .trest { fill: var(--muted); font: 600 13px var(--mono); text-anchor: middle; opacity: 0.6; }
+.tchord { fill: var(--accent); font: 700 13px var(--sans); text-anchor: middle; }
+.tstrum { fill: #e0b872; font: 700 15px var(--sans); text-anchor: middle; }
+.tmark { fill: var(--root); font: 700 9.5px var(--sans); letter-spacing: 0.12em; text-transform: uppercase; }
+.tev.on .tstrum { fill: var(--accent); }
 .tsel { fill: rgba(255, 207, 107, 0.18); stroke: var(--accent); stroke-width: 1.5; rx: 4; pointer-events: none; }
 `;
 
@@ -69,13 +73,14 @@ export const Tab = (() => {
     const isWhole = (v) => Math.abs(v - Math.round(v)) < 1e-6;
     const triplets = song.events.some((e) => isWhole(e.dur * 3) && !isWhole(e.dur * 2));
 
-    const barsTotal = song.loopBeats / 4;
+    const bpb = song.beatsPerBar || 4;
+    const barsTotal = song.loopBeats / bpb;
     const idealBeatPx = Math.max(56, 28 / minDur);
-    let barsPerRow = Math.min(barsTotal, Math.max(1, Math.floor(usable / (idealBeatPx * 4))));
+    let barsPerRow = Math.min(barsTotal, Math.max(1, Math.floor(usable / (idealBeatPx * bpb))));
     const rowCount = Math.ceil(barsTotal / barsPerRow);
     barsPerRow = Math.ceil(barsTotal / rowCount);
-    const ppb = usable / (barsPerRow * 4);
-    const rowBeats = barsPerRow * 4;
+    const ppb = usable / (barsPerRow * bpb);
+    const rowBeats = barsPerRow * bpb;
     const xOf = (localBeat) => GUTTER + localBeat * ppb + PAD;
 
     const layout = { rows: [], events: [], ppb, current: -1, append: null, sel: null };
@@ -84,24 +89,24 @@ export const Tab = (() => {
       const svg = el('svg', { class: opts.editable ? 'tab-row editable' : 'tab-row', width, height: HEIGHT, viewBox: `0 0 ${width} ${HEIGHT}` });
       container.appendChild(svg);
       const bars = Math.min(barsPerRow, barsTotal - r * barsPerRow);
-      const right = GUTTER + bars * 4 * ppb;
+      const right = GUTTER + bars * bpb * ppb;
 
       for (const s of STRINGS) {
         el('line', { x1: GUTTER, x2: right, y1: stringY(s), y2: stringY(s), class: 'tline' }, svg);
         text(svg, 12, stringY(s) + 4, STRING_NAMES[s], 'tname');
       }
       for (let b = 0; b <= bars; b++) {
-        const x = GUTTER + b * 4 * ppb;
+        const x = GUTTER + b * bpb * ppb;
         el('line', { x1: x, x2: x, y1: stringY(1), y2: stringY(STRINGS.length), class: 'tbar' }, svg);
       }
 
       // Beat counts: "1 & 2 &" or "1 trip let" for triplet licks.
       const sub = triplets ? 3 : 2;
       const subLabels = triplets ? ['', 'tri', 'let'] : ['', '&'];
-      for (let k = 0; k < bars * 4 * sub; k++) {
+      for (let k = 0; k < bars * bpb * sub; k++) {
         const b = k / sub;
         const main = k % sub === 0;
-        text(svg, xOf(b), stringY(STRINGS.length) + 26, main ? String((Math.round(b) % 4) + 1) : subLabels[k % sub],
+        text(svg, xOf(b), stringY(STRINGS.length) + 26, main ? String((Math.round(b) % bpb) + 1) : subLabels[k % sub],
           main ? 'tcount' : 'tcount sub');
       }
 
@@ -111,6 +116,7 @@ export const Tab = (() => {
     }
 
     const prev = {}; // string -> { x, row, fret }
+    let lastChord = null;
     song.events.forEach((ev, i) => {
       const row = Math.floor(ev.beat / rowBeats + 1e-9);
       // Grace notes sit small, just before their main note.
@@ -118,6 +124,15 @@ export const Tab = (() => {
       const svg = layout.rows[row].svg;
       const g = el('g', { class: 'tev' }, svg);
       layout.events.push({ row, x, g, dur: ev.dur });
+      if (ev.marker) text(svg, x - 6, 8, ev.marker, 'tmark');
+      if (ev.chord) {
+        // Chord strum: the name when it changes, and a down/up arrow across the strings.
+        if (ev.chord !== lastChord || ev.marker) text(g, x, stringY(1) - 10, ev.chord, 'tchord');
+        lastChord = ev.chord;
+        text(g, x, (stringY(1) + stringY(STRINGS.length)) / 2 + 5, ev.strum === 'u' ? '↑' : '↓', 'tstrum');
+        if (!opts.editable) g.addEventListener('click', () => onNoteClick(i));
+        return;
+      }
       if (!ev.notes.length) {
         if (opts.editable) text(g, x, (stringY(1) + stringY(STRINGS.length)) / 2 + 4, '–', 'trest');
         return;

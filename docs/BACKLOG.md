@@ -157,8 +157,10 @@ Next, in order:
   (MPL-2.0) and convert to editor songs. See `nectar/ROADMAP.md` for the AlphaTab notes.
 - **Play along with a recording** — play an audio file you own alongside the tab,
   slowed down and looped, with a manual start-offset/BPM sync.
-- **Editor extras** — play from the cursor, copy/paste bars, dotted notes, multiple
-  sections, a tap-to-enter fret pad on phones.
+- **Editor extras** — play from the cursor, copy/paste bars, dotted notes, ties across
+  bar lines, repeat signs, a tap-to-enter fret pad on phones.
+- **Chord charts** — lyrics under the chords (kept local), a chord-diagram strip for the
+  song's shapes, swing/shuffle strums, 6/8 time.
 
 ---
 

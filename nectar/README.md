@@ -14,7 +14,7 @@ mandolin, in standard and alternate tunings.
 | `chords.html` (Chords) | 10 chord qualities with two voicings, interval colours, every chord tone across the neck, strum to hear |
 | `identify.html` (Identify) | Tap notes on the neck, get the chord (33 types) with alternatives, build a progression |
 | `licks.html` (Licks) | Lick trainer: tab with beat counts, a neck showing the scale box and the playing/next note, play-along with loop, count-in, click, speed trainer, grace notes; 28 licks across every instrument, each with "why it works" notes |
-| `tab.html` (Tab) | Tab editor: write tab by keyboard or by tapping the neck, with lengths, techniques and grace notes; play it back; songs saved in your browser with export/import |
+| `tab.html` (Tab) | Tab editor: write tab by keyboard or by tapping the neck, or build a strummed chord chart from chord names; capo, time signature, sections; play it back; songs saved in your browser with export/import |
 
 Every page has **Instrument**, **Tuning**, **Tone** (Acoustic / Clean / Blues / Rock amp) and **Volume** controls in the topbar, shared across pages. You can tap or strum the neck on every page.
 
@@ -29,6 +29,7 @@ All pages are built on one shared guitar core, `shared/` ([ADR-010](../docs/adr-
 | `shared/synth.js` | Karplus-Strong strings + amp tones; legato (hammer-ons/pull-offs/slides), bends, vibrato, paired strings |
 | `shared/player.js` | Look-ahead scheduler: runs, licks, swing, grace notes |
 | `shared/notation.js`, `shared/tab.js` | Tab notation (text ↔ events) and the SVG tab renderer (with an editable mode) |
+| `shared/chords.js` | Chord names → shapes for any instrument/tuning; chord charts + strum patterns → timed strums |
 | `shared/page.css` | Page shell for Licks and Tab (palette, topbar, transport, panels) |
 | `shared/audio-ui.js`, `shared/instrument-ui.js` | Topbar controls and iOS audio unlock |
 

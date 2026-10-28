@@ -129,6 +129,7 @@ Prefix commits with the app name: `Drums:`, `Nectar:`, `Multibank:`,
   | Any sound | `GuitarSynth` from `shared/synth.js` (via `setupAudio()`) |
   | Timed playback (runs, licks, strums longer than a chord) | `Player` from `shared/player.js` (no `setTimeout` note sequencing) |
   | Tab text ↔ events, drawing tab | `shared/notation.js`, `Tab` from `shared/tab.js` |
+  | Chord name → shape, chord charts / strum patterns | `shared/chords.js` |
   | Volume / Tone controls, iOS audio unlock | `setupAudio()` from `shared/audio-ui.js` (needs `#vol-slider` + `#tone-select` in the topbar) |
   | Instrument + tuning controls | `setupInstrument()` from `shared/instrument-ui.js` (needs `#instrument-select` + `#tuning-select`); re-render in `onTuningChange()` |
 

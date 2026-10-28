@@ -2,6 +2,8 @@
 // Used by Licks (lick library) and the Tab editor (songs).
 
 // Durations in beats. Sticky: a duration applies until the next one is given.
+import { chordNotes } from './chords.js';
+
 export const DURATIONS = {
   w: 4, h: 2, q: 1, e: 0.5, s: 0.25,
   t: 1 / 3,  // eighth-note triplet
@@ -18,6 +20,8 @@ export const DURATIONS = {
  *   2-8b2      bend up 2 semitones (b1 = half step)
  *   4-7~       vibrato
  *   5-0+4-2    notes played together (chord / double-stop)
+ *   [Am] [Am]u a strummed chord by name, down (default) or up; shape from shared/chords.js
+ *   @Verse_1   section marker shown above the next beat (underscores become spaces)
  *   r          rest
  *   |          bar line (ignored, just for readability)
  */
@@ -39,37 +43,50 @@ export function parseTab(src) {
   const events = [];
   let beat = 0;
   let dur = DURATIONS.e;
+  let marker = null;
   for (const raw of src.trim().split(/\s+/)) {
     if (raw === '|') continue;
+    if (raw.startsWith('@')) {
+      marker = raw.slice(1).replace(/_/g, ' ');
+      continue;
+    }
     // "4-7:h~" is accepted as shorthand for "4-7~:h"
     const trailingVib = raw.includes(':') && raw.endsWith('~');
     const [rawBody, d0] = raw.split(':');
     const body = trailingVib ? `${rawBody}~` : rawBody;
     const d = trailingVib ? d0.slice(0, -1) : d0;
-    const notes = body === 'r' ? [] : body.split('+').map(parseNote);
+    const chord = /^\[([^\]]+)\]([ud])?$/.exec(body);
+    const notes = body === 'r' || chord ? [] : body.split('+').map(parseNote);
+    const extra = chord ? { chord: chord[1], strum: chord[2] || 'd' } : {};
+    if (marker) {
+      extra.marker = marker;
+      marker = null;
+    }
     if (d === 'g') {
-      events.push({ beat, dur: 0, notes, grace: true }); // doesn't move the beat or the sticky duration
+      events.push({ beat, dur: 0, notes, grace: true, ...extra }); // doesn't move the beat or the sticky duration
       continue;
     }
     if (d !== undefined) {
       if (!(d in DURATIONS)) throw new Error(`Bad duration "${d}" in "${raw}"`);
       dur = DURATIONS[d];
     }
-    events.push({ beat, dur, notes });
+    events.push({ beat, dur, notes, ...extra });
     beat += dur;
   }
   return { events, length: beat };
 }
 
-// Beat positions + loop length for a list of events (grace notes take no grid time).
-export function timed(events, swing = false) {
+// A playable song from a list of events: beat positions (grace notes take no grid time),
+// loop length in whole bars, and chord names turned into shapes for the current instrument.
+export function timed(events, swing = false, beatsPerBar = 4) {
   let beat = 0;
   const out = events.map((ev) => {
-    const e = { ...ev, beat };
+    const e = { ...ev, beat, notes: ev.chord ? chordNotes(ev.chord) : ev.notes };
     if (!ev.grace) beat += ev.dur;
     return e;
   });
-  return { events: out, length: beat, loopBeats: Math.max(4, Math.ceil(beat / 4 - 1e-9) * 4), swing };
+  const loopBeats = Math.max(beatsPerBar, Math.ceil(beat / beatsPerBar - 1e-9) * beatsPerBar);
+  return { events: out, length: beat, loopBeats, swing, beatsPerBar };
 }
 
 export function buildSong(lick) {
@@ -82,16 +99,18 @@ function noteToken(n) {
   return `${n.tech || ''}${n.string}-${n.fret}${n.bend ? `b${n.bend}` : ''}${n.vibrato ? '~' : ''}`;
 }
 
-// Events -> notation text (the inverse of parseTab), with a bar line every 4 beats.
-export function toTab(events) {
+// Events -> notation text (the inverse of parseTab), with a bar line every bar.
+export function toTab(events, beatsPerBar = 4) {
   const out = [];
-  let dur = null, beat = 0, nextBar = 4;
+  let dur = null, beat = 0, nextBar = beatsPerBar;
   for (const ev of events) {
     if (!ev.grace && beat >= nextBar - 1e-6) {
       out.push('|');
-      nextBar += 4;
+      nextBar += beatsPerBar;
     }
-    const body = ev.notes.length ? ev.notes.map(noteToken).join('+') : 'r';
+    if (ev.marker) out.push(`@${ev.marker.replace(/\s+/g, '_')}`);
+    const body = ev.chord ? `[${ev.chord}]${ev.strum === 'u' ? 'u' : ''}`
+      : ev.notes.length ? ev.notes.map(noteToken).join('+') : 'r';
     let code = '';
     if (ev.grace) code = ':g';
     else if (dur === null || Math.abs(ev.dur - dur) > 1e-6) {

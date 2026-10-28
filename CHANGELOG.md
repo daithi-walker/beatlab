@@ -21,6 +21,11 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
   on port 8765; the smoke test defaults to it.
 
 ### Added — Nectar
+- **Chord charts in the Tab editor** — strummed chords by name (`[Am]`, `[Am]u`) with
+  shapes for any instrument and tuning (`nectar/shared/chords.js`), a Chord chart panel
+  that turns chord-sheet chords plus a strum pattern (folk, waltz, ballad or your own)
+  into timed strums, per-song capo and time signature (2/4, 3/4, 4/4), and section
+  markers shown above the tab.
 - **Tab editor** (`nectar/tab.html`, replacing the AlphaTab proof of concept) — write
   tab by keyboard (arrows + fret numbers) or by tapping the neck, with note lengths,
   hammer-ons, pull-offs, slides, bends, vibrato, grace notes and rests; undo/redo;

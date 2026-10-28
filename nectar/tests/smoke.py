@@ -268,6 +268,27 @@ async def main():
         imported = await pg.evaluate(f"Object.values({song}).map(s => [s.title, s.tab])")
         check("editor: export then import round-trips", len(imported) == 2 and imported[0][1:] == imported[1][1:], str(imported))
 
+        # ---------------- Tab editor: chords, chord chart, capo
+        await pg.click("#song-new"); await pg.wait_for_timeout(200)
+        await pg.fill("#chord-name", "Am"); await pg.press("#chord-name", "Enter"); await pg.wait_for_timeout(80)
+        await pg.fill("#chord-name", "Hx7"); await pg.press("#chord-name", "Enter"); await pg.wait_for_timeout(80)
+        cur_tab = "(() => { const st = JSON.parse(localStorage.getItem('nectar-tab')); return JSON.parse(localStorage.getItem('nectar-songs'))[st.songId].tab; })()"
+        check("chords: typing a chord name places a strum (bad names rejected)", await pg.evaluate(cur_tab) == "[Am]:e", await pg.evaluate(cur_tab))
+        await pg.click("#chart summary"); await pg.fill("#chart-text", "[Verse]\nAm F")
+        pg.once("dialog", lambda d: asyncio.ensure_future(d.accept()))
+        await pg.click("#chart-replace"); await pg.wait_for_timeout(150)
+        t = await pg.evaluate(cur_tab)
+        check("chords: chart + folk pattern writes timed strums", t.startswith("@Verse [Am]:q [Am]:e [Am]u:q") and t.count("[F]") == 6, t[:80])
+        check("chords: chord names and strum arrows drawn", await pg.evaluate("[document.querySelectorAll('#tab .tchord').length, document.querySelectorAll('#tab .tstrum').length, document.querySelectorAll('#tab .tmark').length]") == [2, 12, 1])
+        await pg.evaluate(SPY); await pg.evaluate("window.__midis.length = 0; window.__times.length = 0")
+        await pg.click("#play"); await pg.wait_for_timeout(500); await pg.click("#play")
+        mids = await pg.evaluate("window.__midis.slice(0, 5)"); ts = await pg.evaluate("window.__times.slice(0, 5)")
+        check("chords: down-strum plays Am low to high, ~12 ms apart", mids == [45, 52, 57, 60, 64] and all(abs((ts[k+1]-ts[k]) - 0.012) < 0.002 for k in range(4)), f"{mids} {[round((ts[k+1]-ts[k])*1000) for k in range(4)]}")
+        await pg.fill("#capo", "3"); await pg.press("#capo", "Enter"); await pg.dispatch_event("#capo", "change")
+        await pg.evaluate("window.__midis.length = 0")
+        await pg.click("#play"); await pg.wait_for_timeout(500); await pg.click("#play")
+        check("chords: capo 3 raises the pitch (Am shape sounds Cm)", (await pg.evaluate("window.__midis.slice(0, 5)")) == [48, 55, 60, 63, 67], str(await pg.evaluate("window.__midis.slice(0, 5)")))
+
         await pg.evaluate("localStorage.clear()")
         check("no console/page errors", not errs, "; ".join(errs[:5]))
         await b.close()

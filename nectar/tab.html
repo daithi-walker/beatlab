@@ -47,6 +47,14 @@
         <label for="bpm">BPM</label>
         <input id="bpm" class="field num" type="number" min="30" max="260">
       </div>
+      <div class="speed">
+        <label for="time-sig">Time</label>
+        <select id="time-sig" class="field"><option value="2">2/4</option><option value="3">3/4</option><option value="4">4/4</option></select>
+      </div>
+      <div class="speed" title="Frets and chord shapes are counted from the capo">
+        <label for="capo">Capo</label>
+        <input id="capo" class="field num" type="number" min="0" max="12">
+      </div>
       <div class="toggles">
         <label class="tog"><input type="checkbox" id="loop"><span>Loop</span></label>
         <label class="tog"><input type="checkbox" id="countin"><span>Count-in</span></label>
@@ -74,6 +82,12 @@
         <button data-tech="g" title="Grace note (G)">g</button>
         <button data-tech="r" title="Rest (R)">rest</button>
       </div>
+      <div class="group chord-tools" aria-label="Chord">
+        <input id="chord-name" class="chord-input" placeholder="Chord, e.g. Am" aria-label="Chord name" autocomplete="off" spellcheck="false">
+        <button data-strum="d" title="Down-strum (D)">↓</button>
+        <button data-strum="u" title="Up-strum (U)">↑</button>
+        <button id="chord-place" title="Put this chord at the cursor (Enter)">place</button>
+      </div>
       <div class="group" aria-label="Edit">
         <button id="ins-beat" title="Insert a beat before the cursor (I)">+ beat</button>
         <button id="del-beat" title="Delete the beat at the cursor (Shift+Delete)">− beat</button>
@@ -90,6 +104,26 @@
       <div class="tab" id="tab"></div>
     </section>
 
+    <details class="panel chart" id="chart">
+      <summary class="panel-head"><h2>Chord chart</h2><span class="muted">Type the chords from a chord sheet, pick a strum, and the editor writes the timing.</span></summary>
+      <div class="chart-body">
+        <textarea id="chart-text" rows="7" spellcheck="false" placeholder="[Intro]
+Am F G Am (x2)
+[Verse]
+Am*2 F*2 G*2 Am*2"></textarea>
+        <div class="chart-side">
+          <label>Strum <select id="chart-pattern" class="field"></select></label>
+          <label>Or your own <input id="chart-custom" class="field mono" placeholder="D-DU-UDU" spellcheck="false"></label>
+          <p class="muted">One character per eighth note: <b>D</b> down, <b>U</b> up, <b>-</b> let it ring. <b>Am*2</b> = two bars of Am, <b>(x2)</b> repeats a line, <b>[Verse]</b> marks a section.</p>
+          <div class="chart-actions">
+            <button id="chart-add" class="btn">Add to song</button>
+            <button id="chart-replace" class="btn">Replace song</button>
+          </div>
+          <p id="chart-error" class="chart-error"></p>
+        </div>
+      </div>
+    </details>
+
     <section class="panel">
       <div class="panel-head">
         <h2>Neck</h2>
@@ -105,7 +139,7 @@
       </article>
       <article class="card">
         <h3>Lengths and techniques</h3>
-        <p>Toolbar buttons, or keys: <kbd>H</kbd> hammer · <kbd>P</kbd> pull · <kbd>S</kbd> slide · <kbd>B</kbd> bend · <kbd>V</kbd> vibrato · <kbd>G</kbd> grace · <kbd>R</kbd> rest · <kbd>I</kbd> insert beat · <kbd>+</kbd><kbd>−</kbd> longer/shorter</p>
+        <p>Chords: type a name in the chord box and press <kbd>Enter</kbd>; <kbd>D</kbd>/<kbd>U</kbd> flip the strum, <kbd>C</kbd> jumps to the chord box, <kbd>M</kbd> names a section. Notes: <kbd>H</kbd> hammer · <kbd>P</kbd> pull · <kbd>S</kbd> slide · <kbd>B</kbd> bend · <kbd>V</kbd> vibrato · <kbd>G</kbd> grace · <kbd>R</kbd> rest · <kbd>I</kbd> insert beat · <kbd>+</kbd><kbd>−</kbd> longer/shorter</p>
       </article>
       <article class="card">
         <h3>Your songs stay with you</h3>

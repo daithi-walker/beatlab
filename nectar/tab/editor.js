@@ -1,28 +1,30 @@
 // Nectar Tab editor: write tab by keyboard or by tapping the neck, hear it back, keep songs
 // in this browser. Songs use the same notation as the lick library (shared/notation.js).
 
-import { INSTRUMENT, TUNING, STRINGS, FRET_COUNT, setTuning, onTuningChange, noteName, midiOf } from '../shared/theory.js';
+import { INSTRUMENT, TUNING, STRINGS, FRET_COUNT, setTuning, setCapo, onTuningChange, noteName, midiOf } from '../shared/theory.js';
 import { setupAudio } from '../shared/audio-ui.js';
 import { setupInstrument } from '../shared/instrument-ui.js';
 import { Player } from '../shared/player.js';
 import { Neck, ghostDots } from '../shared/neck.js';
 import { Tab } from '../shared/tab.js';
 import { DURATIONS, parseTab, toTab, timed } from '../shared/notation.js';
+import { chordNotes, chartEvents, STRUM_PATTERNS } from '../shared/chords.js';
 
 const $ = (id) => document.getElementById(id);
 const SONGS_KEY = 'nectar-songs';
 const STATE_KEY = 'nectar-tab';
 const ORDER = ['w', 'h', 'q', 'e', 's']; // for +/- (triplets are picked from the toolbar)
 
-const songs = JSON.parse(localStorage.getItem(SONGS_KEY) || '{}'); // id -> { id, title, artist, instrument, tuning, bpm, tab }
+const songs = JSON.parse(localStorage.getItem(SONGS_KEY) || '{}'); // id -> { id, title, artist, instrument, tuning, bpm, beatsPerBar, capo, tab }
 const state = { songId: null, loop: true, countIn: false, metro: false, advance: true, ...JSON.parse(localStorage.getItem(STATE_KEY) || '{}') };
 const saveState = () => localStorage.setItem(STATE_KEY, JSON.stringify(state));
 const saveSongs = () => localStorage.setItem(SONGS_KEY, JSON.stringify(songs));
 
 let song = null;        // the open song (an entry of `songs`)
-let events = [];        // [{ dur, notes: [{ string, fret, tech, bend, vibrato }], grace? }]
+let events = [];        // [{ dur, notes: [{ string, fret, tech, bend, vibrato }], grace?, chord?, strum?, marker? }]
 let cur = { i: 0, string: 1 }; // edit cursor; i === events.length is "after the last beat"
 let newDur = DURATIONS.e;      // length given to new beats
+let newStrum = 'd';            // strum direction for new chords
 let layout = null;
 const undo = [], redo = [];
 
@@ -45,7 +47,7 @@ const neck = new Neck($('fretboard'), {
 
 function newSong() {
   const id = `s${Date.now().toString(36)}`;
-  songs[id] = { id, title: 'Untitled', artist: '', instrument: INSTRUMENT.id, tuning: TUNING.id, bpm: 90, tab: '' };
+  songs[id] = { id, title: 'Untitled', artist: '', instrument: INSTRUMENT.id, tuning: TUNING.id, bpm: 90, beatsPerBar: 4, capo: 0, tab: '' };
   saveSongs();
   openSong(id);
 }
@@ -58,12 +60,15 @@ function openSong(id) {
   events = song.tab.trim() ? parseTab(song.tab).events.map(({ beat, ...e }) => e) : [];
   cur = { i: 0, string: 1 };
   undo.length = redo.length = 0;
+  setCapo(song.capo || 0);
   fillSongBar();
   setTuning(song.tuning, { instrument: song.instrument, persist: false }); // renders via onTuningChange
 }
 
+const bpb = () => song.beatsPerBar || 4;
+
 function store() {
-  song.tab = toTab(events);
+  song.tab = toTab(events, bpb());
   saveSongs();
 }
 
@@ -75,6 +80,9 @@ function fillSongBar() {
   $('song-title').value = song.title;
   $('song-artist').value = song.artist;
   $('bpm').value = song.bpm;
+  $('time-sig').value = bpb();
+  $('capo').value = song.capo || 0;
+  fillPatterns();
 }
 
 // ---- editing (every change goes through edit() so it can be undone)
@@ -111,6 +119,8 @@ const noteAtCursor = () => events[cur.i]?.notes.find((n) => n.string === cur.str
 function setFret(fret) {
   edit(() => {
     const ev = beatAtCursor();
+    delete ev.chord; // a fretted note turns a chord strum back into notes
+    delete ev.strum;
     const n = ev.notes.find((x) => x.string === cur.string);
     if (n) n.fret = fret;
     else ev.notes.push({ string: cur.string, fret, tech: null, bend: 0, vibrato: false });
@@ -144,7 +154,12 @@ function nudgeDuration(dir) {
 // Techniques: h/p/slide are exclusive; bend cycles full → half → none; ~ vibrato; g grace; r rest.
 function technique(t) {
   if (t === 'r') {
-    if (cur.i < events.length) edit(() => { events[cur.i].notes = []; });
+    if (cur.i < events.length) edit(() => {
+      const ev = events[cur.i];
+      ev.notes = [];
+      delete ev.chord;
+      delete ev.strum;
+    });
     return;
   }
   if (t === 'g') {
@@ -162,6 +177,44 @@ function technique(t) {
     else if (t === '~') n.vibrato = !n.vibrato;
     else n.tech = n.tech === t ? null : t;
   });
+}
+
+// Chords: put the named chord at the cursor (one strum) and move on.
+function placeChord(name) {
+  name = name.trim();
+  if (!name) return;
+  const shape = chordNotes(name);
+  if (!shape.length) return flash(`"${name}" isn't a chord name I know (try Am, F, G7, Dsus4, C/G...)`);
+  edit(() => {
+    const ev = beatAtCursor();
+    ev.notes = [];
+    ev.chord = name;
+    ev.strum = newStrum;
+  });
+  if (!player.playing) synth.audition(shape, newStrum === 'u' ? 0.008 : 0.012);
+  move(1);
+}
+
+function setStrum(dir) {
+  newStrum = dir;
+  const ev = events[cur.i];
+  if (ev?.chord) edit(() => { ev.strum = dir; });
+  else syncToolbar();
+}
+
+function setMarker() {
+  if (cur.i >= events.length) return;
+  const name = prompt('Section name (e.g. Verse, Chorus). Leave empty to remove.', events[cur.i].marker || '');
+  if (name === null) return;
+  edit(() => {
+    if (name.trim()) events[cur.i].marker = name.trim();
+    else delete events[cur.i].marker;
+  });
+}
+
+function flash(msg) {
+  $('chord-name').setCustomValidity(msg);
+  $('chord-name').reportValidity();
 }
 
 function insertBeat() {
@@ -190,7 +243,7 @@ const playable = () => events.map((e) => ({ ...e, notes: e.notes.filter((n) => S
 
 function render() {
   cur.string = Math.min(cur.string, STRINGS.length);
-  layout = Tab.render($('tab'), timed(playable()), null, {
+  layout = Tab.render($('tab'), timed(playable(), false, bpb()), null, {
     editable: true,
     onPick: (i, s) => {
       cur = { i, string: s };
@@ -218,9 +271,12 @@ function syncToolbar() {
   document.querySelectorAll('#dur-tools button').forEach((b) => b.classList.toggle('on', Math.abs(DURATIONS[b.dataset.dur] - len) < 1e-6 && !ev?.grace));
   document.querySelectorAll('#tech-tools button').forEach((b) => {
     const t = b.dataset.tech;
-    const on = t === 'g' ? !!ev?.grace : t === 'r' ? !!ev && !ev.notes.length : t === 'b' ? !!n?.bend : t === '~' ? !!n?.vibrato : n?.tech === t;
+    const on = t === 'g' ? !!ev?.grace : t === 'r' ? !!ev && !ev.notes.length && !ev.chord : t === 'b' ? !!n?.bend : t === '~' ? !!n?.vibrato : n?.tech === t;
     b.classList.toggle('on', on);
   });
+  const strum = ev?.chord ? ev.strum : newStrum;
+  document.querySelectorAll('[data-strum]').forEach((b) => b.classList.toggle('on', b.dataset.strum === strum));
+  if (ev?.chord && document.activeElement !== $('chord-name')) $('chord-name').value = ev.chord;
   $('undo').disabled = !undo.length;
   $('redo').disabled = !redo.length;
 }
@@ -247,7 +303,7 @@ player.onStop = () => {
 function togglePlay() {
   if (player.playing) return player.stop();
   if (!events.length) return;
-  player.load(timed(playable()));
+  player.load(timed(playable(), false, bpb()));
   player.start({ bpm: song.bpm, loop: state.loop, countIn: state.countIn, metronome: state.metro });
   $('play').classList.add('on');
   $('play').querySelector('.icon').textContent = '■';
@@ -260,7 +316,7 @@ function exportSong() {
   const text = [
     '# Nectar tab',
     `title: ${song.title}`, `artist: ${song.artist}`, `instrument: ${song.instrument}`,
-    `tuning: ${song.tuning}`, `bpm: ${song.bpm}`, `tab: ${song.tab}`, '',
+    `tuning: ${song.tuning}`, `bpm: ${song.bpm}`, `time: ${bpb()}/4`, `capo: ${song.capo || 0}`, `tab: ${song.tab}`, '',
   ].join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
@@ -283,7 +339,8 @@ async function importSong(file) {
   const id = `s${Date.now().toString(36)}`;
   songs[id] = {
     id, title: meta.title || file.name.replace(/\.txt$/, ''), artist: meta.artist || '',
-    instrument: meta.instrument || 'guitar', tuning: meta.tuning || 'standard', bpm: +meta.bpm || 90, tab,
+    instrument: meta.instrument || 'guitar', tuning: meta.tuning || 'standard', bpm: +meta.bpm || 90,
+    beatsPerBar: parseInt(meta.time, 10) || 4, capo: +meta.capo || 0, tab,
   };
   saveSongs();
   openSong(id);
@@ -303,6 +360,19 @@ $('bpm').addEventListener('change', (e) => {
   e.target.value = song.bpm;
   saveSongs();
   player.setBpm(song.bpm);
+});
+$('time-sig').addEventListener('change', (e) => {
+  song.beatsPerBar = +e.target.value;
+  store();
+  fillPatterns();
+  render();
+});
+$('capo').addEventListener('change', (e) => {
+  song.capo = Math.min(12, Math.max(0, parseInt(e.target.value, 10) || 0));
+  e.target.value = song.capo;
+  setCapo(song.capo);
+  saveSongs();
+  render();
 });
 $('song-export').addEventListener('click', exportSong);
 $('song-import').addEventListener('change', (e) => { if (e.target.files[0]) importSong(e.target.files[0]); e.target.value = ''; });
@@ -326,6 +396,45 @@ for (const [elId, key] of [['loop', 'loop'], ['countin', 'countIn'], ['metro', '
 }
 document.querySelectorAll('#dur-tools button').forEach((b) => b.addEventListener('click', () => setDuration(b.dataset.dur)));
 document.querySelectorAll('#tech-tools button').forEach((b) => b.addEventListener('click', () => technique(b.dataset.tech)));
+document.querySelectorAll('[data-strum]').forEach((b) => b.addEventListener('click', () => setStrum(b.dataset.strum)));
+$('chord-place').addEventListener('click', () => placeChord($('chord-name').value));
+$('chord-name').addEventListener('input', (e) => e.target.setCustomValidity(''));
+$('chord-name').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); placeChord(e.target.value); }
+  if (e.key === 'Escape') e.target.blur();
+});
+
+// ---- chord chart: chords + a strum pattern → timed strums
+
+function fillPatterns() {
+  const sel = $('chart-pattern');
+  const patterns = STRUM_PATTERNS[bpb()] || {};
+  sel.replaceChildren(...Object.entries(patterns).map(([label, pat]) => new Option(label, pat)));
+}
+
+function applyChart(replace) {
+  const pattern = $('chart-custom').value.trim().toUpperCase() || $('chart-pattern').value;
+  let added;
+  try {
+    added = chartEvents($('chart-text').value, pattern, bpb());
+  } catch (err) {
+    $('chart-error').textContent = err.message;
+    return;
+  }
+  if (!added.length) { $('chart-error').textContent = 'No chords found in the chart.'; return; }
+  $('chart-error').textContent = '';
+  edit(() => {
+    if (replace) events = [];
+    events.push(...added);
+    cur = { i: events.length - added.length, string: 1 };
+  });
+}
+$('chart-add').addEventListener('click', () => applyChart(false));
+$('chart-replace').addEventListener('click', () => {
+  if (events.length && !confirm('Replace everything in this song with the chart?')) return;
+  applyChart(true);
+});
+
 $('ins-beat').addEventListener('click', insertBeat);
 $('del-beat').addEventListener('click', deleteBeat);
 $('undo').addEventListener('click', () => restore(undo, redo));
@@ -355,6 +464,8 @@ document.addEventListener('keydown', (e) => {
     '+': () => nudgeDuration(-1), '=': () => nudgeDuration(-1), '-': () => nudgeDuration(1),
     h: () => technique('h'), p: () => technique('p'), s: () => technique('/'), b: () => technique('b'),
     v: () => technique('~'), g: () => technique('g'), r: () => technique('r'), i: insertBeat,
+    d: () => setStrum('d'), u: () => setStrum('u'), m: setMarker,
+    c: () => { $('chord-name').focus(); $('chord-name').select(); },
   };
   const fn = keys[e.key] ?? keys[e.key.toLowerCase()];
   if (!fn) return;

@@ -107,8 +107,12 @@ export const INTERVAL_COLORS = {
   14: '#e8c96b', // Maj 9th (same as 2) — gold
 };
 
-export const midiAt = (string, fret) => OPEN_MIDI[string] + fret;
-export const midiOf = (note) => OPEN_MIDI[note.string] + note.fret;
+// Sounding pitch. Frets are counted from the capo (as tab and chord sheets do), so a capo
+// raises every note by CAPO semitones. Only the Tab editor sets a capo (per song).
+export const midiAt = (string, fret) => OPEN_MIDI[string] + CAPO + fret;
+export const midiOf = (note) => OPEN_MIDI[note.string] + CAPO + note.fret;
+export let CAPO = 0;
+export const setCapo = (frets) => { CAPO = frets; };
 export const noteName = (midi) => NOTE_NAMES[((midi % 12) + 12) % 12];
 export const degree = (midi, rootMidi) => (((midi - rootMidi) % 12) + 12) % 12;
 
