@@ -118,8 +118,9 @@ code sketches, and implementation order. All four phases live in `drums/index.ht
   backend proxy. Context-aware: automatically includes current scale/chord/
   identified notes so answers are grounded in what the user sees.
   See `nectar/ROADMAP.md` for full implementation path.
-- **Loop region** — select a fret range and loop just those notes for practice.
-- **Metronome** — audible click track independent of scale playback.
+- **Loop region** — select a fret range on Scales and loop just those notes.
+  (Licks already loops whole licks.)
+- **Metronome on Scales** — a click track for the scale explorer. (Licks has one.)
 - **MIDI output** — emit MIDI events so external synths/DAWs can use Nectar
   as a controller.
 - **Enharmonic spelling** — respell note names using correct accidentals for
@@ -197,7 +198,7 @@ keeping single-file / no-samples / mobile intact.
   `SharedArrayBuffer` or BroadcastChannel message bus.
 - **Progressive Web App (PWA)** — add a service worker + manifest so BeatLab
   installs to the home screen and works offline.
-- **Versioning** — see `CHANGELOG.md`. Currently on `0.5.0`.
+- **Versioning** — see `CHANGELOG.md`. Currently on `0.6.0`.
 
 ---
 

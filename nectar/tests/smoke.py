@@ -2,14 +2,14 @@
 guitar core (neck, synth, player, audio-ui) still behaves. Records every note the synth plays.
 
   pip install playwright && playwright install chromium     # one-time
-  cd nectar && docker compose up -d                          # serves http://localhost:8767
+  docker compose up -d                                       # repo root; serves http://localhost:8765
   python3 nectar/tests/smoke.py [base_url]
 
 Exit code 1 on any failure.
 """
 import asyncio, sys
 from playwright.async_api import async_playwright
-BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8767/nectar/").rstrip("/") + "/"
+BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8765/nectar/").rstrip("/") + "/"
 SPY = """async () => {
   const m = await import('/nectar/shared/synth.js');
   const t = await import('/nectar/shared/theory.js');

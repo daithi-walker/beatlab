@@ -4,21 +4,26 @@ Instructions for AI agents working in this repo. Read this before touching anyth
 
 ## Architecture in one paragraph
 
-BeatLab is a suite of browser-based music tools. No build step — every app is
-a self-contained single HTML file. All audio is Web Audio API; no samples, no
-external audio libraries. Apps share `core/storage.js` for localStorage pattern
-persistence. GitHub Pages deploys on push to `main` via `.github/workflows/pages.yml`.
+BeatLab is a suite of browser-based music tools (Drums, Multibank, Synth, Nectar).
+No build step: pages are HTML with native ES modules, served over HTTP. All audio is
+Web Audio API synthesis; no samples, no audio libraries. Code shared across apps lives
+in `core/`; Nectar's pages share `nectar/shared/`. GitHub Pages deploys on push to
+`main` via `.github/workflows/pages.yml`. Full picture: `ARCHITECTURE.md`.
 
 ## Key files to know
 
 | File | What it is |
 |---|---|
+| `README.md` | Project front page: apps, how to run locally, repo map, docs index |
+| `ARCHITECTURE.md` | How it's built: layers, `core/`, audio patterns, persistence, ADR index |
 | `CHANGELOG.md` | Version history — update this when shipping features |
 | `docs/BACKLOG.md` | Prioritised feature backlog for all apps |
 | `docs/share-encoding.md` | Binary bit-pack spec for Drums share links — read before touching encoding |
 | `docs/adr-*.md` | Architecture Decision Records — read before making structural changes |
-| `drums/features.md` | Drums feature reference (what's built, how it works) |
-| `nectar/FEATURES.md` | Nectar feature reference |
+| `<app>/README.md` | Per-app overview: pages, which shared modules it uses |
+| `<app>/features.md` | Per-app feature reference (what's built, how it works, signal chain) |
+| `docs/groovebox.md` | Drums groovebox design (live looping, queued switching, scenes) |
+| `docs/nectar-instruments.md` | Nectar instruments/tunings design and phases |
 | `nectar/ROADMAP.md` | Detailed Nectar options (guitar sound, tab viewer, theory chat) |
 
 ## Before you start
@@ -94,7 +99,7 @@ Exception: Nectar's tab viewer uses AlphaTab + SF2 soundfont (documented in
 ### Versioning
 We use semantic versioning. While pre-1.0, minor bumps (`0.x`) = meaningful
 feature milestones; patch bumps (`0.x.y`) = fixes. Update `CHANGELOG.md` when
-shipping. Current version: **0.5.0**.
+shipping. Current version: **0.6.0**.
 
 ### Commit style
 Prefix commits with the app name: `Drums:`, `Nectar:`, `Multibank:`,
@@ -141,10 +146,11 @@ Prefix commits with the app name: `Drums:`, `Nectar:`, `Multibank:`,
   decides which library it appears in (the Instrument select filters it); its
   `tuning` is applied while it's shown (not saved as the user's choice).
 - **After touching `nectar/shared/` or any Nectar page, run the smoke test:**
-  `python3 nectar/tests/smoke.py` (needs the nectar container up and
+  `python3 nectar/tests/smoke.py` (needs the local server: `docker compose up -d`
+  at the repo root, port 8765; and
   `pip install playwright && playwright install chromium`). It drives every page
   and records the notes the synth plays.
-- Consistent topbar pattern across all pages (see `nectar/FEATURES.md`).
+- Consistent topbar pattern across all pages (see `nectar/features.md`).
 
 ### Multibank (`multibank/index.html`)
 - Multi-voice step sequencer with per-channel sound shaping

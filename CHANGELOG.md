@@ -12,8 +12,18 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
 
 ## [Unreleased]
 
+### Changed — Docs
+- **Docs refresh** — rewritten root `README.md` (apps, run locally, repo map, docs
+  index, testing) and `ARCHITECTURE.md` (layers, `core/` inventory, audio patterns,
+  persistence, design systems, ADR index); a `README.md` for every app;
+  `nectar/FEATURES.md` renamed to `features.md` like the other apps.
+- **One-command local server** — root `docker-compose.yml` serves the whole repo
+  on port 8765; the smoke test defaults to it.
+
+## [0.6.0] - 2026-10-28
+
 ### Added — Nectar
-- **Licks page** (`nectar/licks.html`) — a lick trainer with 13 original licks.
+- **Licks page** (`nectar/licks.html`) — a lick trainer with original licks.
   Tab with beat counts and a playback cursor, a fretboard showing the scale box,
   the playing note and the next note (position or whole-neck view, note or
   interval labels), and play-along playback with swing, loop, count-in, click,

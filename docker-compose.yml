@@ -1,0 +1,11 @@
+# Serves the whole repo (every app + core/) on one port for local development.
+#   docker compose up -d   →   http://localhost:8765
+# The per-app compose files (nectar/, multibank/, synth/) still work and serve the same tree.
+services:
+  beatlab:
+    image: nginx:alpine
+    ports:
+      - "8765:80"
+    volumes:
+      - ./:/usr/share/nginx/html:ro
+      - ./nginx-dev.conf:/etc/nginx/conf.d/default.conf:ro

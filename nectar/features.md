@@ -304,12 +304,11 @@ Separate page (`/tab.html`) using AlphaTab loaded from CDN:
 ## Local Dev
 
 ```bash
-cd nectar/
-docker compose up -d
-# open http://localhost:8767
-# tab viewer: http://localhost:8767/tab.html
+docker compose up -d        # from the repo root
+# open http://localhost:8765/nectar/
+# tab viewer: http://localhost:8765/nectar/tab.html
 
 docker compose down
 ```
 
-nginx serves the directory with live reload — edit any file and refresh, no container restart needed.
+nginx serves the repo with `Cache-Control: no-cache`, so edit any file and refresh; no container restart needed.

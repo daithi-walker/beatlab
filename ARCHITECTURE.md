@@ -1,158 +1,149 @@
-# Music Apps — Architecture Overview
+# BeatLab Architecture
 
-## What we're building
+How the apps are built and what they share. For working rules (what you must and must
+not do when changing code) see [`CLAUDE.md`](CLAUDE.md); for what each app does see its
+README.
 
-A suite of browser-based music tools that share a common audio philosophy but each have a distinct interaction model. All apps live under this directory and are self-contained single-file HTML apps (no build step, open directly in browser).
+## Principles
 
-### Apps
-
-| App | Status | What it is |
+| Principle | Why | Record |
 |---|---|---|
-| `multibank/` | Working | 16-step drum/synth sequencer |
-| `synth/` | Planned | Polyphonic keyboard synth with XY modulation |
-| `nectar/` | Early | Guitar learning app — needs to play real notes |
-| `torman/` | Working | Canvas gesture → bass synth (DubCanvas) |
+| **Web Audio API only, no audio library** | Near-zero size, full control of the signal graph, the concepts stay visible | [ADR-002](docs/adr-002-web-audio-api.md) |
+| **Synthesis, not samples** | Every sound is generated live; nothing to download | `CLAUDE.md` "No samples" (exception: Nectar's AlphaTab tab viewer) |
+| **Native ES modules, no build step** | Edit, refresh, done; GitHub Pages serves the same files | [ADR-007](docs/adr-007-es-modules-and-local-server.md), [ADR-009](docs/adr-009-multi-file-modules.md) |
+| **Static hosting** | Push to `main` deploys; no backend | [ADR-005](docs/adr-005-hosting.md) |
+| **Reuse before you write** | Shared engines live once; duplicated engines are bugs | `CLAUDE.md` "Reuse before you write" |
 
----
+Because pages are ES modules they must be served over HTTP (not `file://`); see the
+root README for the one-command local server.
 
-## Core Insight
-
-All four apps are the same thing at the bottom:
+## Layers
 
 ```
-trigger → oscillator/noise → ADSR envelope → filter → effects → speakers
+  page (.html)            drums/index.html, nectar/licks.html, ...
+     │ imports
+  app modules             nectar/licks/*.js            (only where a page outgrew one file)
+     │
+  app shared code         nectar/shared/*.js           (shared by one app's pages)
+     │
+  core/                   core/*.js                    (shared by several apps)
 ```
 
-What changes between apps is only the **trigger mechanism** and **UI model**:
+Code goes as low as it is shared: used by one page → in the page; by several pages of
+one app → that app's shared folder; by several apps → `core/`. Drums, Multibank and
+Synth are single pages with inline modules; Nectar has four pages on a shared core.
 
-| App | Trigger | Timing model |
+## `core/`: shared across apps
+
+| Module | Provides | Used by |
 |---|---|---|
-| multibank | step buttons, clock-driven | quantised loop (16th notes) |
-| synth | laptop keys / mouse clicks | real-time, note-on/off |
-| nectar | string fret positions, tap | real-time, guitar-mapped |
-| torman | canvas gestures | gesture speed = pitch/register |
+| `audio.js` | Note → frequency helpers, reverb impulse (`makeImpulse`), pink/white noise buffers, soft-clip curve (`distCurve`) | Drums, Multibank, Synth, Voice Lab, Nectar |
+| `voice.js` | Rich synth voice engine (unison + sub + drive + filter envelope + amp envelope), presets, random patches, patch save/load | Synth, Voice Lab |
+| `export.js` | Offline render, WAV, MP3 (via vendored lamejs), MIDI, stored ZIP, download helpers | Drums, Multibank, Voice Lab |
+| `storage.js` | Namespaced localStorage (`beatlab:<app>:<name>`), shared volume | Drums, Multibank, Synth; Voice Lab via `voice.js` |
+| `topnav.js` | BeatLab logo + app switcher injected into each topbar | Multibank, Synth, Nectar |
+| `vendor/lamejs.min.js` | MP3 encoder, the one vendored dependency | Drums, Multibank ([ADR-008](docs/adr-008-lamejs-mp3.md)) |
 
----
+## `nectar/shared/`: the guitar core
 
-## Shared Primitives (extract later)
+All four Nectar pages draw and play through one core
+([ADR-010](docs/adr-010-nectar-shared-guitar-core.md)): `theory.js` (instruments,
+tunings, scales; live ES-module bindings for the current instrument/tuning),
+`neck.js` (SVG fretboard + strum/tap), `synth.js` (Karplus-Strong strings, amp tones,
+legato, paired strings), `player.js` (look-ahead scheduler with swing and grace notes)
+and the topbar control modules. Notes are always `{ string, fret }`, string 1 = top
+line of tab. Design of the instrument model: [`docs/nectar-instruments.md`](docs/nectar-instruments.md).
 
-These exist in every app and should eventually live in `core/audio.js`:
+## Audio patterns
 
-### Note utilities
-```js
-noteToFreq(note)          // 'A4' → 440.0
-NOTE_OFFSETS              // semitone offsets per note name
-buildScale(rootFreq, intervals)
+### One shape, different triggers
+
+Every app is the same pipeline with a different trigger and sound source:
+
+```
+trigger → source → envelope → shaping (drive / filter) → sends (reverb, delay, chorus) → compressor → out
 ```
 
-### Noise buffers
-```js
-makePinkNoise(ctx, seconds)
-makeWhiteNoise(ctx, seconds)
-makeImpulse(ctx, seconds, decay)  // reverb IR
-```
+| App | Trigger | Source | Timing |
+|---|---|---|---|
+| Drums | step grid, pads | oscillators + filtered noise per hit | look-ahead, 16th-note grid |
+| Multibank | step grid | per-bank oscillators / noise | look-ahead, 16th-note grid |
+| Synth / Voice Lab | keys, touch, arpeggiator | `core/voice.js` voices | real-time note on/off (Voice Lab loop: look-ahead) |
+| Nectar | neck tap/strum, scale runs, licks | Karplus-Strong string buffers + amp model | real-time, or look-ahead `Player` |
 
-### Effects chain builder
-Takes a set of params and returns a pre-wired graph of Web Audio nodes:
-```js
-buildEffectsChain(ctx, masterGain, { filter, reverb, delay, distortion, chorus, lfoRate })
-→ { entry, filter, filterLfo, filterLfoGain, gain, reverbSend, delaySend, chorusSend }
-```
+Full signal-chain diagrams are in each app's `features.md`.
 
-### Distortion curve
-```js
-makeDistortionCurve(drive)  // sigmoid soft-clip, drive 0–1
-```
+### Look-ahead scheduling
 
----
+Anything timed is scheduled on the audio clock, never with `setTimeout` per note: a
+25 ms timer schedules every event due in the next ~100 ms at its exact
+`AudioContext` time ([ADR-003](docs/adr-003-lookahead-scheduler.md)). Timing stays
+tight when the tab is busy or in the background. UI highlights follow the audio clock
+via `requestAnimationFrame`.
 
-## Audio Architecture Decisions
+### Shared effect buses
 
-### 1. Web Audio API only, no libraries
-Every app uses raw Web Audio API nodes. No Tone.js, no p5.sound. This keeps file size near zero, teaches the actual concepts, and gives full control over the signal graph.
+Reverb (and in Multibank, delay and chorus) is one shared bus that voices send into,
+not one effect per voice ([ADR-004](docs/adr-004-shared-reverb-bus.md)). Reverb
+impulses are generated decaying noise (`makeImpulse`), not recorded rooms.
 
-### 2. Lookahead scheduler (sequencer apps)
-```
-setInterval(tick, 25ms) — polls every 25ms
-while (nextBeatTime < ctx.currentTime + 0.1) { schedule(); advance(); }
-```
-Events are queued to the audio clock, not to setTimeout. This means timing stays rock-solid even when the browser tab loses focus or the JS thread is busy. The 100ms lookahead is the standard sweet spot.
+### Envelopes
 
-### 3. Shared reverb send/return
-All panels/voices send to a single convolution reverb (`ConvolverNode`) via individual gain nodes. The reverb return feeds the master. This is the standard studio send/return model — much cheaper than one reverb per voice.
+Web Audio has no ADSR node; envelopes are scheduled gain ramps. Exponential ramps
+can't reach zero, so they target 0.001 and the node is stopped just after.
 
-### 4. Pre-generated noise buffers
-Pink and white noise buffers are generated once at audio init and shared across all drum hits. `BufferSourceNode` is one-shot (create/start/stop/GC) but the underlying `AudioBuffer` is reusable.
+### Offline export
 
-### 5. Effects chain per panel (multibank) vs global (synth)
-- **multibank**: each bank has its own filter → gain → distortion → sends. Panels are independent.
-- **synth**: all voices sum into a single voiceBus, then one global effects chain shapes the sound. This models a real synthesiser.
+Exports render through an `OfflineAudioContext` built by the same graph-building code
+as live playback, so what you export is what you heard (`core/export.js`).
 
-### 6. ADSR implementation
-Web Audio API has no built-in ADSR. We schedule gain ramps manually:
-```js
-// Note on:
-g.gain.setValueAtTime(0.001, now);
-g.gain.exponentialRampToValueAtTime(1.0, now + attack);
-g.gain.exponentialRampToValueAtTime(Math.max(0.001, sustain), now + attack + decay);
+### Mobile and iOS
 
-// Note off:
-g.gain.cancelScheduledValues(now);
-g.gain.setValueAtTime(Math.max(0.001, g.gain.value), now);
-g.gain.exponentialRampToValueAtTime(0.001, now + release);
-osc.stop(now + release + 0.05);
-```
-`exponentialRamp` can't ramp to zero (log of 0 = -∞), so we always target 0.001 and let it be inaudible.
+Audio must be created and resumed inside the first user gesture, re-resumed after
+screen lock, and heavy buffers built after the gesture returns. The full checklist is
+in `CLAUDE.md` ("Mobile & cross-browser requirements").
 
----
+## State and persistence
 
-## UI Patterns
+| What | Where |
+|---|---|
+| Saved patterns, takes, scenes, kit, view | localStorage `beatlab:<app>:...` via `core/storage.js` |
+| Master volume (Drums, Multibank, Synth) | `beatlab:settings:volume` |
+| Synth / Voice Lab patches | `core/voice.js` (on top of `core/storage.js`) |
+| Nectar volume + tone, instrument + tuning, Licks settings | `nectar-audio`, `nectar-instrument`, `nectar-licks` |
+| Drums share links | the URL; versioned binary encoding, old links must keep working ([spec](docs/share-encoding.md)) |
 
-All apps share the same visual design system, lifted from torman:
+There is no server-side state.
 
-### Design tokens (CSS variables)
-```css
---bg: #080c10          /* page background */
---surface: #0e1318     /* card/panel bg */
---surface-2: #121920   /* inset bg */
---divider: #1a2830     /* borders */
---text: #d4e8e0        /* primary text */
---muted: #6a8f80       /* secondary text */
---teal: #00e5cc        /* primary accent */
---green: #39ff6a
---amber: #f5a623
---purple: #b06fff
---pink: #ff6b9d
-```
+## UI and design
 
-### Typography
-Space Grotesk (Google Fonts), rendered at small sizes with wide letter-spacing for that hardware-panel feel.
+Two visual systems:
 
-### Interaction patterns
-- **Drag across steps** to paint/erase (pointerdown sets intent, pointermove applies it)
-- **Topbar** fixed, always accessible
-- **iOS audio unlock**: browser policy requires a user gesture before AudioContext runs — always show a banner and resume on first touch/keydown
+| | Used by | Look |
+|---|---|---|
+| BeatLab | home page, Drums, Multibank, Synth, Voice Lab | near-black blue-green, teal/green/amber/purple accents, Space Grotesk, hardware-panel feel |
+| Nectar | all Nectar pages | near-black, amber roots, gold "playing" highlight, rosewood neck, Inter |
 
----
+Shared interaction conventions: pointer events with `setPointerCapture` for drags,
+`touch-action: none` on drag surfaces, ≥44 px touch targets, Space to play/stop, a
+topbar with the BeatLab app switcher (`core/topnav.js`).
 
-## What's built in multibank
+## Testing
 
-- Dynamic bank add/remove — up to any number of banks
-- 13 bank types: Kick, Snare, Hi-Hat, Clap, Tom Hi, Tom Lo, Open Hat, Crash, Bass, Sub, Lead, Pluck, Pad
-- Per-bank type switcher (change type after creation, pattern preserved)
-- Drag to paint steps, spacebar play/stop, mute per bank
-- Effects per bank: filter, LFO (filter mod), reverb, delay, distortion, chorus
-- Shared reverb convolver (send/return)
-- Lookahead scheduler
+- **Nectar:** `nectar/tests/smoke.py` (Playwright) drives every page in headless Chromium and records the notes the synth plays. Run it after touching `nectar/`.
+- **Other apps:** manual testing in the browser (desktop + phone).
 
-### Planned for multibank
-See `multibank/features.md`
+## Decision records
 
----
-
-## Conventions
-
-- **Single HTML file per app** — no build step, no node_modules, open directly
-- **No frameworks** — vanilla JS, Web Audio API, CSS custom properties
-- **No comments explaining what** — only comments explaining *why* (hidden constraints, workarounds, non-obvious invariants)
-- **Imports when ready** — once `core/` is worth extracting, apps switch to `<script type="module">` and import shared utilities. No bundler needed; modern browsers handle ES modules natively from `file://` with a local server, or just inline the shared code for now.
+| ADR | Decision | Status |
+|---|---|---|
+| [001](docs/adr-001-single-file-html.md) | Single-file HTML apps | Superseded by 007 |
+| [002](docs/adr-002-web-audio-api.md) | Raw Web Audio API, no audio library | Accepted |
+| [003](docs/adr-003-lookahead-scheduler.md) | Look-ahead scheduler for sequenced audio | Accepted |
+| [004](docs/adr-004-shared-reverb-bus.md) | Shared convolution reverb bus | Accepted |
+| [005](docs/adr-005-hosting.md) | Host on GitHub Pages | Accepted |
+| [006](docs/adr-006-torman-refactor.md) | Torman: split its single-file HTML | Accepted |
+| [007](docs/adr-007-es-modules-and-local-server.md) | ES modules + local server | Accepted |
+| [008](docs/adr-008-lamejs-mp3.md) | Vendored lamejs for MP3 export | Accepted |
+| [009](docs/adr-009-multi-file-modules.md) | Multi-file modules per page, still no build | Accepted |
+| [010](docs/adr-010-nectar-shared-guitar-core.md) | Nectar shared guitar core | Accepted |
