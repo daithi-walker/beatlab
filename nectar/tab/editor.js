@@ -15,10 +15,9 @@ const SONGS_KEY = 'nectar-songs';
 const STATE_KEY = 'nectar-tab';
 const ORDER = ['w', 'h', 'q', 'e', 's']; // for +/- (triplets are picked from the toolbar)
 
-const songs = JSON.parse(localStorage.getItem(SONGS_KEY) || '{}'); // id -> { id, title, artist, instrument, tuning, bpm, beatsPerBar, capo, tab }
+const songs = {}; // id -> { id, title, artist, instrument, tuning, bpm, beatsPerBar, capo, tab }
 const state = { songId: null, loop: true, countIn: false, metro: false, advance: true, ...JSON.parse(localStorage.getItem(STATE_KEY) || '{}') };
 const saveState = () => localStorage.setItem(STATE_KEY, JSON.stringify(state));
-const saveSongs = () => localStorage.setItem(SONGS_KEY, JSON.stringify(songs));
 
 let song = null;        // the open song (an entry of `songs`)
 let events = [];        // [{ dur, notes: [{ string, fret, tech, bend, vibrato }], grace?, chord?, strum?, marker? }]
@@ -43,13 +42,98 @@ const neck = new Neck($('fretboard'), {
   },
 });
 
-// ---- song storage
+// ---- where songs live
+// On the local dev server each song is a text file in nectar/my-tabs/ (git-ignored), listed,
+// saved (PUT) and deleted (DELETE) over HTTP; the id is the file name. Anywhere else
+// (e.g. GitHub Pages) songs live in this browser's localStorage.
+
+const FOLDER = 'my-tabs/';
+let inFolder = false;
+const onDisk = new Set(); // file names that exist in the folder
+
+// The file format, shared with Export: "key: value" lines, then the tab.
+function songText(s) {
+  return ['# Nectar tab', `title: ${s.title}`, `artist: ${s.artist}`, `instrument: ${s.instrument}`, `tuning: ${s.tuning}`,
+    `bpm: ${s.bpm}`, `time: ${s.beatsPerBar || 4}/4`, `capo: ${s.capo || 0}`, `swing: ${s.swing ? 'yes' : 'no'}`, `tab: ${s.tab}`, ''].join('\n');
+}
+
+function readSongText(text, fallbackTitle) {
+  const tabAt = text.search(/^tab:/m);
+  if (tabAt < 0) throw new Error('it has no "tab:" line, so it isn\'t a Nectar tab file');
+  const meta = {};
+  for (const line of text.slice(0, tabAt).split('\n')) {
+    const m = /^(\w+):\s*(.*)$/.exec(line);
+    if (m) meta[m[1]] = m[2].trim();
+  }
+  const tab = text.slice(tabAt + 4).replace(/\s+/g, ' ').trim();
+  parseTab(tab); // throws if the tab can't be read
+  return {
+    title: meta.title || fallbackTitle, artist: meta.artist || '', instrument: meta.instrument || 'guitar',
+    tuning: meta.tuning || 'standard', bpm: +meta.bpm || 90, beatsPerBar: parseInt(meta.time, 10) || 4, capo: +meta.capo || 0,
+    swing: meta.swing === 'yes', tab,
+  };
+}
+
+const slug = (title) => title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'untitled';
+function freeFileName(title) {
+  let name = `${slug(title)}.txt`;
+  for (let k = 2; songs[name]; k++) name = `${slug(title)}-${k}.txt`;
+  return name;
+}
+
+const writeTimers = {};
+function saveSong(s = song) {
+  if (!inFolder) return localStorage.setItem(SONGS_KEY, JSON.stringify(songs));
+  clearTimeout(writeTimers[s.id]);
+  writeTimers[s.id] = setTimeout(() => {
+    onDisk.add(s.id);
+    fetch(FOLDER + encodeURIComponent(s.id), { method: 'PUT', body: songText(s) });
+  }, 300);
+}
+
+// A new song is only written once it's edited, so opening the editor leaves no empty files.
+function addSong(fields) {
+  const id = inFolder ? freeFileName(fields.title) : `s${Date.now().toString(36)}`;
+  songs[id] = { ...fields, id };
+  if (fields.tab) saveSong(songs[id]);
+  openSong(id);
+}
+
+function removeSong(s) {
+  delete songs[s.id];
+  if (!inFolder) return saveSong();
+  clearTimeout(writeTimers[s.id]);
+  if (onDisk.delete(s.id)) fetch(FOLDER + encodeURIComponent(s.id), { method: 'DELETE' });
+}
+
+// In the folder, a song's file follows its title.
+function renameFile() {
+  if (!inFolder || song.id === `${slug(song.title)}.txt` || song.id.startsWith(`${slug(song.title)}-`)) return;
+  removeSong(song);
+  song.id = freeFileName(song.title);
+  songs[song.id] = song;
+  state.songId = song.id;
+  saveState();
+  saveSong();
+}
+
+async function loadSongs() {
+  const res = await fetch(FOLDER, { cache: 'no-store' }).catch(() => null);
+  if (!res?.ok || !res.headers.get('content-type')?.includes('json')) {
+    Object.assign(songs, JSON.parse(localStorage.getItem(SONGS_KEY) || '{}'));
+    return;
+  }
+  inFolder = true;
+  for (const f of (await res.json()).filter((f) => f.type === 'file' && f.name.endsWith('.txt'))) {
+    const text = await (await fetch(FOLDER + encodeURIComponent(f.name), { cache: 'no-store' })).text();
+    onDisk.add(f.name);
+    try { songs[f.name] = { ...readSongText(text, f.name.replace(/\.txt$/, '')), id: f.name }; }
+    catch (e) { console.warn(`Skipping ${FOLDER}${f.name}: ${e.message}`); }
+  }
+}
 
 function newSong() {
-  const id = `s${Date.now().toString(36)}`;
-  songs[id] = { id, title: 'Untitled', artist: '', instrument: INSTRUMENT.id, tuning: TUNING.id, bpm: 90, beatsPerBar: 4, capo: 0, tab: '' };
-  saveSongs();
-  openSong(id);
+  addSong({ title: 'Untitled', artist: '', instrument: INSTRUMENT.id, tuning: TUNING.id, bpm: 90, beatsPerBar: 4, capo: 0, tab: '' });
 }
 
 function openSong(id) {
@@ -69,7 +153,7 @@ const bpb = () => song.beatsPerBar || 4;
 
 function store() {
   song.tab = toTab(events, bpb());
-  saveSongs();
+  saveSong();
 }
 
 function fillSongBar() {
@@ -79,9 +163,11 @@ function fillSongBar() {
     .map((s) => new Option(s.artist ? `${s.title} · ${s.artist}` : s.title, s.id, false, s.id === song.id)));
   $('song-title').value = song.title;
   $('song-artist').value = song.artist;
+  $('song-where').textContent = inFolder ? 'Saved in nectar/my-tabs/' : 'Saved in this browser';
   $('bpm').value = song.bpm;
   $('time-sig').value = bpb();
   $('capo').value = song.capo || 0;
+  $('swing').checked = !!song.swing;
   fillPatterns();
 }
 
@@ -202,6 +288,16 @@ function setStrum(dir) {
   else syncToolbar();
 }
 
+function setLyric() {
+  if (cur.i >= events.length) return;
+  const words = prompt('Lyric under this beat (leave empty to remove):', events[cur.i].lyric || '');
+  if (words === null) return;
+  edit(() => {
+    if (words.trim()) events[cur.i].lyric = words.trim();
+    else delete events[cur.i].lyric;
+  });
+}
+
 function setMarker() {
   if (cur.i >= events.length) return;
   const name = prompt('Section name (e.g. Verse, Chorus). Leave empty to remove.', events[cur.i].marker || '');
@@ -243,7 +339,7 @@ const playable = () => events.map((e) => ({ ...e, notes: e.notes.filter((n) => S
 
 function render() {
   cur.string = Math.min(cur.string, STRINGS.length);
-  layout = Tab.render($('tab'), timed(playable(), false, bpb()), null, {
+  layout = Tab.render($('tab'), timed(playable(), !!song.swing, bpb()), null, {
     editable: true,
     onPick: (i, s) => {
       cur = { i, string: s };
@@ -303,7 +399,7 @@ player.onStop = () => {
 function togglePlay() {
   if (player.playing) return player.stop();
   if (!events.length) return;
-  player.load(timed(playable(), false, bpb()));
+  player.load(timed(playable(), !!song.swing, bpb()));
   player.start({ bpm: song.bpm, loop: state.loop, countIn: state.countIn, metronome: state.metro });
   $('play').classList.add('on');
   $('play').querySelector('.icon').textContent = '■';
@@ -313,37 +409,19 @@ function togglePlay() {
 // ---- export / import (plain text: a few "key: value" lines, then the tab)
 
 function exportSong() {
-  const text = [
-    '# Nectar tab',
-    `title: ${song.title}`, `artist: ${song.artist}`, `instrument: ${song.instrument}`,
-    `tuning: ${song.tuning}`, `bpm: ${song.bpm}`, `time: ${bpb()}/4`, `capo: ${song.capo || 0}`, `tab: ${song.tab}`, '',
-  ].join('\n');
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+  a.href = URL.createObjectURL(new Blob([songText(song)], { type: 'text/plain' }));
   a.download = `${(song.title || 'tab').replace(/[^\w\- ]+/g, '').trim() || 'tab'}.txt`;
   a.click();
   URL.revokeObjectURL(a.href);
 }
 
 async function importSong(file) {
-  const text = await file.text();
-  const meta = {};
-  const tabAt = text.search(/^tab:/m);
-  if (tabAt < 0) return alert('That file has no "tab:" line, so it isn\'t a Nectar tab export.');
-  for (const line of text.slice(0, tabAt).split('\n')) {
-    const m = /^(\w+):\s*(.*)$/.exec(line);
-    if (m) meta[m[1]] = m[2].trim();
+  try {
+    addSong(readSongText(await file.text(), file.name.replace(/\.txt$/, '')));
+  } catch (e) {
+    alert(`Couldn't import ${file.name}: ${e.message}`);
   }
-  const tab = text.slice(tabAt + 4).replace(/\s+/g, ' ').trim();
-  try { parseTab(tab); } catch (e) { return alert(`Couldn't read the tab: ${e.message}`); }
-  const id = `s${Date.now().toString(36)}`;
-  songs[id] = {
-    id, title: meta.title || file.name.replace(/\.txt$/, ''), artist: meta.artist || '',
-    instrument: meta.instrument || 'guitar', tuning: meta.tuning || 'standard', bpm: +meta.bpm || 90,
-    beatsPerBar: parseInt(meta.time, 10) || 4, capo: +meta.capo || 0, tab,
-  };
-  saveSongs();
-  openSong(id);
 }
 
 // ---- wiring
@@ -351,14 +429,14 @@ async function importSong(file) {
 $('song-select').addEventListener('change', (e) => openSong(e.target.value));
 $('song-new').addEventListener('click', newSong);
 $('song-more').addEventListener('click', () => document.body.classList.toggle('song-open'));
-$('song-title').addEventListener('input', (e) => { song.title = e.target.value; saveSongs(); });
-$('song-title').addEventListener('change', fillSongBar);
-$('song-artist').addEventListener('input', (e) => { song.artist = e.target.value; saveSongs(); });
+$('song-title').addEventListener('input', (e) => { song.title = e.target.value; saveSong(); });
+$('song-title').addEventListener('change', () => { renameFile(); fillSongBar(); });
+$('song-artist').addEventListener('input', (e) => { song.artist = e.target.value; saveSong(); });
 $('song-artist').addEventListener('change', fillSongBar);
 $('bpm').addEventListener('change', (e) => {
   song.bpm = Math.min(260, Math.max(30, +e.target.value || 90));
   e.target.value = song.bpm;
-  saveSongs();
+  saveSong();
   player.setBpm(song.bpm);
 });
 $('time-sig').addEventListener('change', (e) => {
@@ -371,15 +449,36 @@ $('capo').addEventListener('change', (e) => {
   song.capo = Math.min(12, Math.max(0, parseInt(e.target.value, 10) || 0));
   e.target.value = song.capo;
   setCapo(song.capo);
-  saveSongs();
+  saveSong();
   render();
 });
+$('swing').addEventListener('change', (e) => {
+  song.swing = e.target.checked;
+  saveSong();
+  if (player.playing) player.song.swing = song.swing;
+  render();
+});
+
+// Tap tempo: 4+ taps, each within 2 s of the last, set the BPM from the average gap.
+let taps = [];
+$('tap').addEventListener('click', () => {
+  const now = performance.now();
+  if (taps.length && now - taps.at(-1) > 2000) taps = [];
+  taps = [...taps, now].slice(-8);
+  $('tap').textContent = taps.length < 4 ? `Tap ${taps.length}` : 'Tap';
+  if (taps.length < 4) return;
+  const gap = (taps.at(-1) - taps[0]) / (taps.length - 1);
+  song.bpm = Math.min(260, Math.max(30, Math.round(60000 / gap)));
+  $('bpm').value = song.bpm;
+  saveSong();
+  player.setBpm(song.bpm);
+});
+
 $('song-export').addEventListener('click', exportSong);
 $('song-import').addEventListener('change', (e) => { if (e.target.files[0]) importSong(e.target.files[0]); e.target.value = ''; });
 $('song-delete').addEventListener('click', () => {
   if (!confirm(`Delete "${song.title}"? This can't be undone.`)) return;
-  delete songs[song.id];
-  saveSongs();
+  removeSong(song);
   const next = Object.keys(songs)[0];
   if (next) openSong(next); else newSong();
 });
@@ -416,7 +515,7 @@ function applyChart(replace) {
   const pattern = $('chart-custom').value.trim().toUpperCase() || $('chart-pattern').value;
   let added;
   try {
-    added = chartEvents($('chart-text').value, pattern, bpb());
+    added = chartEvents($('chart-text').value, pattern, bpb(), Math.max(1, parseInt($('chart-bars').value, 10) || 1));
   } catch (err) {
     $('chart-error').textContent = err.message;
     return;
@@ -464,7 +563,7 @@ document.addEventListener('keydown', (e) => {
     '+': () => nudgeDuration(-1), '=': () => nudgeDuration(-1), '-': () => nudgeDuration(1),
     h: () => technique('h'), p: () => technique('p'), s: () => technique('/'), b: () => technique('b'),
     v: () => technique('~'), g: () => technique('g'), r: () => technique('r'), i: insertBeat,
-    d: () => setStrum('d'), u: () => setStrum('u'), m: setMarker,
+    d: () => setStrum('d'), u: () => setStrum('u'), m: setMarker, l: setLyric,
     c: () => { $('chord-name').focus(); $('chord-name').select(); },
   };
   const fn = keys[e.key] ?? keys[e.key.toLowerCase()];
@@ -476,9 +575,11 @@ document.addEventListener('keydown', (e) => {
 // Instrument/tuning chosen in the topbar belongs to the open song.
 onTuningChange(() => {
   if (!song) return;
-  song.instrument = INSTRUMENT.id;
-  song.tuning = TUNING.id;
-  saveSongs();
+  if (song.instrument !== INSTRUMENT.id || song.tuning !== TUNING.id) {
+    song.instrument = INSTRUMENT.id;
+    song.tuning = TUNING.id;
+    saveSong();
+  }
   render();
 });
 
@@ -488,6 +589,7 @@ window.addEventListener('resize', () => {
   resizeTimer = setTimeout(render, 120);
 });
 
+await loadSongs();
 if (songs[state.songId]) openSong(state.songId);
 else if (Object.keys(songs).length) openSong(Object.keys(songs)[0]);
 else newSong();

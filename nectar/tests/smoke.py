@@ -7,7 +7,7 @@ guitar core (neck, synth, player, audio-ui) still behaves. Records every note th
 
 Exit code 1 on any failure.
 """
-import asyncio, sys
+import asyncio, os, re, sys
 from playwright.async_api import async_playwright
 BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8765/nectar/").rstrip("/") + "/"
 SPY = """async () => {
@@ -63,8 +63,9 @@ async def main():
         pg = await b.new_page(viewport={"width": 1440, "height": 900})
         errs = []
         pg.on("pageerror", lambda e: errs.append(f"{pg.url.split('/')[-1]}: {e}"))
-        pg.on("console", lambda m: errs.append(f"{pg.url.split('/')[-1]}: {m.text}") if m.type == "error" else None)
-        pg.on("requestfailed", lambda r: errs.append(f"failed {r.url}"))
+        # (404s for nectar/my-tabs/ are the test hiding the folder on purpose)
+        pg.on("console", lambda m: errs.append(f"{pg.url.split('/')[-1]}: {m.text}") if m.type == "error" and "404" not in m.text else None)
+        pg.on("requestfailed", lambda r: errs.append(f"failed {r.url}") if "/my-tabs/" not in r.url else None)
         await pg.goto(BASE + "index.html"); await pg.evaluate("localStorage.clear()")
 
         # ---------------- Scales
@@ -235,12 +236,14 @@ async def main():
         check("licks: lick tuning is not saved as the user's tuning", await pg.input_value("#tuning-select") == "standard")
         check("licks: instrument chosen on Licks carries to other pages", await pg.input_value("#instrument-select") == "guitar")
 
-        # ---------------- Tab editor
+        # ---------------- Tab editor (browser storage: the saved-tabs folder is hidden from the page)
+        folder_route = re.compile(r".*/nectar/my-tabs/.*")
+        await pg.route(folder_route, lambda route: route.fulfill(status=404, body="no folder"))
         await pg.goto(BASE + "tab.html"); await pg.evaluate("localStorage.clear()"); await pg.reload(); await pg.wait_for_timeout(500)
         await pg.evaluate(SPY)
         song = "JSON.parse(localStorage.getItem('nectar-songs'))"
         tabtext = f"Object.values({song})[0].tab"
-        check("editor: opens with a new empty song", await pg.evaluate(f"Object.keys({song}).length") == 1 and await pg.evaluate(tabtext) == "")
+        check("editor: opens a new song, saved only once edited", await pg.input_value("#song-title") == "Untitled" and await pg.evaluate("localStorage.getItem('nectar-songs')") is None)
         await pg.click(".panel-head h2")
         for k in ["5", "ArrowRight", "ArrowDown", "7", "ArrowRight", "1", "2"]:
             await pg.keyboard.press(k); await pg.wait_for_timeout(40)
@@ -288,6 +291,24 @@ async def main():
         await pg.evaluate("window.__midis.length = 0")
         await pg.click("#play"); await pg.wait_for_timeout(500); await pg.click("#play")
         check("chords: capo 3 raises the pitch (Am shape sounds Cm)", (await pg.evaluate("window.__midis.slice(0, 5)")) == [48, 55, 60, 63, 67], str(await pg.evaluate("window.__midis.slice(0, 5)")))
+
+        # ---------------- Tab editor: songs saved as files in nectar/my-tabs/ (local server)
+        await pg.unroute(folder_route)
+        folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "my-tabs")
+        before = set(os.listdir(folder))
+        await pg.goto(BASE + "tab.html"); await pg.evaluate("localStorage.clear()"); await pg.reload(); await pg.wait_for_timeout(600)
+        check("folder: editor saves into nectar/my-tabs/", "my-tabs" in await pg.text_content("#song-where"))
+        await pg.click("#song-new"); await pg.wait_for_timeout(150)
+        await pg.fill("#song-title", "Smoke Folder Song"); await pg.dispatch_event("#song-title", "change")
+        await pg.fill("#chord-name", "Am"); await pg.press("#chord-name", "Enter"); await pg.wait_for_timeout(700)
+        path = os.path.join(folder, "smoke-folder-song.txt")
+        saved = open(path).read() if os.path.exists(path) else ""
+        check("folder: song written as a text file named after its title", "title: Smoke Folder Song" in saved and "tab: [Am]:e" in saved, saved[:60])
+        pg.once("dialog", lambda d: asyncio.ensure_future(d.accept()))
+        await pg.click("#song-delete"); await pg.wait_for_timeout(700)
+        check("folder: deleting the song deletes the file", not os.path.exists(path))
+        for name in set(os.listdir(folder)) - before:   # leave the folder as we found it
+            os.remove(os.path.join(folder, name))
 
         await pg.evaluate("localStorage.clear()")
         check("no console/page errors", not errs, "; ".join(errs[:5]))

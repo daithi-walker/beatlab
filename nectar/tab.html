@@ -34,6 +34,7 @@
       <div class="song-fields" id="song-fields">
         <input id="song-title" class="field title" placeholder="Title" aria-label="Title">
         <input id="song-artist" class="field" placeholder="Artist" aria-label="Artist">
+        <span id="song-where" class="muted where"></span>
         <span class="spacer"></span>
         <button id="song-export" class="btn">Export</button>
         <label class="btn">Import<input id="song-import" type="file" accept=".txt,text/plain" hidden></label>
@@ -46,6 +47,7 @@
       <div class="speed">
         <label for="bpm">BPM</label>
         <input id="bpm" class="field num" type="number" min="30" max="260">
+        <button id="tap" class="btn" title="Tap along with the recording, 4+ taps, to set the tempo">Tap</button>
       </div>
       <div class="speed">
         <label for="time-sig">Time</label>
@@ -59,6 +61,7 @@
         <label class="tog"><input type="checkbox" id="loop"><span>Loop</span></label>
         <label class="tog"><input type="checkbox" id="countin"><span>Count-in</span></label>
         <label class="tog"><input type="checkbox" id="metro"><span>Click</span></label>
+        <label class="tog" title="Lilt the eighth notes (long-short), saved with the song"><input type="checkbox" id="swing"><span>Swing</span></label>
         <label class="tog" title="After tapping a note on the neck, move to the next beat"><input type="checkbox" id="advance"><span>Advance</span></label>
       </div>
       <div class="status"><span id="count" class="count"></span></div>
@@ -114,7 +117,8 @@ Am*2 F*2 G*2 Am*2"></textarea>
         <div class="chart-side">
           <label>Strum <select id="chart-pattern" class="field"></select></label>
           <label>Or your own <input id="chart-custom" class="field mono" placeholder="D-DU-UDU" spellcheck="false"></label>
-          <p class="muted">One character per eighth note: <b>D</b> down, <b>U</b> up, <b>-</b> let it ring. <b>Am*2</b> = two bars of Am, <b>(x2)</b> repeats a line, <b>[Verse]</b> marks a section.</p>
+          <label>Bars per chord <input id="chart-bars" class="field num" type="number" min="1" max="8" value="1"></label>
+          <p class="muted">One character per eighth note: <b>D</b> down, <b>U</b> up, <b>-</b> let it ring. <b>Am*2</b> = two bars of Am, <b>(x2)</b> repeats a line, <b>[Verse]</b> marks a section. Paste a chord sheet with lyrics and each chord gets the words under it.</p>
           <div class="chart-actions">
             <button id="chart-add" class="btn">Add to song</button>
             <button id="chart-replace" class="btn">Replace song</button>
@@ -139,11 +143,11 @@ Am*2 F*2 G*2 Am*2"></textarea>
       </article>
       <article class="card">
         <h3>Lengths and techniques</h3>
-        <p>Chords: type a name in the chord box and press <kbd>Enter</kbd>; <kbd>D</kbd>/<kbd>U</kbd> flip the strum, <kbd>C</kbd> jumps to the chord box, <kbd>M</kbd> names a section. Notes: <kbd>H</kbd> hammer · <kbd>P</kbd> pull · <kbd>S</kbd> slide · <kbd>B</kbd> bend · <kbd>V</kbd> vibrato · <kbd>G</kbd> grace · <kbd>R</kbd> rest · <kbd>I</kbd> insert beat · <kbd>+</kbd><kbd>−</kbd> longer/shorter</p>
+        <p>Chords: type a name in the chord box and press <kbd>Enter</kbd>; <kbd>D</kbd>/<kbd>U</kbd> flip the strum, <kbd>C</kbd> jumps to the chord box, <kbd>M</kbd> names a section, <kbd>L</kbd> adds a lyric. Notes: <kbd>H</kbd> hammer · <kbd>P</kbd> pull · <kbd>S</kbd> slide · <kbd>B</kbd> bend · <kbd>V</kbd> vibrato · <kbd>G</kbd> grace · <kbd>R</kbd> rest · <kbd>I</kbd> insert beat · <kbd>+</kbd><kbd>−</kbd> longer/shorter</p>
       </article>
       <article class="card">
-        <h3>Your songs stay with you</h3>
-        <p>Songs are saved in this browser only. Use Export to keep a copy or move it to another device, and Import to load it back.</p>
+        <h3>Where songs are saved</h3>
+        <p>Running locally, every song is a text file in <b>nectar/my-tabs/</b> (git-ignored, never pushed). On the live site they stay in this browser. Export/Import move songs between the two.</p>
       </article>
     </section>
   </main>

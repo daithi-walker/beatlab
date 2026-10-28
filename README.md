@@ -26,7 +26,9 @@ open http://localhost:8765    # home page; every app is a link from there
 ```
 
 One nginx container serves the whole repo, with `Cache-Control: no-cache` so a normal
-refresh always picks up edited files. Edit and refresh; no restart needed.
+refresh always picks up edited files. Edit and refresh; no restart needed. It listens
+on 127.0.0.1 only, because Nectar's Tab editor saves your songs into the git-ignored
+`nectar/my-tabs/` folder through it.
 
 No Docker? Any static server from the repo root works, e.g. `python3 -m http.server 8765`.
 

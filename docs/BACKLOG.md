@@ -159,8 +159,9 @@ Next, in order:
   slowed down and looped, with a manual start-offset/BPM sync.
 - **Editor extras** — play from the cursor, copy/paste bars, dotted notes, ties across
   bar lines, repeat signs, a tap-to-enter fret pad on phones.
-- **Chord charts** — lyrics under the chords (kept local), a chord-diagram strip for the
-  song's shapes, swing/shuffle strums, 6/8 time.
+- **Chord charts** — keep the chart text with the song (to re-generate after edits),
+  a chord-diagram strip for the song's shapes, per-line bar counts from lyric length,
+  6/8 time.
 
 ---
 

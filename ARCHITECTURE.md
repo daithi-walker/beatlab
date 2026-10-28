@@ -112,10 +112,10 @@ in `CLAUDE.md` ("Mobile & cross-browser requirements").
 | Master volume (Drums, Multibank, Synth) | `beatlab:settings:volume` |
 | Synth / Voice Lab patches | `core/voice.js` (on top of `core/storage.js`) |
 | Nectar volume + tone, instrument + tuning, Licks settings | `nectar-audio`, `nectar-instrument`, `nectar-licks` |
-| Nectar Tab editor songs and settings (personal, never in the repo) | `nectar-songs`, `nectar-tab` |
+| Nectar Tab editor songs (personal, never in the repo) | local server: files in git-ignored `nectar/my-tabs/` (listed/saved/deleted over HTTP, `nginx-dev.conf`); elsewhere: localStorage `nectar-songs`. Settings: `nectar-tab` |
 | Drums share links | the URL; versioned binary encoding, old links must keep working ([spec](docs/share-encoding.md)) |
 
-There is no server-side state.
+There is no server-side state, except the local-only `nectar/my-tabs/` folder.
 
 ## UI and design
 

@@ -21,6 +21,13 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
   on port 8765; the smoke test defaults to it.
 
 ### Added — Nectar
+- **Saved tabs folder** — running locally, Tab editor songs are text files in the
+  git-ignored `nectar/my-tabs/` folder: listed, saved, renamed and deleted from the
+  editor (the dev server allows PUT/DELETE for that folder, on 127.0.0.1 only). The live
+  site keeps using browser storage.
+- **Lyrics, tap tempo, swing** — paste a chord sheet with lyrics into the Chord chart
+  and the words land under their chords; Bars per chord; `L` to edit a lyric; Tap tempo;
+  per-song Swing.
 - **Chord charts in the Tab editor** — strummed chords by name (`[Am]`, `[Am]u`) with
   shapes for any instrument and tuning (`nectar/shared/chords.js`), a Chord chart panel
   that turns chord-sheet chords plus a strum pattern (folk, waltz, ballad or your own)

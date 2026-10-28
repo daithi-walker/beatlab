@@ -22,6 +22,7 @@ export const DURATIONS = {
  *   5-0+4-2    notes played together (chord / double-stop)
  *   [Am] [Am]u a strummed chord by name, down (default) or up; shape from shared/chords.js
  *   @Verse_1   section marker shown above the next beat (underscores become spaces)
+ *   ^Ride_on,  lyric shown under the next beat (underscores become spaces)
  *   r          rest
  *   |          bar line (ignored, just for readability)
  */
@@ -43,11 +44,15 @@ export function parseTab(src) {
   const events = [];
   let beat = 0;
   let dur = DURATIONS.e;
-  let marker = null;
+  let marker = null, lyric = null;
   for (const raw of src.trim().split(/\s+/)) {
     if (raw === '|') continue;
     if (raw.startsWith('@')) {
       marker = raw.slice(1).replace(/_/g, ' ');
+      continue;
+    }
+    if (raw.startsWith('^')) {
+      lyric = raw.slice(1).replace(/_/g, ' ');
       continue;
     }
     // "4-7:h~" is accepted as shorthand for "4-7~:h"
@@ -61,6 +66,10 @@ export function parseTab(src) {
     if (marker) {
       extra.marker = marker;
       marker = null;
+    }
+    if (lyric) {
+      extra.lyric = lyric;
+      lyric = null;
     }
     if (d === 'g') {
       events.push({ beat, dur: 0, notes, grace: true, ...extra }); // doesn't move the beat or the sticky duration
@@ -109,6 +118,7 @@ export function toTab(events, beatsPerBar = 4) {
       nextBar += beatsPerBar;
     }
     if (ev.marker) out.push(`@${ev.marker.replace(/\s+/g, '_')}`);
+    if (ev.lyric) out.push(`^${ev.lyric.replace(/\s+/g, '_')}`);
     const body = ev.chord ? `[${ev.chord}]${ev.strum === 'u' ? 'u' : ''}`
       : ev.notes.length ? ev.notes.map(noteToken).join('+') : 'r';
     let code = '';

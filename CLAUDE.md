@@ -148,6 +148,9 @@ Prefix commits with the app name: `Drums:`, `Nectar:`, `Multibank:`,
   documented at the top of `nectar/shared/notation.js`. A lick's `instrument`
   decides which library it appears in (the Instrument select filters it); its
   `tuning` is applied while it's shown (not saved as the user's choice).
+- **`nectar/my-tabs/` holds the user's own songs** (git-ignored; may contain
+  copyrighted lyrics/transcriptions). Never commit it, never copy its contents into the
+  repo or docs, and don't delete files there you didn't create in the same session.
 - **After touching `nectar/shared/` or any Nectar page, run the smoke test:**
   `python3 nectar/tests/smoke.py` (needs the local server: `docker compose up -d`
   at the repo root, port 8765; and

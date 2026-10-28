@@ -4,6 +4,7 @@
 
 .songbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 4px; }
 .songbar .spacer { flex: 1; }
+.where { white-space: nowrap; }
 .song-fields { display: contents; }
 .btn.more { display: none; }
 .field, #song-select {

@@ -30,6 +30,7 @@ const CSS = `
 .tstrum { fill: #e0b872; font: 700 15px var(--sans); text-anchor: middle; }
 .tmark { fill: var(--root); font: 700 9.5px var(--sans); letter-spacing: 0.12em; text-transform: uppercase; }
 .tev.on .tstrum { fill: var(--accent); }
+.tlyric { fill: var(--text); font: 13px var(--sans); }
 .tsel { fill: rgba(255, 207, 107, 0.18); stroke: var(--accent); stroke-width: 1.5; rx: 4; pointer-events: none; }
 `;
 
@@ -65,7 +66,8 @@ export const Tab = (() => {
       style.textContent = CSS;
       document.head.appendChild(style);
     }
-    const HEIGHT = stringY(STRINGS.length) + 34;
+    const lyrics = song.events.some((e) => e.lyric);
+    const HEIGHT = stringY(STRINGS.length) + (lyrics ? 54 : 34);
     container.innerHTML = '';
     const width = Math.max(320, container.clientWidth);
     const usable = width - GUTTER - 10;
@@ -125,6 +127,7 @@ export const Tab = (() => {
       const g = el('g', { class: 'tev' }, svg);
       layout.events.push({ row, x, g, dur: ev.dur });
       if (ev.marker) text(svg, x - 6, 8, ev.marker, 'tmark');
+      if (ev.lyric) text(svg, x - 4, stringY(STRINGS.length) + 46, ev.lyric, 'tlyric');
       if (ev.chord) {
         // Chord strum: the name when it changes, and a down/up arrow across the strings.
         if (ev.chord !== lastChord || ev.marker) text(g, x, stringY(1) - 10, ev.chord, 'tchord');

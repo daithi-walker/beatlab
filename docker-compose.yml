@@ -5,7 +5,8 @@ services:
   beatlab:
     image: nginx:alpine
     ports:
-      - "8765:80"
+      - "127.0.0.1:8765:80"   # this machine only: the saved-tabs folder accepts writes
     volumes:
       - ./:/usr/share/nginx/html:ro
       - ./nginx-dev.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nectar/my-tabs:/usr/share/nginx/html/nectar/my-tabs   # writable: Tab editor saves here

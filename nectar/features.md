@@ -295,10 +295,16 @@ localStorage (`nectar-licks`).
 Write tab and hear it back. Code: `tab/editor.js` on the shared core (it reuses the Licks
 tab renderer and notation from `shared/tab.js` and `shared/notation.js`).
 
-**Songs** — title, artist, instrument, tuning, BPM and the tab, saved in this browser
-only (localStorage `nectar-songs`). New / switch / delete from the song bar; **Export**
-downloads a plain-text file (`key: value` lines, then `tab:` in the lick notation) and
-**Import** loads one back. The topbar Instrument/Tuning belong to the open song.
+**Songs** — title, artist, instrument, tuning, BPM, time, capo, swing and the tab.
+- **Running locally:** each song is a text file in **`nectar/my-tabs/`** (git-ignored,
+  never pushed), e.g. `my-tabs/ride-on.txt`. The editor lists the folder, saves edits
+  back a moment after you stop typing (HTTP PUT), renames the file when the title
+  changes and deletes it with the song. The dev server allows this for that folder only
+  (`nginx-dev.conf`), and only on 127.0.0.1. A new song is written once you edit it.
+- **On the live site** (no folder) songs stay in this browser (localStorage `nectar-songs`).
+- Files use the Export format: `key: value` lines, then `tab:` in the lick notation.
+  **Export** / **Import** move songs between machines. The topbar Instrument/Tuning
+  belong to the open song.
 
 **Entering notes**
 - Click a beat and string on the tab (or move with the arrow keys), then type a fret
@@ -323,8 +329,12 @@ downloads a plain-text file (`key: value` lines, then `tab:` in the lick notatio
 - Shapes come from `shared/chords.js`: hand-picked open/barre shapes on standard
   guitar, a searched voicing for any other instrument or tuning. Playback strums them
   string by string (down = low to high).
-- **Capo** (frets and shapes count from the capo; playback sounds higher) and **Time**
-  (2/4, 3/4, 4/4) per song. Section markers (`M`) show above the tab.
+- **Capo** (frets and shapes count from the capo; playback sounds higher), **Time**
+  (2/4, 3/4, 4/4) and **Swing** per song. Section markers (`M`) show above the tab.
+- **Lyrics:** paste a chord sheet (chord line above lyric line) into the Chord chart and
+  each chord gets the words under it, drawn below the tab; **Bars per chord** sets how
+  long each chord lasts (or `Am*2` per chord). `L` adds/edits a lyric on any beat.
+- **Tap** tempo: tap along with a recording (4+ taps) to set the BPM.
 
 **Playback** — the shared `Player` (loop, count-in, click), with the tab cursor and the
 neck following along. On phones the transport is pinned to the bottom, the song details
