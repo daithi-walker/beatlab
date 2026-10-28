@@ -145,14 +145,20 @@ See `docs/nectar-instruments.md`. Phases 1 (tunings) and 2 (instruments) are don
   file; needs a decision against the "no samples" rule).
 - **Backing tracks** — drive a Drums/Multibank groove under a lick.
 
-## Nectar — Tab Viewer
+## Nectar — Tab editor
 
-Tab viewer (`tab.html`) is a proof-of-concept using AlphaTab. See
-`nectar/ROADMAP.md` for the full library analysis and integration path.
+The Tab editor (`tab.html`) is built: write, play, save locally, export/import.
+Next, in order:
 
-- **Song library** — curated set of `.gp5` files or alphaTex strings; picker UI
-- **Fretboard sync** — highlight the currently playing note on the Nectar neck
-- **Mobile layout** — vertical scrollable neck, touch-optimised controls
+- **Paste a tab** — paste plain-text (ASCII) tab, e.g. your own Ultimate Guitar
+  transcriptions, and import it into the editor. Plain text has no reliable rhythm,
+  so the import guesses lengths and you fix them in the editor. Local only.
+- **Guitar Pro import** — open `.gp`/`.gp5` files (exact rhythm) via AlphaTab's parser
+  (MPL-2.0) and convert to editor songs. See `nectar/ROADMAP.md` for the AlphaTab notes.
+- **Play along with a recording** — play an audio file you own alongside the tab,
+  slowed down and looped, with a manual start-offset/BPM sync.
+- **Editor extras** — play from the cursor, copy/paste bars, dotted notes, multiple
+  sections, a tap-to-enter fret pad on phones.
 
 ---
 

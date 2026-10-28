@@ -289,14 +289,31 @@ localStorage (`nectar-licks`).
 
 ---
 
-## Tab Viewer (tab.html)
+## Tab editor (tab.html)
 
-Separate page (`/tab.html`) using AlphaTab loaded from CDN:
-- Renders guitar tablature and standard notation
-- Audio playback via alphaSynth (SF2 soundfont, sampled instruments)
-- Smoke on the Water intro as a proof of concept in alphaTex format
-- Play / Stop controls
-- Links back to the scale explorer
+Write tab and hear it back. Code: `tab/editor.js` on the shared core (it reuses the Licks
+tab renderer and notation from `shared/tab.js` and `shared/notation.js`).
+
+**Songs** — title, artist, instrument, tuning, BPM and the tab, saved in this browser
+only (localStorage `nectar-songs`). New / switch / delete from the song bar; **Export**
+downloads a plain-text file (`key: value` lines, then `tab:` in the lick notation) and
+**Import** loads one back. The topbar Instrument/Tuning belong to the open song.
+
+**Entering notes**
+- Click a beat and string on the tab (or move with the arrow keys), then type a fret
+  number; two digits typed quickly make one fret (1, 2 → 12).
+- Or tap a fret on the neck: that note goes in at the cursor, and with **Advance** on
+  the cursor moves to the next beat (fast melody entry on a phone).
+- Note lengths from the toolbar (whole to sixteenth, triplets) or `+` / `-`; new beats
+  take the last length chosen.
+- Techniques from the toolbar or keys: `H` hammer, `P` pull, `S` slide, `B` bend
+  (full → half → off), `V` vibrato, `G` grace note, `R` rest.
+- `I` / "+ beat" inserts a beat, `Shift+Delete` / "− beat" removes one, `Delete` removes
+  the note under the cursor; undo/redo with `Cmd/Ctrl+Z` / `Shift+Cmd/Ctrl+Z`.
+
+**Playback** — the shared `Player` (loop, count-in, click), with the tab cursor and the
+neck following along. On phones the transport is pinned to the bottom, the song details
+fold behind "Edit", and the toolbar scrolls sideways.
 
 ---
 
@@ -305,7 +322,6 @@ Separate page (`/tab.html`) using AlphaTab loaded from CDN:
 ```bash
 docker compose up -d        # from the repo root
 # open http://localhost:8765/nectar/
-# tab viewer: http://localhost:8765/nectar/tab.html
 
 docker compose down
 ```

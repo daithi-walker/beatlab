@@ -9,7 +9,7 @@ README.
 | Principle | Why | Record |
 |---|---|---|
 | **Web Audio API only, no audio library** | Near-zero size, full control of the signal graph, the concepts stay visible | [ADR-002](docs/adr-002-web-audio-api.md) |
-| **Synthesis, not samples** | Every sound is generated live; nothing to download | `CLAUDE.md` "No samples" (exception: Nectar's AlphaTab tab viewer) |
+| **Synthesis, not samples** | Every sound is generated live; nothing to download | `CLAUDE.md` "No samples" |
 | **Native ES modules, no build step** | Edit, refresh, done; GitHub Pages serves the same files | [ADR-007](docs/adr-007-es-modules-and-local-server.md), [ADR-009](docs/adr-009-multi-file-modules.md) |
 | **Static hosting** | Push to `main` deploys; no backend | [ADR-005](docs/adr-005-hosting.md) |
 | **Reuse before you write** | Shared engines live once; duplicated engines are bugs | `CLAUDE.md` "Reuse before you write" |
@@ -22,7 +22,7 @@ root README for the one-command local server.
 ```
   page (.html)            drums/index.html, nectar/licks.html, ...
      │ imports
-  app modules             nectar/licks/*.js            (only where a page outgrew one file)
+  app modules             nectar/licks/*.js, nectar/tab/*.js   (only where a page outgrew one file)
      │
   app shared code         nectar/shared/*.js           (shared by one app's pages)
      │
@@ -50,8 +50,9 @@ All four Nectar pages draw and play through one core
 ([ADR-010](docs/adr-010-nectar-shared-guitar-core.md)): `theory.js` (instruments,
 tunings, scales; live ES-module bindings for the current instrument/tuning),
 `neck.js` (SVG fretboard + strum/tap), `synth.js` (Karplus-Strong strings, amp tones,
-legato, paired strings), `player.js` (look-ahead scheduler with swing and grace notes)
-and the topbar control modules. Notes are always `{ string, fret }`, string 1 = top
+legato, paired strings), `player.js` (look-ahead scheduler with swing and grace notes),
+`notation.js` + `tab.js` (tab text notation and the SVG tab renderer, with an editable
+mode used by the Tab editor) and the topbar control modules. Notes are always `{ string, fret }`, string 1 = top
 line of tab. Design of the instrument model: [`docs/nectar-instruments.md`](docs/nectar-instruments.md).
 
 ## Audio patterns
@@ -111,6 +112,7 @@ in `CLAUDE.md` ("Mobile & cross-browser requirements").
 | Master volume (Drums, Multibank, Synth) | `beatlab:settings:volume` |
 | Synth / Voice Lab patches | `core/voice.js` (on top of `core/storage.js`) |
 | Nectar volume + tone, instrument + tuning, Licks settings | `nectar-audio`, `nectar-instrument`, `nectar-licks` |
+| Nectar Tab editor songs and settings (personal, never in the repo) | `nectar-songs`, `nectar-tab` |
 | Drums share links | the URL; versioned binary encoding, old links must keep working ([spec](docs/share-encoding.md)) |
 
 There is no server-side state.

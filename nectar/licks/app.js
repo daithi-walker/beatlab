@@ -5,9 +5,9 @@ import { setupAudio } from '../shared/audio-ui.js';
 import { setupInstrument } from '../shared/instrument-ui.js';
 import { Player } from '../shared/player.js';
 import { Neck } from '../shared/neck.js';
-import { buildSong } from './notation.js';
+import { buildSong } from '../shared/notation.js';
 import { LICKS } from './licks-data.js';
-import { Tab } from './tab.js';
+import { Tab } from '../shared/tab.js';
 
 {
   const $ = (id) => document.getElementById(id);

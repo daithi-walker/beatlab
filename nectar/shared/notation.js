@@ -1,7 +1,8 @@
-// Licks tab notation: parser from text tab to a playable song (see shared/player.js).
+// Nectar tab notation: text tab <-> events, and events -> a playable song (see player.js).
+// Used by Licks (lick library) and the Tab editor (songs).
 
 // Durations in beats. Sticky: a duration applies until the next one is given.
-const DURATIONS = {
+export const DURATIONS = {
   w: 4, h: 2, q: 1, e: 0.5, s: 0.25,
   t: 1 / 3,  // eighth-note triplet
 };
@@ -34,7 +35,7 @@ function parseNote(tok) {
   };
 }
 
-function parseTab(src) {
+export function parseTab(src) {
   const events = [];
   let beat = 0;
   let dur = DURATIONS.e;
@@ -60,12 +61,45 @@ function parseTab(src) {
   return { events, length: beat };
 }
 
+// Beat positions + loop length for a list of events (grace notes take no grid time).
+export function timed(events, swing = false) {
+  let beat = 0;
+  const out = events.map((ev) => {
+    const e = { ...ev, beat };
+    if (!ev.grace) beat += ev.dur;
+    return e;
+  });
+  return { events: out, length: beat, loopBeats: Math.max(4, Math.ceil(beat / 4 - 1e-9) * 4), swing };
+}
+
 export function buildSong(lick) {
-  const { events, length } = parseTab(lick.tab);
-  return {
-    events,
-    length,
-    loopBeats: Math.ceil(length / 4 - 1e-9) * 4,
-    swing: !!lick.swing,
-  };
+  return timed(parseTab(lick.tab).events, !!lick.swing);
+}
+
+const CODES = Object.fromEntries(Object.entries(DURATIONS).map(([k, v]) => [v.toFixed(4), k]));
+
+function noteToken(n) {
+  return `${n.tech || ''}${n.string}-${n.fret}${n.bend ? `b${n.bend}` : ''}${n.vibrato ? '~' : ''}`;
+}
+
+// Events -> notation text (the inverse of parseTab), with a bar line every 4 beats.
+export function toTab(events) {
+  const out = [];
+  let dur = null, beat = 0, nextBar = 4;
+  for (const ev of events) {
+    if (!ev.grace && beat >= nextBar - 1e-6) {
+      out.push('|');
+      nextBar += 4;
+    }
+    const body = ev.notes.length ? ev.notes.map(noteToken).join('+') : 'r';
+    let code = '';
+    if (ev.grace) code = ':g';
+    else if (dur === null || Math.abs(ev.dur - dur) > 1e-6) {
+      code = `:${CODES[ev.dur.toFixed(4)]}`;
+      dur = ev.dur;
+    }
+    out.push(body + code);
+    if (!ev.grace) beat += ev.dur;
+  }
+  return out.join(' ');
 }

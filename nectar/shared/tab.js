@@ -1,6 +1,33 @@
-import { STRINGS, STRING_NAMES } from '../shared/theory.js';
+import { STRINGS, STRING_NAMES } from './theory.js';
 
 // Renders a parsed song as SVG tablature, with beat counts underneath and a play cursor.
+// Injects its own styles (uses the page's Nectar CSS variables).
+
+const CSS = `
+.tab { width: 100%; }
+.tab-row { display: block; }
+.tline { stroke: #6d5d4b; stroke-width: 1; }
+.tbar { stroke: #8e7c66; stroke-width: 1.4; }
+.tname { fill: var(--muted); font: 12px var(--mono); text-anchor: middle; }
+.tbg { fill: var(--panel); }
+.tnum { fill: var(--text); font: 600 13.5px var(--mono); text-anchor: middle; }
+.tnum.grace { font-size: 10.5px; fill: #c9bfae; }
+.tev { cursor: pointer; }
+.tev:hover .tbg { fill: #3a2e22; }
+.tev.on .tbg { fill: var(--accent); }
+.tev.on .tnum { fill: var(--accent-ink); }
+.ttech { fill: #e0b872; font: italic 11px var(--serif); text-anchor: middle; }
+.tbend { fill: none; stroke: #e0b872; stroke-width: 1.3; }
+.tbendlabel { fill: #e0b872; font: 10px var(--sans); text-anchor: middle; }
+.tvib { fill: #e0b872; font: 12px var(--mono); }
+.tcount { fill: #9d8c77; font: 600 11px var(--sans); text-anchor: middle; }
+.tcount.sub { fill: #6c5e4e; font-weight: 400; font-size: 10px; }
+.tcursor { stroke: var(--accent); stroke-width: 2; opacity: 0; }
+.tcursor.show { opacity: 0.55; }
+.tab-row.editable { cursor: crosshair; }
+.trest { fill: var(--muted); font: 600 13px var(--mono); text-anchor: middle; opacity: 0.6; }
+.tsel { fill: rgba(255, 207, 107, 0.18); stroke: var(--accent); stroke-width: 1.5; rx: 4; pointer-events: none; }
+`;
 
 export const Tab = (() => {
   const SVGNS = 'http://www.w3.org/2000/svg';
@@ -25,7 +52,15 @@ export const Tab = (() => {
   const stringY = (s) => TOP + (s - 1) * GAP;
   const BEND_LABEL = { 1: '½', 2: 'full', 3: '1½', 4: '2' };
 
-  function render(container, song, onNoteClick) {
+  // opts.editable: rests are drawn, and clicking anywhere calls opts.onPick(eventIndex, string),
+  // where eventIndex === song.events.length means "after the last beat" (append).
+  function render(container, song, onNoteClick, opts = {}) {
+    if (!document.getElementById('tab-css')) {
+      const style = document.createElement('style');
+      style.id = 'tab-css';
+      style.textContent = CSS;
+      document.head.appendChild(style);
+    }
     const HEIGHT = stringY(STRINGS.length) + 34;
     container.innerHTML = '';
     const width = Math.max(320, container.clientWidth);
@@ -43,10 +78,10 @@ export const Tab = (() => {
     const rowBeats = barsPerRow * 4;
     const xOf = (localBeat) => GUTTER + localBeat * ppb + PAD;
 
-    const layout = { rows: [], events: [], ppb, current: -1 };
+    const layout = { rows: [], events: [], ppb, current: -1, append: null, sel: null };
 
     for (let r = 0; r < rowCount; r++) {
-      const svg = el('svg', { class: 'tab-row', width, height: HEIGHT, viewBox: `0 0 ${width} ${HEIGHT}` });
+      const svg = el('svg', { class: opts.editable ? 'tab-row editable' : 'tab-row', width, height: HEIGHT, viewBox: `0 0 ${width} ${HEIGHT}` });
       container.appendChild(svg);
       const bars = Math.min(barsPerRow, barsTotal - r * barsPerRow);
       const right = GUTTER + bars * 4 * ppb;
@@ -71,7 +106,8 @@ export const Tab = (() => {
       }
 
       const cursor = el('line', { x1: 0, x2: 0, y1: stringY(1) - 12, y2: stringY(STRINGS.length) + 12, class: 'tcursor' }, svg);
-      layout.rows.push({ svg, cursor });
+      layout.rows.push({ svg, cursor, right });
+      if (opts.editable) svg.addEventListener('click', (e) => pick(layout, r, svg, e, opts.onPick));
     }
 
     const prev = {}; // string -> { x, row, fret }
@@ -82,9 +118,12 @@ export const Tab = (() => {
       const svg = layout.rows[row].svg;
       const g = el('g', { class: 'tev' }, svg);
       layout.events.push({ row, x, g, dur: ev.dur });
-      if (!ev.notes.length) return;
+      if (!ev.notes.length) {
+        if (opts.editable) text(g, x, (stringY(1) + stringY(STRINGS.length)) / 2 + 4, '–', 'trest');
+        return;
+      }
 
-      g.addEventListener('click', () => onNoteClick(i));
+      if (!opts.editable) g.addEventListener('click', () => onNoteClick(i));
       for (const n of ev.notes) {
         const y = stringY(n.string);
         const label = String(n.fret);
@@ -111,7 +150,34 @@ export const Tab = (() => {
       }
     });
 
+    // Where a new beat would go: just after the last one (or the start of an empty song).
+    const end = song.events.length ? song.events[song.events.length - 1].beat + song.events[song.events.length - 1].dur : 0;
+    const arow = Math.min(rowCount - 1, Math.floor(end / rowBeats + 1e-9));
+    layout.append = { row: arow, x: Math.min(xOf(end - arow * rowBeats), layout.rows[arow].right - 8) };
     return layout;
+  }
+
+  function pick(layout, r, svg, e, onPick) {
+    const p = svg.createSVGPoint();
+    p.x = e.clientX;
+    p.y = e.clientY;
+    const q = p.matrixTransform(svg.getScreenCTM().inverse());
+    const string = Math.min(STRINGS.length, Math.max(1, Math.round((q.y - TOP) / GAP) + 1));
+    let best = -1, bestD = Infinity;
+    layout.events.forEach((ev, i) => {
+      const d = Math.abs(ev.x - q.x);
+      if (ev.row === r && d < bestD) { bestD = d; best = i; }
+    });
+    if (layout.append.row === r && Math.abs(layout.append.x - q.x) < bestD) best = layout.events.length;
+    if (best >= 0) onPick(best, string);
+  }
+
+  // Edit cursor: a box on event i (or the append position), string s.
+  function select(layout, i, s) {
+    layout.sel?.remove();
+    const pos = i < layout.events.length ? layout.events[i] : layout.append;
+    const y = stringY(s);
+    layout.sel = el('rect', { x: pos.x - 12, y: y - 10, width: 24, height: 20, class: 'tsel' }, layout.rows[pos.row].svg);
   }
 
   function highlight(layout, i) {
@@ -133,5 +199,5 @@ export const Tab = (() => {
     c.classList.add('show');
   }
 
-  return { render, highlight, cursor };
+  return { render, highlight, cursor, select };
 })();

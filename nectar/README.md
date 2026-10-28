@@ -14,7 +14,7 @@ mandolin, in standard and alternate tunings.
 | `chords.html` (Chords) | 10 chord qualities with two voicings, interval colours, every chord tone across the neck, strum to hear |
 | `identify.html` (Identify) | Tap notes on the neck, get the chord (33 types) with alternatives, build a progression |
 | `licks.html` (Licks) | Lick trainer: tab with beat counts, a neck showing the scale box and the playing/next note, play-along with loop, count-in, click, speed trainer, grace notes; 28 licks across every instrument, each with "why it works" notes |
-| `tab.html` | AlphaTab proof of concept (sampled playback, not linked from the tabs) |
+| `tab.html` (Tab) | Tab editor: write tab by keyboard or by tapping the neck, with lengths, techniques and grace notes; play it back; songs saved in your browser with export/import |
 
 Every page has **Instrument**, **Tuning**, **Tone** (Acoustic / Clean / Blues / Rock amp) and **Volume** controls in the topbar, shared across pages. You can tap or strum the neck on every page.
 
@@ -28,9 +28,12 @@ All pages are built on one shared guitar core, `shared/` ([ADR-010](../docs/adr-
 | `shared/neck.js` | The SVG neck: dot layers, box, mute marks, playing/next notes, strum/tap |
 | `shared/synth.js` | Karplus-Strong strings + amp tones; legato (hammer-ons/pull-offs/slides), bends, vibrato, paired strings |
 | `shared/player.js` | Look-ahead scheduler: runs, licks, swing, grace notes |
+| `shared/notation.js`, `shared/tab.js` | Tab notation (text ↔ events) and the SVG tab renderer (with an editable mode) |
+| `shared/page.css` | Page shell for Licks and Tab (palette, topbar, transport, panels) |
 | `shared/audio-ui.js`, `shared/instrument-ui.js` | Topbar controls and iOS audio unlock |
 
-- `licks/`: the Licks page's modules. Licks are written in a small text tab notation documented at the top of `licks/notation.js`; the library is `licks/licks-data.js`.
+- `shared/notation.js` + `shared/tab.js`: the text tab notation (documented at the top of `notation.js`) and the tab renderer, used by Licks and the Tab editor.
+- `licks/`: the Licks page (library in `licks/licks-data.js`). `tab/`: the Tab editor.
 - Notes are always `{ string, fret }`, string 1 = top line of tab.
 - `tests/smoke.py`: Playwright smoke test for every page (see the root README).
 

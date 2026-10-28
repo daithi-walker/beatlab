@@ -235,6 +235,39 @@ async def main():
         check("licks: lick tuning is not saved as the user's tuning", await pg.input_value("#tuning-select") == "standard")
         check("licks: instrument chosen on Licks carries to other pages", await pg.input_value("#instrument-select") == "guitar")
 
+        # ---------------- Tab editor
+        await pg.goto(BASE + "tab.html"); await pg.evaluate("localStorage.clear()"); await pg.reload(); await pg.wait_for_timeout(500)
+        await pg.evaluate(SPY)
+        song = "JSON.parse(localStorage.getItem('nectar-songs'))"
+        tabtext = f"Object.values({song})[0].tab"
+        check("editor: opens with a new empty song", await pg.evaluate(f"Object.keys({song}).length") == 1 and await pg.evaluate(tabtext) == "")
+        await pg.click(".panel-head h2")
+        for k in ["5", "ArrowRight", "ArrowDown", "7", "ArrowRight", "1", "2"]:
+            await pg.keyboard.press(k); await pg.wait_for_timeout(40)
+        check("editor: typing frets (incl. two-digit 12) writes tab", await pg.evaluate(tabtext) == "1-5:e 2-7 2-12", await pg.evaluate(tabtext))
+        await pg.keyboard.press("ArrowLeft"); await pg.keyboard.press("h"); await pg.click("#dur-tools button[data-dur='q']")
+        check("editor: technique key + length button", await pg.evaluate(tabtext) == "1-5:e h2-7:q 2-12:e", await pg.evaluate(tabtext))
+        await pg.keyboard.press("End")
+        pos = await pg.evaluate(POS); x, y = pos["6:3"]; await pg.mouse.click(x, y); await pg.wait_for_timeout(80)
+        check("editor: tapping the neck adds that note at the cursor", await pg.evaluate(tabtext) == "1-5:e h2-7:q 2-12:e 6-3:q", await pg.evaluate(tabtext))
+        await pg.keyboard.press("Meta+z"); await pg.wait_for_timeout(50)
+        check("editor: undo", await pg.evaluate(tabtext) == "1-5:e h2-7:q 2-12:e", await pg.evaluate(tabtext))
+        await pg.fill("#song-title", "Smoke Song"); await pg.reload(); await pg.wait_for_timeout(400)
+        check("editor: song persists across reload", [await pg.input_value("#song-title"), await pg.evaluate(tabtext)] == ["Smoke Song", "1-5:e h2-7:q 2-12:e"])
+        await pg.evaluate(SPY); await pg.evaluate("window.__plucks.length = 0")
+        await pg.click("#play"); await pg.wait_for_timeout(2200); await pg.click("#play")
+        check("editor: playback plays the written notes", (await pg.evaluate("window.__plucks.slice()"))[:3] == ["1:5", "2:7", "2:12"], str(await pg.evaluate("window.__plucks.slice()")))
+        await pg.select_option("#instrument-select", "bass"); await pg.wait_for_timeout(150)
+        check("editor: instrument belongs to the song (4-line tab)",
+              await pg.evaluate(f"Object.values({song})[0].instrument") == "bass" and await pg.evaluate("document.querySelector('#tab .tab-row').querySelectorAll('.tname').length") == 4)
+        await pg.select_option("#instrument-select", "guitar"); await pg.wait_for_timeout(100)
+        async with pg.expect_download() as dl:
+            await pg.click("#song-export")
+        path = await (await dl.value).path()
+        await pg.set_input_files("#song-import", path); await pg.wait_for_timeout(300)
+        imported = await pg.evaluate(f"Object.values({song}).map(s => [s.title, s.tab])")
+        check("editor: export then import round-trips", len(imported) == 2 and imported[0][1:] == imported[1][1:], str(imported))
+
         await pg.evaluate("localStorage.clear()")
         check("no console/page errors", not errs, "; ".join(errs[:5]))
         await b.close()

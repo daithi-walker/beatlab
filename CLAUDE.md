@@ -93,8 +93,9 @@ step, bundler, or npm runtime dependencies unless it's discussed first. See
 
 ### No samples
 All sound is synthesised via Web Audio API. Do not add audio sample files.
-Exception: Nectar's tab viewer uses AlphaTab + SF2 soundfont (documented in
-`nectar/ROADMAP.md`) — that's a deliberate opt-in.
+(Nectar's AlphaTab proof of concept with an SF2 soundfont was replaced by the Tab
+editor; if AlphaTab returns for Guitar Pro import, use it to parse files, not to play
+samples, unless that's discussed first.)
 
 ### Versioning
 We use semantic versioning. While pre-1.0, minor bumps (`0.x`) = meaningful
@@ -117,7 +118,7 @@ Prefix commits with the app name: `Drums:`, `Nectar:`, `Multibank:`,
 - Kit order in `KITS` object is fixed — share-encoding depends on it
 
 ### Nectar (`nectar/`)
-- Four pages: `index.html` (Scales), `chords.html`, `identify.html`, `licks.html`.
+- Five pages: `index.html` (Scales), `chords.html`, `identify.html`, `licks.html`, `tab.html` (Tab editor).
 - **All pages must use the shared guitar core in `nectar/shared/`** (ADR-010).
   Never draw a fretboard, synthesise a note, or schedule notes inside a page:
 
@@ -127,6 +128,7 @@ Prefix commits with the app name: `Drums:`, `Nectar:`, `Multibank:`,
   | A fretboard (dots, box, muted strings, playing/next notes, strum/tap) | `Neck` from `shared/neck.js` |
   | Any sound | `GuitarSynth` from `shared/synth.js` (via `setupAudio()`) |
   | Timed playback (runs, licks, strums longer than a chord) | `Player` from `shared/player.js` (no `setTimeout` note sequencing) |
+  | Tab text ↔ events, drawing tab | `shared/notation.js`, `Tab` from `shared/tab.js` |
   | Volume / Tone controls, iOS audio unlock | `setupAudio()` from `shared/audio-ui.js` (needs `#vol-slider` + `#tone-select` in the topbar) |
   | Instrument + tuning controls | `setupInstrument()` from `shared/instrument-ui.js` (needs `#instrument-select` + `#tuning-select`); re-render in `onTuningChange()` |
 
@@ -142,7 +144,7 @@ Prefix commits with the app name: `Drums:`, `Nectar:`, `Multibank:`,
   `#fretboard-container` passed to `new Neck(...)`, and a `<script type="module">`
   that imports from `./shared/`.
 - Licks: page code in `nectar/licks/`. Licks are authored in a text tab notation
-  documented at the top of `nectar/licks/notation.js`. A lick's `instrument`
+  documented at the top of `nectar/shared/notation.js`. A lick's `instrument`
   decides which library it appears in (the Instrument select filters it); its
   `tuning` is applied while it's shown (not saved as the user's choice).
 - **After touching `nectar/shared/` or any Nectar page, run the smoke test:**

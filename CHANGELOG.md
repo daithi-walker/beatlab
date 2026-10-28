@@ -21,6 +21,12 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
   on port 8765; the smoke test defaults to it.
 
 ### Added — Nectar
+- **Tab editor** (`nectar/tab.html`, replacing the AlphaTab proof of concept) — write
+  tab by keyboard (arrows + fret numbers) or by tapping the neck, with note lengths,
+  hammer-ons, pull-offs, slides, bends, vibrato, grace notes and rests; undo/redo;
+  play it back with loop, count-in and click; songs saved in your browser with
+  plain-text export/import. Works on phones. The tab renderer and notation moved to
+  `nectar/shared/` (used by Licks and the editor), and a shared `page.css`.
 - **Licks for every instrument** — 10 new original licks: 7-string (Low B Chug,
   Seven-String Arpeggio), 12-string (Jangle Arpeggios, Open-Chord Strum), 5-string
   bass (Low B Groove, Octave Funk), 4-string bass (Root-Fifth Country Bass),

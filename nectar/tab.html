@@ -1,361 +1,123 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tab Viewer — Nectar</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --bg: #07080d;
-      --surface: #0f1117;
-      --surface-2: #161820;
-      --border: rgba(255, 160, 60, 0.15);
-      --root-color: #ff9d3d;
-      --text: #d8d4c8;
-      --text-muted: #7a7060;
-    }
-
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    html, body {
-      height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Inter', system-ui, sans-serif;
-      overflow: hidden;
-    }
-
-    /* ── Top bar ── */
-    .top-bar {
-      height: 56px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 20px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      position: relative;
-      flex-shrink: 0;
-    }
-
-    .top-bar__back {
-      color: var(--root-color);
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 500;
-      letter-spacing: 0.01em;
-      transition: opacity 0.15s;
-    }
-
-    .top-bar__back:hover {
-      opacity: 0.8;
-    }
-
-    .top-bar__wordmark {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.18em;
-      color: var(--text-muted);
-      text-transform: uppercase;
-    }
-
-    /* ── Controls bar ── */
-    .controls-bar {
-      height: 48px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 0 20px;
-      background: var(--surface-2);
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-
-    .ctrl-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 16px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
-      font-family: inherit;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s, opacity 0.15s;
-    }
-
-    .ctrl-btn:hover:not(:disabled) {
-      background: var(--surface-2);
-      border-color: rgba(255, 160, 60, 0.35);
-    }
-
-    .ctrl-btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-
-    .ctrl-btn--primary {
-      border-color: rgba(255, 157, 61, 0.5);
-      color: var(--root-color);
-    }
-
-    .ctrl-btn--primary:hover:not(:disabled) {
-      background: rgba(255, 157, 61, 0.08);
-      border-color: rgba(255, 157, 61, 0.7);
-    }
-
-    .status-label {
-      margin-left: auto;
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    /* ── AlphaTab container ── */
-    .at-wrap {
-      height: calc(100vh - 56px - 48px);
-      overflow: hidden;
-      background: var(--bg);
-    }
-
-    /* Override AlphaTab's default white background */
-    .at-wrap .alphaTabSurface,
-    .at-wrap canvas {
-      background: var(--bg) !important;
-    }
-
-    /* ── Error state ── */
-    .error-box {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      gap: 12px;
-      padding: 40px;
-      text-align: center;
-    }
-
-    .error-box.visible {
-      display: flex;
-    }
-
-    .error-box__title {
-      font-size: 16px;
-      font-weight: 600;
-      color: #e06c75;
-    }
-
-    .error-box__body {
-      font-size: 14px;
-      color: var(--text-muted);
-      max-width: 480px;
-      line-height: 1.6;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Tab · Nectar — BeatLab</title>
+  <link rel="icon" type="image/png" href="../icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="shared/page.css">
+  <link rel="stylesheet" href="tab/editor.css">
 </head>
 <body>
-
-  <!-- Top bar -->
-  <header class="top-bar">
-    <a class="top-bar__back" href="../index.html" style="opacity:.6;">⌂ BeatLab</a>
-    <a class="top-bar__back" href="index.html">← Nectar</a>
-    <span class="top-bar__wordmark">Tab Viewer</span>
+  <header id="top-bar">
+    <a href="index.html" class="nectar-tab">Scales</a>
+    <a href="chords.html" class="nectar-tab">Chords</a>
+    <a href="identify.html" class="nectar-tab">Identify</a>
+    <a href="licks.html" class="nectar-tab">Licks</a>
+    <a href="tab.html" class="nectar-tab active">Tab</a>
+    <div class="topbar-right">
+      <select id="instrument-select"></select>
+      <select id="tuning-select"></select>
+      <select id="tone-select"></select>
+      <span class="vol-label">Vol</span>
+      <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.8">
+    </div>
   </header>
 
-  <!-- Playback controls -->
-  <div class="controls-bar">
-    <button class="ctrl-btn ctrl-btn--primary" id="btn-play" disabled>
-      ▶ Play
-    </button>
-    <button class="ctrl-btn" id="btn-stop" disabled>
-      ■ Stop
-    </button>
-    <span class="status-label" id="status-label">Loading soundfont…</span>
-  </div>
-
-  <!-- Score area -->
-  <div class="at-wrap" id="at-container">
-    <div class="error-box" id="error-box">
-      <div class="error-box__title">Failed to load tab viewer</div>
-      <div class="error-box__body" id="error-body">
-        AlphaTab could not be initialised. Check your network connection and try reloading.
+  <main class="main editor">
+    <section class="songbar">
+      <select id="song-select" aria-label="Song"></select>
+      <button id="song-new" class="btn">+ New</button>
+      <button id="song-more" class="btn more" aria-controls="song-fields">Edit ▾</button>
+      <div class="song-fields" id="song-fields">
+        <input id="song-title" class="field title" placeholder="Title" aria-label="Title">
+        <input id="song-artist" class="field" placeholder="Artist" aria-label="Artist">
+        <span class="spacer"></span>
+        <button id="song-export" class="btn">Export</button>
+        <label class="btn">Import<input id="song-import" type="file" accept=".txt,text/plain" hidden></label>
+        <button id="song-delete" class="btn danger">Delete</button>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/alphaTab.js"
-          onerror="showError('AlphaTab failed to load from CDN. Check your network connection.')">
-  </script>
+    <section class="transport">
+      <button class="play" id="play"><span class="icon">▶</span><span class="lbl">Play</span></button>
+      <div class="speed">
+        <label for="bpm">BPM</label>
+        <input id="bpm" class="field num" type="number" min="30" max="260">
+      </div>
+      <div class="toggles">
+        <label class="tog"><input type="checkbox" id="loop"><span>Loop</span></label>
+        <label class="tog"><input type="checkbox" id="countin"><span>Count-in</span></label>
+        <label class="tog"><input type="checkbox" id="metro"><span>Click</span></label>
+        <label class="tog" title="After tapping a note on the neck, move to the next beat"><input type="checkbox" id="advance"><span>Advance</span></label>
+      </div>
+      <div class="status"><span id="count" class="count"></span></div>
+    </section>
 
-  <script>
-    /* ── Helpers ── */
-    function showError(msg) {
-      document.getElementById('error-body').textContent = msg;
-      document.getElementById('error-box').classList.add('visible');
-      document.getElementById('status-label').textContent = 'Error';
-    }
+    <section class="toolbar" aria-label="Note tools">
+      <div class="group" id="dur-tools" aria-label="Note length">
+        <button data-dur="w" title="Whole note">1<small>whole</small></button>
+        <button data-dur="h" title="Half note">½<small>half</small></button>
+        <button data-dur="q" title="Quarter note">¼<small>quarter</small></button>
+        <button data-dur="e" title="Eighth note">⅛<small>8th</small></button>
+        <button data-dur="s" title="Sixteenth note">16<small>16th</small></button>
+        <button data-dur="t" title="Eighth-note triplet">3<small>triplet</small></button>
+      </div>
+      <div class="group" id="tech-tools" aria-label="Technique">
+        <button data-tech="h" title="Hammer-on (H)">h</button>
+        <button data-tech="p" title="Pull-off (P)">p</button>
+        <button data-tech="/" title="Slide (S)">/</button>
+        <button data-tech="b" title="Bend: full, then half (B)">b</button>
+        <button data-tech="~" title="Vibrato (V)">~</button>
+        <button data-tech="g" title="Grace note (G)">g</button>
+        <button data-tech="r" title="Rest (R)">rest</button>
+      </div>
+      <div class="group" aria-label="Edit">
+        <button id="ins-beat" title="Insert a beat before the cursor (I)">+ beat</button>
+        <button id="del-beat" title="Delete the beat at the cursor (Shift+Delete)">− beat</button>
+        <button id="undo" title="Undo (Cmd/Ctrl+Z)">↶</button>
+        <button id="redo" title="Redo (Shift+Cmd/Ctrl+Z)">↷</button>
+      </div>
+    </section>
 
-    /* ── AlphaTab setup ── */
-    (function () {
-      if (typeof alphaTab === 'undefined') {
-        // onerror on the script tag handles this, but guard here too
-        showError('AlphaTab library is not available. Check your network connection.');
-        return;
-      }
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Tab</h2>
+        <span class="muted">Click a beat and string, then type a fret number or tap the neck below.</span>
+      </div>
+      <div class="tab" id="tab"></div>
+    </section>
 
-      const container = document.getElementById('at-container');
-      const btnPlay   = document.getElementById('btn-play');
-      const btnStop   = document.getElementById('btn-stop');
-      const statusLbl = document.getElementById('status-label');
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Neck</h2>
+        <span class="muted">Tap a fret to put that note at the cursor.</span>
+      </div>
+      <div class="fretboard" id="fretboard"></div>
+    </section>
 
-      /* AlphaTab settings */
-      const settings = new alphaTab.Settings();
-      settings.core.useWorkers    = false;
-      settings.core.logLevel      = alphaTab.LogLevel.Warning;
-      settings.display.layoutMode = alphaTab.LayoutMode.Page;
+    <section class="cards">
+      <article class="card">
+        <h3>Keyboard</h3>
+        <p><kbd>←</kbd><kbd>→</kbd> beat · <kbd>↑</kbd><kbd>↓</kbd> string · <kbd>0</kbd>-<kbd>9</kbd> fret (type two digits quickly for 10+) · <kbd>Del</kbd> remove note · <kbd>Space</kbd> play/stop</p>
+      </article>
+      <article class="card">
+        <h3>Lengths and techniques</h3>
+        <p>Toolbar buttons, or keys: <kbd>H</kbd> hammer · <kbd>P</kbd> pull · <kbd>S</kbd> slide · <kbd>B</kbd> bend · <kbd>V</kbd> vibrato · <kbd>G</kbd> grace · <kbd>R</kbd> rest · <kbd>I</kbd> insert beat · <kbd>+</kbd><kbd>−</kbd> longer/shorter</p>
+      </article>
+      <article class="card">
+        <h3>Your songs stay with you</h3>
+        <p>Songs are saved in this browser only. Use Export to keep a copy or move it to another device, and Import to load it back.</p>
+      </article>
+    </section>
+  </main>
 
-      settings.player.enablePlayer  = true;
-      settings.player.soundFont     = 'https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/soundfont/sonivox.sf2';
-      settings.player.scrollMode    = alphaTab.ScrollMode.Continuous;
-
-      /* Dark-theme score colours */
-      settings.display.resources.staffLineColor    = new alphaTab.model.Color(80, 75, 65, 255);
-      settings.display.resources.barSeparatorColor = new alphaTab.model.Color(80, 75, 65, 255);
-      settings.display.resources.mainGlyphColor    = new alphaTab.model.Color(216, 212, 200, 255);
-      settings.display.resources.scoreInfoColor    = new alphaTab.model.Color(216, 212, 200, 255);
-
-      let api;
-      try {
-        api = new alphaTab.AlphaTabApi(container, settings);
-      } catch (e) {
-        showError('AlphaTab failed to initialise: ' + e.message);
-        return;
-      }
-
-      /* ── alphaTex content ── */
-      // Smoke on the Water intro — dead-note syntax removed for compatibility
-      const alphatexString = [
-        '\\title "Smoke on the Water"',
-        '\\artist "Deep Purple"',
-        '\\tempo 116',
-        '\\instrument 27',
-        '.',
-        ':4 5.4 8.4 10.4 r | 5.4 8.4 11.4 10.4 r r | 5.4 8.4 10.4 8.4 r r r r |',
-        ':4 5.4 8.4 10.4 r | 5.4 8.4 11.4 10.4 r r | 5.4 8.4 10.4 8.4 5.4 r r r |'
-      ].join('\n');
-
-      /* Load the score once the API is ready */
-      api.scoreLoaded.on(function () {
-        statusLbl.textContent = 'Score loaded — soundfont loading…';
-      });
-
-      api.renderFinished.on(function () {
-        // Rendering complete — nothing extra needed
-      });
-
-      /* Enable controls once the soundfont is ready */
-      api.playerReady.on(function () {
-        btnPlay.disabled  = false;
-        btnStop.disabled  = false;
-        statusLbl.textContent = 'Ready';
-      });
-
-      /* Reflect playing/paused/stopped state on the button label */
-      api.playerStateChanged.on(function (args) {
-        if (args.state === alphaTab.synth.PlayerState.Playing) {
-          btnPlay.textContent = '⏸ Pause';
-        } else {
-          btnPlay.textContent = '▶ Play';
-        }
-      });
-
-      /* Handle soundfont load failure gracefully */
-      api.error.on(function (err) {
-        console.error('AlphaTab error:', err);
-        if (err && err.type === 'soundFont') {
-          statusLbl.textContent = 'Soundfont unavailable — display only';
-          btnPlay.disabled = true;
-          btnStop.disabled = true;
-        }
-      });
-
-      /* Load the tex content */
-      try {
-        api.tex(alphatexString);
-      } catch (e) {
-        showError('Failed to parse alphaTex content: ' + e.message);
-        return;
-      }
-
-      /* ── Control wiring ── */
-      btnPlay.addEventListener('click', function () {
-        api.playPause();
-      });
-
-      btnStop.addEventListener('click', function () {
-        api.stop();
-      });
-
-    })();
-  </script>
-
-  <style>
-    #rotate-prompt {
-      display: none;
-      position: fixed; inset: 0; z-index: 9999;
-      background: #07080d;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      color: #6a7a8a;
-      font-family: 'Inter', system-ui, sans-serif;
-      font-size: 0.9rem;
-      letter-spacing: 0.06em;
-    }
-    #rotate-prompt svg { opacity: 0.5; animation: rotate-hint 2s ease-in-out infinite; }
-    @keyframes rotate-hint {
-      0%, 100% { transform: rotate(0deg); }
-      50% { transform: rotate(90deg); }
-    }
-    @media (pointer: coarse) and (orientation: portrait) {
-      #rotate-prompt { display: flex; }
-    }
-    body.is-touch.is-portrait #rotate-prompt { display: flex; }
-  </style>
-  <script>
-    (function() {
-      var isTouch = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
-      if (isTouch) {
-        document.body.classList.add('is-touch');
-        function checkOrientation() {
-          document.body.classList.toggle('is-portrait', window.innerHeight > window.innerWidth);
-        }
-        checkOrientation();
-        window.addEventListener('resize', checkOrientation);
-      }
-    })();
-  </script>
-  <div id="rotate-prompt">
-    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-      <rect x="5" y="2" width="14" height="20" rx="2"/>
-      <path d="M12 18h.01"/>
-    </svg>
-    <p>Rotate for best experience</p>
-  </div>
-
+<script type="module" src="tab/editor.js"></script>
+<script type="module">
+import { initTopnav } from '../core/topnav.js';
+initTopnav({ current: 'nectar', root: '../', label: 'Nectar' });
+</script>
 </body>
 </html>

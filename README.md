@@ -13,7 +13,7 @@ audio samples, no framework and no build step: plain HTML, CSS and native ES mod
 | [Drums](drums/) | 12-track TR-style drum machine: step sequencer and tappable pads, 4 kits, swing, velocity, polymeter, live take recording, scenes, WAV/MP3/MIDI/stem export | [README](drums/README.md) |
 | [Multibank](multibank/) | Multi-voice step sequencer: add drum and synth banks, shape each with its own FX, export | [README](multibank/README.md) |
 | [Synth](synth/) | Polyphonic keyboard synth with arpeggiator, LFO, ADSR and XY filter pad, plus the **Voice Lab** for designing patches | [README](synth/README.md) |
-| [Nectar](nectar/) | Guitar learning suite: scales, chords, chord identifier and a lick trainer, for guitar, bass, ukulele, mandolin and more, in any tuning | [README](nectar/README.md) |
+| [Nectar](nectar/) | Guitar learning suite: scales, chords, chord identifier, a lick trainer and a tab editor, for guitar, bass, ukulele, mandolin and more, in any tuning | [README](nectar/README.md) |
 | Torman | Canvas-gesture bass synth by [thunder-clapper](https://github.com/thunder-clapper), included as a git submodule with local tweaks. Not deployed; [upstream site](https://thunder-clapper.github.io/torman/) | [FEATURES](torman/FEATURES.md) |
 
 ## Run it locally

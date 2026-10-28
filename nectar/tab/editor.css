@@ -1,0 +1,51 @@
+/* Tab editor page only; the shared page shell is ../shared/page.css. */
+
+.editor { max-width: 1400px; margin: 0 auto; }
+
+.songbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 4px; }
+.songbar .spacer { flex: 1; }
+.song-fields { display: contents; }
+.btn.more { display: none; }
+.field, #song-select {
+  background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 8px;
+  padding: 7px 10px; font: 14px var(--sans);
+}
+.field:focus, #song-select:focus { outline: none; border-color: var(--root); }
+.field.title { font-weight: 650; min-width: 220px; }
+.field.num { width: 72px; font-family: var(--mono); }
+#song-select { max-width: 260px; }
+.btn {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px;
+  font-size: 13px; color: var(--text); cursor: pointer;
+}
+.btn:hover { border-color: var(--root); }
+.btn.danger:hover { border-color: #e0614a; color: #ff8f7a; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 16px; }
+.toolbar .group { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel); }
+.toolbar button {
+  background: none; border: 0; padding: 7px 12px; min-width: 42px; font: 600 15px var(--sans); color: var(--muted);
+  display: inline-flex; flex-direction: column; align-items: center; line-height: 1.1;
+}
+.toolbar button small { font-size: 9.5px; font-weight: 500; opacity: 0.8; margin-top: 1px; }
+.toolbar button + button { border-left: 1px solid var(--line); }
+.toolbar button:hover { color: var(--text); background: var(--panel-2); }
+.toolbar button.on { color: var(--accent-ink); background: var(--accent); }
+.toolbar button:disabled { opacity: 0.35; cursor: default; }
+
+/* Phones: song details fold behind "Edit", and the toolbar is one scrolling row. */
+@media (max-width: 820px), (pointer: coarse) and (max-height: 520px) {
+  #song-select { flex: 1; max-width: none; min-width: 0; }
+  .btn.more { display: inline-block; }
+  .song-fields { display: none; width: 100%; flex-wrap: wrap; gap: 8px; }
+  body.song-open .song-fields { display: flex; }
+  .field.title { min-width: 0; flex: 1 1 100%; }
+  .song-fields .field:not(.title) { flex: 1; }
+  .songbar .spacer { display: none; }
+  .toolbar { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+  .toolbar .group { flex-shrink: 0; }
+  .toolbar button { padding: 8px 10px; min-width: 40px; }
+}
+@media (pointer: coarse) {
+  .toolbar button, .btn { min-height: 44px; }
+}
