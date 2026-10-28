@@ -20,6 +20,17 @@ feature milestones; patch bumps (`0.x.y`) are fixes and polish.
 - **One-command local server** — root `docker-compose.yml` serves the whole repo
   on port 8765; the smoke test defaults to it.
 
+### Added — Nectar
+- **Licks for every instrument** — 10 new original licks: 7-string (Low B Chug,
+  Seven-String Arpeggio), 12-string (Jangle Arpeggios, Open-Chord Strum), 5-string
+  bass (Low B Groove, Octave Funk), 4-string bass (Root-Fifth Country Bass),
+  mandolin (Bluegrass G Run, Reel in D) and ukulele (Island Fingerpicking). New
+  Folk and Bluegrass groups in the library.
+
+### Changed — Nectar
+- **Phone layout for Licks** — lick library as a bottom sheet, transport pinned to
+  the bottom of the screen (one row when the phone is sideways).
+
 ## [0.6.0] - 2026-10-28
 
 ### Added — Nectar

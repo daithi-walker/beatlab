@@ -1,6 +1,7 @@
 // The lick library. All licks are original practice material.
 // root = pitch class (C=0 ... A=9, B=11). position = fret window of the scale box shown.
 // instrument / tuning = ids from INSTRUMENTS in ../shared/theory.js (default 'guitar' / 'standard').
+// Every instrument needs at least one lick (the Licks page lists the current instrument's).
 // See notation.js for the tab notation. scale = a key of SCALES in ../shared/theory.js.
 
 export const LICKS = [
@@ -235,5 +236,141 @@ export const LICKS = [
     about: 'The same notes as the Hammer-On / Pull-Off Workout, played the way hammer-ons usually turn up in songs: a quick flick into a note that lands on the beat.',
     theory: 'The small numbers are grace notes. They take no time of their own: you pick, and the hammer-on or pull-off follows almost instantly, so the note you land on gets the beat. This is the snappy, ornamental legato of blues and country, as opposed to the even legato of the workout.',
     practice: 'Pick and hammer (or pull off) so close together they almost sound like one note with a "blip" at the start. Keep the landing notes exactly on the click. Then switch back to the even workout and feel the difference.',
+  },
+
+  // ---------------------------------------------------------------- 7-string guitar
+  {
+    id: 'seven-low-b-chug',
+    title: 'Low B Chug',
+    style: 'Rock',
+    level: 1,
+    instrument: 'guitar7',
+    root: 11, scale: 'natural-minor', position: [0, 7], bpm: 110,
+    tab: `7-0:s 7-0 7-0:e 7-0:s 7-0 7-3:e 7-0:s 7-0 7-0:e 7-0:s 7-0 7-2:e |
+          7-0+6-2:e 7-0+6-2 r 7-3+6-5 7-3+6-5:q 7-5+6-7:e 7-3+6-5`,
+    about: 'A tight sixteenth-note chug on the open low B string, then B, D and E power chords. The low B is what the seventh string is for.',
+    theory: 'Open B on the 7th string is the root of B minor. Power chords on strings 7 and 6 work like the E and A strings on a 6-string, just a fourth lower: root on the 7th string, 5th two frets up on the 6th.',
+    practice: 'Palm-mute the chugs with the side of your picking hand right by the bridge, and keep strict down-strokes. Lift the mute for the power chords so they ring.',
+  },
+  {
+    id: 'seven-arpeggio',
+    title: 'Seven-String Arpeggio',
+    style: 'Technique',
+    level: 2,
+    instrument: 'guitar7',
+    root: 11, scale: 'natural-minor', position: [0, 4], bpm: 72,
+    tab: `7-0:t 6-2 5-2 4-4 3-4 2-3 1-2 2-3 3-4 4-4 5-2 6-2 | 7-0:h r:h`,
+    about: 'A B minor arpeggio from the low B all the way to the high E and back: one note per string across all seven.',
+    theory: 'A B minor chord is just B, D and F#. Spread one note per string, those three notes cover almost three octaves on a 7-string. Arpeggios like this are how you outline a chord in a solo.',
+    practice: 'Let each note ring into the next, like a slow strum. Count "1-trip-let" and keep the triplets even on the way down, where most people rush.',
+  },
+
+  // ---------------------------------------------------------------- 12-string guitar
+  {
+    id: 'twelve-jangle',
+    title: 'Jangle Arpeggios',
+    style: 'Folk',
+    level: 1,
+    instrument: 'guitar12',
+    root: 7, scale: 'major', position: [0, 3], bpm: 96,
+    tab: `6-3:e 4-0 3-0 2-0 1-3 2-0 3-0 4-0 | 5-3 4-2 3-0 2-3 1-3 2-3 3-0 4-2 |
+          4-0 3-2 2-3 1-2 2-3 3-2 1-2 2-3 | 6-3 4-0 3-0 2-0 1-3:h`,
+    about: 'Open chords picked one string at a time: G, Cadd9, D and back to G. On a 12-string every note rings with its octave or unison partner, which is the whole point.',
+    theory: 'G, C and D are chords I, IV and V in G major. Cadd9 keeps the top two strings the same as the G chord, so the high notes ring on through the change. That shared "drone" is a big part of the jangly sound.',
+    practice: 'Hold each chord shape for the whole bar and pick through it. Let everything ring. A 12-string needs a firmer fretting hand: press just behind the fret so both strings of each pair sound clean.',
+  },
+  {
+    id: 'twelve-strum',
+    title: 'Open-Chord Strum',
+    style: 'Folk',
+    level: 1,
+    instrument: 'guitar12',
+    root: 2, scale: 'major', position: [0, 3], bpm: 100,
+    tab: `4-0+3-2+2-3+1-2:q 4-0+3-2+2-3+1-2:e 4-0+3-2+2-3+1-2 4-0+3-2+2-3+1-2:e 4-0+3-2+2-3+1-2 4-0+3-2+2-3+1-2:q | 6-3+5-2+4-0+3-0+2-0+1-3:q 6-3+5-2+4-0+3-0+2-0+1-3:e 6-3+5-2+4-0+3-0+2-0+1-3 6-3+5-2+4-0+3-0+2-0+1-3:e 6-3+5-2+4-0+3-0+2-0+1-3 6-3+5-2+4-0+3-0+2-0+1-3:q |
+          5-0+4-2+3-2+2-2+1-0:q 5-0+4-2+3-2+2-2+1-0:e 5-0+4-2+3-2+2-2+1-0 5-0+4-2+3-2+2-2+1-0:e 5-0+4-2+3-2+2-2+1-0 5-0+4-2+3-2+2-2+1-0:q | 4-0+3-2+2-3+1-2:q 4-0+3-2+2-3+1-2:e 4-0+3-2+2-3+1-2 4-0+3-2+2-3+1-2:e 4-0+3-2+2-3+1-2 4-0+3-2+2-3+1-2:q`,
+    about: 'D, G, A, D with a down, down-up, up-down strum: the classic folk-rock rhythm.',
+    theory: 'D, G and A are chords I, IV and V in D major: the three chords of thousands of songs. On a 12-string the octave strings on the bass side make even a simple strum sound huge.',
+    practice: 'Keep your strumming hand moving down and up in eighth notes the whole time, and only touch the strings where the pattern says. Change chords on beat 1 even if the last strum of the bar is a little open.',
+  },
+
+  // ---------------------------------------------------------------- 5-string bass
+  {
+    id: 'bass5-low-b-groove',
+    title: 'Low B Groove',
+    style: 'Bass',
+    level: 1,
+    instrument: 'bass5',
+    root: 11, scale: 'natural-minor', position: [0, 5], bpm: 96,
+    tab: `5-0:e 5-0:s 5-0 r:e 5-0 4-3 4-5 5-0:q | 5-0:e 5-0:s 5-0 r:e 5-0 4-0 4-2 4-3:q`,
+    about: 'A low, driving groove on the open B string, answered by short walk-ups on the E string.',
+    theory: 'The open B is a fourth below the 4-string\'s lowest note. The fills use G, A, E and F#, all from B natural minor, so they lead your ear straight back to the low B.',
+    practice: 'Mute the B string between notes (rest your thumb on it) so the low end stays tight. The sixteenth "da-da" pickups should be quick and even, not rushed.',
+  },
+  {
+    id: 'bass5-octave-funk',
+    title: 'Octave Funk',
+    style: 'Bass',
+    level: 2,
+    instrument: 'bass5',
+    root: 11, scale: 'minor-pentatonic', position: [0, 7], bpm: 92,
+    tab: `5-0:s r 3-2 r 5-0 5-0 3-2 r 5-3 r 3-5 r 5-3 5-3 3-5 r |
+          4-0 r 2-2 r 4-0 4-0 2-2 r 4-5 r 2-7 r 4-5 4-5 2-7 r`,
+    about: 'Funk octaves in sixteenths: a note, then the same note an octave higher, two strings up and two frets over.',
+    theory: 'The octave shape (two strings up, two frets higher) is the same everywhere on the neck, so this riff is one shape moved through B, D, E and A, the notes of B minor pentatonic.',
+    practice: 'Play the low note with a finger or thumb and pop the octave. The rests are as important as the notes: stop each note dead with your fretting hand for that tight, bouncing feel.',
+  },
+  {
+    id: 'bass-root-fifth',
+    title: 'Root-Fifth Country Bass',
+    style: 'Bass',
+    level: 1,
+    instrument: 'bass',
+    root: 7, scale: 'major', position: [2, 7], bpm: 110,
+    tab: `4-3:q 3-5 4-3 3-5 | 3-3 2-5 3-3 2-5 | 3-5 2-7 3-5 2-7 | 4-3 3-5 4-3:h`,
+    about: 'The backbone of country bass: root on the beat, fifth on the next, through G, C and D.',
+    theory: 'The root names the chord and the fifth sits right on top of it, so alternating them outlines the harmony while leaving room for the guitar. The fifth is always one string up and two frets higher.',
+    practice: 'Lock in with the click: every note on a beat, all the same length. Once it is steady, add a walk-up in the last beat of a bar (e.g. A, B into C).',
+  },
+
+  // ---------------------------------------------------------------- Mandolin
+  {
+    id: 'mando-g-run',
+    title: 'Bluegrass G Run',
+    style: 'Bluegrass',
+    level: 1,
+    instrument: 'mandolin',
+    root: 7, scale: 'major-pentatonic', position: [0, 5], bpm: 110,
+    tab: `4-0:e 4-2 h4-3 4-4 3-0 3-2 3-0 4-4 | 4-0:q~ r r:h`,
+    about: 'The run that ends a thousand bluegrass breaks: up from G with a bluesy slide through A# and back home.',
+    theory: 'Mostly G major pentatonic (G A B D E), with A# as a passing note between A and B. That chromatic step is the "bluegrass" in the run.',
+    practice: 'Use alternate picking (down-up) and hammer from the 2nd to the 3rd fret on the G strings. Remember each mandolin string is a pair: pick through both.',
+  },
+  {
+    id: 'mando-reel',
+    title: 'Reel in D',
+    style: 'Folk',
+    level: 2,
+    instrument: 'mandolin',
+    root: 2, scale: 'major', position: [0, 5], bpm: 100,
+    tab: `3-0:e 3-4 2-0 3-4 2-2 2-0 3-4 2-0 | 2-5 2-4 2-2 2-0 3-4 3-2 3-0 3-4 |
+          3-0 3-4 2-0 2-5 1-2 1-0 2-5 2-2 | 2-0 3-4 3-2 3-4 3-0:h`,
+    about: 'An original reel in the style of Irish and old-time fiddle tunes: steady eighth notes that climb the D major scale and come home.',
+    theory: 'Reels are built from D major arpeggios (D F# A) joined by scale steps. The tune keeps returning to D, A and F#, the notes of the home chord, which is what makes it sound settled.',
+    practice: 'Strict down-up alternate picking, accenting the downbeats slightly. Mandolin frets are close together: one finger per fret covers the whole tune without shifting.',
+  },
+
+  // ---------------------------------------------------------------- Ukulele
+  {
+    id: 'uke-fingerpick',
+    title: 'Island Fingerpicking',
+    style: 'Ukulele',
+    level: 2,
+    instrument: 'ukulele',
+    root: 0, scale: 'major', position: [0, 3], bpm: 90,
+    tab: `3-0:e 4-0 2-0 1-3 3-0 4-0 2-0 1-3 | 3-0 4-2 2-0 1-0 3-0 4-2 2-0 1-0 |
+          3-0 4-2 2-1 1-0 3-0 4-2 2-1 1-0 | 3-2 4-0 2-3 1-2 3-2 4-0 2-3 1-2`,
+    about: 'C, Am, F, G picked one string at a time in a rolling pattern: thumb on the C string, then the g, E and A strings.',
+    theory: 'Because the g string is tuned high, picking C string, g string, E, A gives a rising "harp" effect even though you cross strings back and forth. The chords are I, vi, IV and V in C.',
+    practice: 'Thumb plays the C string, index the g, middle the E, ring the A. Hold the chord shape and let the notes overlap. Keep the pattern going through every chord change.',
   },
 ];

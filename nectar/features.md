@@ -44,10 +44,9 @@ string is the thin one).
  Changing it relabels the strings, re-pitches every note and
 re-renders the page: Scales anchors its box on the lowest string, Chords labels
 its shapes "Root on D / Root on A" outside standard, Identify re-identifies the
-selected notes. On Licks, the Instrument select filters the library (bass →
-Walking Blues Bass, ukulele → Four-Chord Uke Strum; instruments with no licks yet
-say so), and the Tuning select is set by the lick (e.g. Drop D Chug) without
-changing the saved choice. Design and roadmap (other instruments,
+selected notes. On Licks, the Instrument select filters the library to that
+instrument's licks, and the Tuning select is set by the lick (e.g. Drop D Chug)
+without changing the saved choice. Design and roadmap (other instruments,
 generic voicings): `docs/nectar-instruments.md`.
 
 ### Signal chain
@@ -262,7 +261,7 @@ Separate page reachable via "Identify →" from the scale explorer or chord expl
 A lick trainer: learn short riffs from tab, see them on the neck, and play along.
 Code lives in `nectar/licks/` as native ES modules (ADR-009).
 
-**Library** — 18 original licks (one in drop D, one for bass, one for ukulele; three use grace notes) grouped Foundation / Blues / Rock / Country /
+**Library** — 28 original licks: 16 for guitar (one in drop D, three with grace notes) and 2-3 each for 7-string, 12-string, 4- and 5-string bass, ukulele and mandolin grouped Foundation / Blues / Rock / Country /
 Melody / Technique, each with a level, key, scale, position and target tempo,
 plus three plain-English cards: What it is, Why it works, How to practise.
 

@@ -1,6 +1,6 @@
 // Nectar Licks: wires the library, transport, tab and fretboard together.
 
-import { NOTE_NAMES, SCALES, INSTRUMENT, TUNING, INSTRUMENTS, INTERVAL_SYMBOLS, midiOf, noteName, degree, positionsInScale, onTuningChange } from '../shared/theory.js';
+import { NOTE_NAMES, SCALES, INSTRUMENT, TUNING, INTERVAL_SYMBOLS, midiOf, noteName, degree, positionsInScale, onTuningChange } from '../shared/theory.js';
 import { setupAudio } from '../shared/audio-ui.js';
 import { setupInstrument } from '../shared/instrument-ui.js';
 import { Player } from '../shared/player.js';
@@ -11,7 +11,7 @@ import { Tab } from './tab.js';
 
 {
   const $ = (id) => document.getElementById(id);
-  const STYLE_ORDER = ['Foundation', 'Blues', 'Rock', 'Country', 'Melody', 'Technique', 'Bass', 'Ukulele'];
+  const STYLE_ORDER = ['Foundation', 'Blues', 'Rock', 'Country', 'Folk', 'Bluegrass', 'Melody', 'Technique', 'Bass', 'Ukulele'];
   const LEVELS = ['', 'Beginner', 'Intermediate', 'Advanced'];
 
   const defaults = {
@@ -50,12 +50,6 @@ import { Tab } from './tab.js';
     const lib = $('library');
     lib.innerHTML = '';
     const mine = licksForInstrument();
-    if (!mine.length) {
-      const p = document.createElement('p');
-      p.className = 'lib-empty';
-      p.textContent = `No ${INSTRUMENT.name} licks yet.`;
-      lib.appendChild(p);
-    }
     for (const style of STYLE_ORDER) {
       const items = mine.filter((l) => l.style === style);
       if (!items.length) continue;
@@ -78,21 +72,9 @@ import { Tab } from './tab.js';
     }
   }
 
-  // Empty state for instruments that have no licks yet.
-  function showNoLicks() {
-    lick = song = null;
-    $('main').classList.add('no-licks');
-    $('lick-style').textContent = 'Licks';
-    $('lick-title').textContent = `No ${INSTRUMENT.name} licks yet`;
-    const others = Object.keys(INSTRUMENTS).filter((id) => LICKS.some((l) => lickInstrument(l) === id));
-    $('lick-chips').textContent = `Try ${others.map((id) => INSTRUMENTS[id].name).join(', ')} from the Instrument menu.`;
-  }
-
   function selectLick(id) {
     player.stop();
     const mine = licksForInstrument();
-    if (!mine.length) return showNoLicks();
-    $('main').classList.remove('no-licks');
     lick = mine.find((l) => l.id === id) || mine[0];
     state.lickId = lick.id;
     save();
@@ -228,7 +210,6 @@ import { Tab } from './tab.js';
   };
 
   function togglePlay() {
-    if (!song) return;
     if (player.playing) {
       player.stop();
       return;

@@ -13,7 +13,7 @@ mandolin, in standard and alternate tunings.
 | `index.html` (Scales) | 10 scales in any key on the neck, a 4-fret "box" view, play a scale run, plain-English "mood" card |
 | `chords.html` (Chords) | 10 chord qualities with two voicings, interval colours, every chord tone across the neck, strum to hear |
 | `identify.html` (Identify) | Tap notes on the neck, get the chord (33 types) with alternatives, build a progression |
-| `licks.html` (Licks) | Lick trainer: tab with beat counts, a neck showing the scale box and the playing/next note, play-along with loop, count-in, click, speed trainer, grace notes; 18 licks with "why it works" notes |
+| `licks.html` (Licks) | Lick trainer: tab with beat counts, a neck showing the scale box and the playing/next note, play-along with loop, count-in, click, speed trainer, grace notes; 28 licks across every instrument, each with "why it works" notes |
 | `tab.html` | AlphaTab proof of concept (sampled playback, not linked from the tabs) |
 
 Every page has **Instrument**, **Tuning**, **Tone** (Acoustic / Clean / Blues / Rock amp) and **Volume** controls in the topbar, shared across pages. You can tap or strum the neck on every page.
