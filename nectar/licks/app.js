@@ -69,7 +69,10 @@ import { Tab } from './tab.js';
         b.innerHTML = `<span class="t"></span><span class="m"><span class="k"></span><span class="lvl">${'●'.repeat(l.level)}${'○'.repeat(3 - l.level)}</span></span>`;
         b.querySelector('.t').textContent = l.title;
         b.querySelector('.k').textContent = `${NOTE_NAMES[l.root]} ${SCALES[l.scale].name}`;
-        b.addEventListener('click', () => selectLick(l.id));
+        b.addEventListener('click', () => {
+          selectLick(l.id);
+          document.body.classList.remove('lib-open');
+        });
         lib.appendChild(b);
       }
     }
@@ -302,6 +305,10 @@ import { Tab } from './tab.js';
       setSpeed(state.speed - 5);
     }
   });
+
+  // Phones: the library is a sheet opened from the "Licks" button next to the title.
+  $('lib-toggle').addEventListener('click', () => document.body.classList.toggle('lib-open'));
+  $('lib-backdrop').addEventListener('click', () => document.body.classList.remove('lib-open'));
 
   let resizeTimer;
   window.addEventListener('resize', () => {
